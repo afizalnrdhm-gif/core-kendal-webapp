@@ -282,6 +282,14 @@ function bebanAwal_(records, bucket){
   return { count: rows.length, sipok: sipok };
 }
 
+function getBucketOptions(){
+  if(IS_ADMIN || !ROLE_INFO) return BUCKET_ORDER;
+  const set = new Set();
+  (ROLE_INFO.asalFlow || []).forEach(b => { if(b) set.add(b); });
+  (ROLE_INFO.penyelesaian || []).forEach(b => { if(b) set.add(b); });
+  return BUCKET_ORDER.filter(b => set.has(b));
+}
+
 function buildLayout(){
   const isMR = ROLE_INFO && ROLE_INFO.role === 'MR';
   const isFE = ROLE_INFO && ROLE_INFO.role === 'FE';
@@ -320,7 +328,7 @@ function buildLayout(){
       </div>
       <select class="filter-select" id="bucketSelect">
         <option value="ALL">Semua Bucket Awal</option>
-        ${BUCKET_ORDER.map(b => `<option value="${b}">${fmtBucket(b)}</option>`).join('')}
+        ${getBucketOptions().map(b => `<option value="${b}">${fmtBucket(b)}</option>`).join('')}
       </select>
       <select class="filter-select" id="kriteriaSelect">
         <option value="ALL">Semua Kriteria Acct</option>
