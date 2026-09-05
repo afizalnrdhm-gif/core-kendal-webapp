@@ -8,15 +8,19 @@
 <link rel="icon" type="image/png" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="theme-color" content="#0B3D62">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
   :root{
     --ink:#16222E; --ink-soft:#4C6272;
     --bg:#EAF1F6; --surface:#FFFFFF; --surface-alt:#F1F7FB; --line:#D3E3EC;
     --navy:#0B3D62; --navy-light:#0F4E7C; --navy-lighter:#3FA9E0;
+    --gold:#C88A2E; --gold-soft:#F3E3C8;
     --good:#3E7D5C; --bad:#A13A3F;
-    --mono: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, "Roboto Mono", monospace;
-    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    --mono: 'JetBrains Mono', ui-monospace, "SF Mono", Consolas, monospace;
+    --sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased;}
@@ -24,22 +28,23 @@
   /* ---------- Login screen ---------- */
   .login-wrap{
     min-height:100vh; display:flex; align-items:center; justify-content:center;
-    background:linear-gradient(180deg,var(--navy) 0%,#122A42 100%);
+    background:radial-gradient(circle at 30% 20%, #123F63 0%, #0B3D62 40%, #071F33 100%);
     padding:20px;
   }
   .login-card{
-    background:var(--surface); border-radius:16px; padding:36px 30px;
+    background:var(--surface); border-radius:18px; padding:38px 32px;
     max-width:340px; width:100%; text-align:center;
-    box-shadow:0 20px 60px rgba(0,0,0,0.3);
+    box-shadow:0 24px 70px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.06);
+    border-top:3px solid var(--gold);
   }
-  .login-card img{width:64px;height:64px;border-radius:14px;margin-bottom:16px;}
+  .login-card img{width:64px;height:64px;border-radius:14px;margin-bottom:16px;box-shadow:0 6px 18px rgba(11,61,98,0.25);}
   .login-card h1{font-size:17px;margin:0 0 4px;color:var(--ink);}
   .login-card p{font-size:12.5px;color:var(--ink-soft);margin:0 0 22px;}
   #gsiButton{display:flex; justify-content:center;}
   .login-error{margin-top:16px;font-size:12.5px;color:var(--bad);}
 
   /* ---------- Header ---------- */
-  .topbar{background:linear-gradient(180deg,var(--navy) 0%,#122A42 100%);color:#EAF0F4;padding:18px 20px 16px;}
+  .topbar{background:linear-gradient(180deg,var(--navy) 0%,#0A2F4D 100%);color:#EAF0F4;padding:18px 20px 16px;border-bottom:2px solid var(--gold);}
   .topbar-inner{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;max-width:1280px;margin:0 auto;}
   .topbar h1{margin:0;font-size:18px;font-weight:600;}
   .topbar .sub{color:#A9BFD1;font-size:12px;margin-top:3px;}
@@ -49,19 +54,27 @@
   .logout-btn{margin-top:6px;font-size:11.5px;color:#A9BFD1;background:transparent;border:1px solid rgba(255,255,255,0.25);padding:5px 12px;border-radius:20px;cursor:pointer;}
   .logout-btn:hover{color:#EAF0F4;border-color:rgba(255,255,255,0.5);}
 
-  .wrap{max-width:1280px;margin:0 auto;padding:18px 18px 60px;}
+  .wrap{max-width:1280px;margin:0 auto;padding:18px 18px 60px;animation:fadeIn .35s ease;}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
 
   .state-box{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:40px 20px;text-align:center;color:var(--ink-soft);font-size:13.5px;}
   .state-box.error{color:var(--bad);}
   .spinner{width:26px;height:26px;border:3px solid var(--line);border-top-color:var(--navy-lighter);border-radius:50%;margin:0 auto 14px;animation:spin .8s linear infinite;}
   @keyframes spin{to{transform:rotate(360deg);}}
 
+  .skeleton-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:18px;}
+  .skel{border-radius:12px;height:78px;background:linear-gradient(90deg, var(--surface-alt) 25%, #E4EDF3 37%, var(--surface-alt) 63%);background-size:400% 100%;animation:shimmer 1.4s ease infinite;}
+  .skel.tall{height:150px;}
+  @keyframes shimmer{0%{background-position:100% 0;}100%{background-position:0 0;}}
+
   .panel-title{font-size:12px;text-transform:uppercase;letter-spacing:0.6px;color:var(--ink-soft);margin:0 0 10px 2px;font-weight:600;}
 
   .grand-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:18px;}
-  .grand-card{background:var(--navy);color:#EAF0F4;border-radius:10px;padding:16px 18px;}
-  .grand-card .lbl{font-size:11px;text-transform:uppercase;letter-spacing:0.4px;color:#A9BFD1;}
-  .grand-card .val{font-family:var(--mono);font-size:22px;font-weight:700;margin-top:4px;}
+  .grand-card{background:linear-gradient(155deg,var(--navy) 0%,#0A2F4D 100%);color:#EAF0F4;border-radius:12px;padding:18px 20px;box-shadow:0 6px 20px rgba(11,61,98,0.18);position:relative;overflow:hidden;transition:transform .18s ease, box-shadow .18s ease;}
+  .grand-card:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(11,61,98,0.26);}
+  .grand-card::after{content:'';position:absolute;top:-30%;right:-15%;width:140px;height:140px;background:radial-gradient(circle,rgba(200,138,46,0.18) 0%,transparent 70%);}
+  .grand-card .lbl{font-size:11px;text-transform:uppercase;letter-spacing:0.6px;color:#9FC3DC;}
+  .grand-card .val{font-family:var(--mono);font-size:23px;font-weight:700;margin-top:5px;letter-spacing:-0.3px;}
 
   .bucket-bar{display:flex;height:32px;border-radius:8px;overflow:hidden;box-shadow:0 1px 2px rgba(20,30,40,0.12);margin-bottom:8px;cursor:pointer;}
   .bucket-seg{height:100%;transition:opacity .15s ease;}
@@ -73,8 +86,10 @@
   .bucket-chip .n{font-family:var(--mono);color:var(--ink-soft);}
 
   .co-row, .role-row, .status-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:20px;}
-  .status-card{background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:14px 16px;cursor:pointer;transition:box-shadow .15s ease;}
-  .status-card:hover{box-shadow:0 2px 8px rgba(20,30,40,0.08);}
+  .status-card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;cursor:pointer;transition:box-shadow .18s ease, transform .18s ease;position:relative;overflow:hidden;}
+  .status-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--gold);transform:scaleX(0);transition:transform .18s ease;transform-origin:left;}
+  .status-card:hover{box-shadow:0 6px 16px rgba(20,30,40,0.1);transform:translateY(-1px);}
+  .status-card:hover::before, .status-card.active::before{transform:scaleX(1);}
   .status-card.active{border-color:var(--navy-lighter);box-shadow:0 0 0 1px var(--navy-lighter);}
   .status-card .bhead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;}
   .status-card .bname{font-weight:700;font-size:13.5px;}
@@ -85,8 +100,8 @@
   .status-card .dot{width:7px;height:7px;border-radius:50%;display:inline-block;}
   .dot.good{background:var(--good);}
   .dot.bad{background:var(--bad);}
-  .co-card{background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:12px 14px;cursor:pointer;transition:box-shadow .15s ease;}
-  .co-card:hover{box-shadow:0 2px 8px rgba(20,30,40,0.08);}
+  .co-card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;cursor:pointer;transition:box-shadow .18s ease, transform .18s ease;}
+  .co-card:hover{box-shadow:0 6px 16px rgba(20,30,40,0.1);transform:translateY(-1px);}
   .co-card.active{border-color:var(--navy-lighter);box-shadow:0 0 0 1px var(--navy-lighter);}
   .co-card .name{font-weight:600;font-size:13px;}
   .co-card .role{font-size:11px;color:var(--ink-soft);}
@@ -261,7 +276,15 @@ document.getElementById('logoutBtn').addEventListener('click', doLogout);
 
 // ---------- DATA LOADING ----------
 function loadData(){
-  document.getElementById('wrap').innerHTML = '<div class="state-box" id="stateBox"><div class="spinner"></div>Memuat data dari sheet…</div>';
+  document.getElementById('wrap').innerHTML = `
+    <div class="skeleton-row">
+      <div class="skel"></div><div class="skel"></div>
+    </div>
+    <div class="skeleton-row">
+      <div class="skel"></div><div class="skel"></div><div class="skel"></div>
+    </div>
+    <div class="skel tall"></div>
+  `;
   fetch('/api/data', { headers: { Authorization: 'Bearer ' + ID_TOKEN } })
     .then(r => r.json().then(body => ({ ok: r.ok, body })))
     .then(({ok, body}) => {
@@ -477,14 +500,29 @@ function updateTabButtons(){
   });
 }
 
+function animateCount(el, endValue, isRupiah){
+  const duration = 900;
+  const start = performance.now();
+  function tick(now){
+    const progress = Math.min((now - start) / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    const current = Math.round(endValue * eased);
+    el.textContent = isRupiah ? fmtRupiah(current) : current.toLocaleString('id-ID');
+    if(progress < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
 function renderGrandTotal(){
   const box = document.getElementById('grandRow');
   if(!box) return;
   const totalSipok = DATA.reduce((s,r) => s + (typeof r['SIPOK']==='number' ? r['SIPOK'] : 0), 0);
   box.innerHTML = `
-    <div class="grand-card"><div class="lbl">Total Kontrak</div><div class="val">${DATA.length.toLocaleString('id-ID')}</div></div>
-    <div class="grand-card"><div class="lbl">Total Sisa Piutang</div><div class="val">${fmtRupiah(totalSipok)}</div></div>
+    <div class="grand-card"><div class="lbl">Total Kontrak</div><div class="val" id="valTotalKontrak">0</div></div>
+    <div class="grand-card"><div class="lbl">Total Sisa Piutang</div><div class="val" id="valTotalSipok">Rp0</div></div>
   `;
+  animateCount(document.getElementById('valTotalKontrak'), DATA.length, false);
+  animateCount(document.getElementById('valTotalSipok'), totalSipok, true);
 }
 
 function renderBucketBar(){
