@@ -61,6 +61,19 @@ async function verifyIdToken(idToken) {
   return data.email.toLowerCase();
 }
 
+function serialToDateStr(serial) {
+  if (typeof serial !== 'number') return serial;
+  const utcDays = Math.floor(serial - 25569);
+  const utcValue = utcDays * 86400;
+  const dateInfo = new Date(utcValue * 1000);
+  const y = dateInfo.getUTCFullYear();
+  const m = String(dateInfo.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(dateInfo.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+const DATE_FIELDS = new Set(['JATUH TEMPO', 'TANGGAL BAYAR BULAN LALU']);
+
 function parseSheetValues(values) {
   if (!values || !values.length) return [];
   const header = values[0];
@@ -80,7 +93,11 @@ function parseSheetValues(values) {
     keepIdx.forEach((idx, j) => {
       let v = raw[idx];
       if (typeof v === 'string') v = v.trim();
-      rec[finalHeader[j]] = v === undefined ? '' : v;
+      const colName = finalHeader[j];
+      if (DATE_FIELDS.has(colName) && typeof v === 'number') {
+        v = serialToDateStr(v);
+      }
+      rec[colName] = v === undefined ? '' : v;
     });
     if (rec['NO KONTRAK'] || finalHeader.indexOf('NO KONTRAK') === -1) rows.push(rec);
   }
@@ -101,10 +118,10 @@ module.exports = async (req, res) => {
     const sheetId = process.env.GOOGLE_SHEET_ID;
 
     const [masterRes, roleRes] = await Promise.all([
-      fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/MASTER`, {
+      fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/MASTER?valueRenderOption=UNFORMATTED_VALUE`, {
         headers: { Authorization: 'Bearer ' + accessToken }
       }),
-      fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/CONFIG_ROLE`, {
+      fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/CONFIG_ROLE?valueRenderOption=UNFORMATTED_VALUE`, {
         headers: { Authorization: 'Bearer ' + accessToken }
       })
     ]);
