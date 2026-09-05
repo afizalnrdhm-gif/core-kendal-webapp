@@ -72,7 +72,19 @@
   .swatch{width:9px;height:9px;border-radius:2px;display:inline-block;flex:none;}
   .bucket-chip .n{font-family:var(--mono);color:var(--ink-soft);}
 
-  .co-row, .role-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:20px;}
+  .co-row, .role-row, .status-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:20px;}
+  .status-card{background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:14px 16px;cursor:pointer;transition:box-shadow .15s ease;}
+  .status-card:hover{box-shadow:0 2px 8px rgba(20,30,40,0.08);}
+  .status-card.active{border-color:var(--navy-lighter);box-shadow:0 0 0 1px var(--navy-lighter);}
+  .status-card .bhead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;}
+  .status-card .bname{font-weight:700;font-size:13.5px;}
+  .status-card .btotal{font-family:var(--mono);font-size:11.5px;color:var(--ink-soft);}
+  .status-card .srow{display:flex;justify-content:space-between;align-items:center;font-size:11.5px;padding:4px 0;border-top:1px dashed var(--line);}
+  .status-card .srow .slabel{display:flex;align-items:center;gap:5px;color:var(--ink-soft);}
+  .status-card .srow .sval{font-family:var(--mono);font-weight:600;color:var(--ink);text-align:right;}
+  .status-card .dot{width:7px;height:7px;border-radius:50%;display:inline-block;}
+  .dot.good{background:var(--good);}
+  .dot.bad{background:var(--bad);}
   .co-card{background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:12px 14px;cursor:pointer;transition:box-shadow .15s ease;}
   .co-card:hover{box-shadow:0 2px 8px rgba(20,30,40,0.08);}
   .co-card.active{border-color:var(--navy-lighter);box-shadow:0 0 0 1px var(--navy-lighter);}
@@ -276,6 +288,45 @@ function onDataLoaded(res){
   render();
 }
 
+function isSudahBayar_(status){
+  const u = (status||'').toString().toUpperCase();
+  return u.includes('LUNAS') || u.includes('SUDAH');
+}
+
+function bucketStatusStat_(records, bucket){
+  const rows = records.filter(r => r['BUCKET AWAL'] === bucket);
+  const sudah = rows.filter(r => isSudahBayar_(r['STATUS BAYAR']));
+  const belum = rows.filter(r => !isSudahBayar_(r['STATUS BAYAR']));
+  const sum = arr => arr.reduce((s,r)=> s + (typeof r['SIPOK']==='number' ? r['SIPOK'] : 0), 0);
+  return {
+    total: { count: rows.length, sipok: sum(rows) },
+    sudah: { count: sudah.length, sipok: sum(sudah) },
+    belum: { count: belum.length, sipok: sum(belum) }
+  };
+}
+
+function renderStatusCards(containerId, records, buckets){
+  const box = document.getElementById(containerId);
+  if(!box) return;
+  box.innerHTML = buckets.map(b => {
+    const s = bucketStatusStat_(records, b);
+    return `
+    <div class="status-card ${state.bucket===b && state.tab==='own' ? 'active':''}" data-bucket="${b}">
+      <div class="bhead">
+        <span class="bname">${fmtBucket(b)}</span>
+        <span class="btotal">${s.total.count} kontrak · ${fmtRupiah(s.total.sipok)}</span>
+      </div>
+      <div class="srow"><span class="slabel"><span class="dot good"></span>Sudah Bayar</span><span class="sval">${s.sudah.count} · ${fmtRupiah(s.sudah.sipok)}</span></div>
+      <div class="srow"><span class="slabel"><span class="dot bad"></span>Belum Bayar</span><span class="sval">${s.belum.count} · ${fmtRupiah(s.belum.sipok)}</span></div>
+    </div>`;
+  }).join('');
+  box.querySelectorAll('.status-card').forEach(card => {
+    card.onclick = () => { state.tab='own'; const b=card.getAttribute('data-bucket'); state.bucket = state.bucket===b?'ALL':b; render(); };
+  });
+}
+
+const MONITOR_BUCKETS = ['NOOD','P001_030','P031_060'];
+
 function bebanAwal_(records, bucket){
   const rows = records.filter(r => r['BUCKET AWAL'] === bucket);
   const sipok = rows.reduce((s,r) => s + (typeof r['SIPOK']==='number' ? r['SIPOK'] : 0), 0);
@@ -298,12 +349,14 @@ function buildLayout(){
 
   if(IS_ADMIN){
     html += `<div class="panel-title">Total Beban Awal (Semua PIC)</div>
-      <div class="grand-row" id="grandRow"></div>`;
+      <div class="grand-row" id="grandRow"></div>
+      <div class="panel-title">Monitoring Realisasi per Bucket</div>
+      <div class="status-row" id="statusRowAdmin"></div>`;
   }
 
   if(isFE || isMR){
-    html += `<div class="panel-title">Beban Awal Kamu</div>
-      <div class="role-row" id="roleRow"></div>`;
+    html += `<div class="panel-title">Beban Awal & Realisasi Kamu</div>
+      <div class="status-row" id="statusRowRole"></div>`;
   }
 
   html += `
@@ -403,7 +456,13 @@ function render(){
     return;
   }
   renderGrandTotal();
-  renderRoleTiles();
+  if(IS_ADMIN) renderStatusCards('statusRowAdmin', DATA, MONITOR_BUCKETS);
+  if(ROLE_INFO){
+    const myBuckets = ROLE_INFO.role === 'FE'
+      ? [ROLE_INFO.asalFlow[0], ROLE_INFO.penyelesaian[0]]
+      : [ROLE_INFO.penyelesaian[0]];
+    renderStatusCards('statusRowRole', DATA, myBuckets);
+  }
   renderBucketBar();
   renderCoRow();
   renderTable();
@@ -426,29 +485,6 @@ function renderGrandTotal(){
     <div class="grand-card"><div class="lbl">Total Kontrak</div><div class="val">${DATA.length.toLocaleString('id-ID')}</div></div>
     <div class="grand-card"><div class="lbl">Total Sisa Piutang</div><div class="val">${fmtRupiah(totalSipok)}</div></div>
   `;
-}
-
-function renderRoleTiles(){
-  const box = document.getElementById('roleRow');
-  if(!box || !ROLE_INFO) return;
-  let tiles = [];
-  if(ROLE_INFO.role === 'FE'){
-    const asal = ROLE_INFO.asalFlow[0];
-    const target = ROLE_INFO.penyelesaian[0];
-    tiles.push({label:'Beban Awal ' + fmtBucket(asal), bucket:asal, stat:bebanAwal_(DATA, asal)});
-    tiles.push({label:'Beban Awal ' + fmtBucket(target), bucket:target, stat:bebanAwal_(DATA, target)});
-  } else if(ROLE_INFO.role === 'MR'){
-    const target = ROLE_INFO.penyelesaian[0];
-    tiles.push({label:'Beban Awal ' + fmtBucket(target), bucket:target, stat:bebanAwal_(DATA, target)});
-  }
-  box.innerHTML = tiles.map(t => `
-    <div class="co-card ${state.bucket===t.bucket && state.tab==='own' ? 'active':''}" data-bucket="${t.bucket}">
-      <div class="name">${t.label}</div>
-      <div class="stats"><div>Kontrak<b>${t.stat.count}</b></div><div style="text-align:right">Sisa Piutang<b>${fmtRupiah(t.stat.sipok)}</b></div></div>
-    </div>`).join('');
-  box.querySelectorAll('.co-card').forEach(card => {
-    card.onclick = () => { state.tab='own'; const b=card.getAttribute('data-bucket'); state.bucket = state.bucket===b?'ALL':b; render(); };
-  });
 }
 
 function renderBucketBar(){
