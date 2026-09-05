@@ -318,7 +318,6 @@ function buildLayout(){
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4C6272" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input id="searchInput" type="text" placeholder="Cari nama konsumen, no kontrak, atau nopol…">
       </div>
-      ${IS_ADMIN ? `
       <select class="filter-select" id="bucketSelect">
         <option value="ALL">Semua Bucket Awal</option>
         ${BUCKET_ORDER.map(b => `<option value="${b}">${fmtBucket(b)}</option>`).join('')}
@@ -334,7 +333,7 @@ function buildLayout(){
         <option value="ALL">Semua Kendaraan</option>
         <option value="MOTOR">Motor</option>
         <option value="MOBIL">Mobil</option>
-      </select>` : ''}
+      </select>
       <button class="btn" id="resetBtn">Reset filter</button>
       <button class="btn primary" id="refreshBtn">↻ Muat ulang</button>
     </div>
@@ -375,11 +374,9 @@ function buildLayout(){
     render();
   });
   document.getElementById('refreshBtn').addEventListener('click', loadData);
-  if(IS_ADMIN){
-    document.getElementById('bucketSelect').addEventListener('change', e => { state.bucket = e.target.value; render(); });
-    document.getElementById('kriteriaSelect').addEventListener('change', e => { state.kriteria = e.target.value; renderTable(); });
-    document.getElementById('tipeSelect').addEventListener('change', e => { state.tipe = e.target.value; renderTable(); });
-  }
+  document.getElementById('bucketSelect').addEventListener('change', e => { state.bucket = e.target.value; render(); });
+  document.getElementById('kriteriaSelect').addEventListener('change', e => { state.kriteria = e.target.value; renderTable(); });
+  document.getElementById('tipeSelect').addEventListener('change', e => { state.tipe = e.target.value; renderTable(); });
   const tabRow = document.getElementById('tabRow');
   if(tabRow){
     tabRow.querySelectorAll('.tab-btn').forEach(btn => {
