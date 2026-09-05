@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Monitoring System CORE Kendal</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#0B3D62">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+  :root{
+    --ink:#16222E; --ink-soft:#4C6272;
+    --bg:#EAF1F6; --surface:#FFFFFF; --surface-alt:#F1F7FB; --line:#D3E3EC;
+    --navy:#0B3D62; --navy-light:#0F4E7C; --navy-lighter:#3FA9E0;
+    --good:#3E7D5C; --bad:#A13A3F;
+    --mono: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, "Roboto Mono", monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased;}
+
+  /* ---------- Login screen ---------- */
+  .login-wrap{
+    min-height:100vh; display:flex; align-items:center; justify-content:center;
+    background:linear-gradient(180deg,var(--navy) 0%,#122A42 100%);
+    padding:20px;
+  }
+  .login-card{
+    background:var(--surface); border-radius:16px; padding:36px 30px;
+    max-width:340px; width:100%; text-align:center;
+    box-shadow:0 20px 60px rgba(0,0,0,0.3);
+  }
+  .login-card img{width:64px;height:64px;border-radius:14px;margin-bottom:16px;}
+  .login-card h1{font-size:17px;margin:0 0 4px;color:var(--ink);}
+  .login-card p{font-size:12.5px;color:var(--ink-soft);margin:0 0 22px;}
+  #gsiButton{display:flex; justify-content:center;}
+  .login-error{margin-top:16px;font-size:12.5px;color:var(--bad);}
+
+  /* ---------- Header ---------- */
+  .topbar{background:linear-gradient(180deg,var(--navy) 0%,#122A42 100%);color:#EAF0F4;padding:18px 20px 16px;}
+  .topbar-inner{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;max-width:1280px;margin:0 auto;}
+  .topbar h1{margin:0;font-size:18px;font-weight:600;}
+  .topbar .sub{color:#A9BFD1;font-size:12px;margin-top:3px;}
+  .who{text-align:right;font-size:12px;color:#A9BFD1;line-height:1.6;}
+  .who b{color:#EAF0F4;font-weight:600;}
+  .badge{display:inline-block;background:rgba(255,255,255,0.14);color:#EAF0F4;font-size:10.5px;padding:2px 8px;border-radius:20px;margin-left:6px;}
+  .logout-btn{margin-top:6px;font-size:11.5px;color:#A9BFD1;background:transparent;border:1px solid rgba(255,255,255,0.25);padding:5px 12px;border-radius:20px;cursor:pointer;}
+  .logout-btn:hover{color:#EAF0F4;border-color:rgba(255,255,255,0.5);}
+
+  .wrap{max-width:1280px;margin:0 auto;padding:18px 18px 60px;}
+
+  .state-box{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:40px 20px;text-align:center;color:var(--ink-soft);font-size:13.5px;}
+  .state-box.error{color:var(--bad);}
+  .spinner{width:26px;height:26px;border:3px solid var(--line);border-top-color:var(--navy-lighter);border-radius:50%;margin:0 auto 14px;animation:spin .8s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  .panel-title{font-size:12px;text-transform:uppercase;letter-spacing:0.6px;color:var(--ink-soft);margin:0 0 10px 2px;font-weight:600;}
+
+  .grand-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:18px;}
+  .grand-card{background:var(--navy);color:#EAF0F4;border-radius:10px;padding:16px 18px;}
+  .grand-card .lbl{font-size:11px;text-transform:uppercase;letter-spacing:0.4px;color:#A9BFD1;}
+  .grand-card .val{font-family:var(--mono);font-size:22px;font-weight:700;margin-top:4px;}
+
+  .bucket-bar{display:flex;height:32px;border-radius:8px;overflow:hidden;box-shadow:0 1px 2px rgba(20,30,40,0.12);margin-bottom:8px;cursor:pointer;}
+  .bucket-seg{height:100%;transition:opacity .15s ease;}
+  .bucket-seg.dim{opacity:0.32;}
+  .bucket-legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin-bottom:22px;}
+  .bucket-chip{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-soft);cursor:pointer;padding:3px 6px;border-radius:5px;user-select:none;}
+  .bucket-chip.active{background:var(--surface);box-shadow:0 0 0 1px var(--line);color:var(--ink);font-weight:600;}
+  .swatch{width:9px;height:9px;border-radius:2px;display:inline-block;flex:none;}
+  .bucket-chip .n{font-family:var(--mono);color:var(--ink-soft);}
+
+  .co-row, .role-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:20px;}
+  .co-card{background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:12px 14px;cursor:pointer;transition:box-shadow .15s ease;}
+  .co-card:hover{box-shadow:0 2px 8px rgba(20,30,40,0.08);}
+  .co-card.active{border-color:var(--navy-lighter);box-shadow:0 0 0 1px var(--navy-lighter);}
+  .co-card .name{font-weight:600;font-size:13px;}
+  .co-card .role{font-size:11px;color:var(--ink-soft);}
+  .co-card .stats{display:flex;justify-content:space-between;margin-top:8px;font-size:11.5px;color:var(--ink-soft);}
+  .co-card .stats b{display:block;font-family:var(--mono);font-size:13.5px;color:var(--ink);font-weight:600;}
+
+  .controls{display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap;}
+  .search-box{flex:1;min-width:200px;position:relative;}
+  .search-box input{width:100%;padding:9px 12px 9px 32px;border:1px solid var(--line);border-radius:7px;font-size:13.5px;background:var(--surface);color:var(--ink);font-family:var(--sans);}
+  .search-box input:focus{outline:none;border-color:var(--navy-lighter);}
+  .search-box svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);opacity:0.45;}
+  select.filter-select{font-size:12.5px;color:var(--ink);background:var(--surface);border:1px solid var(--line);padding:8px 10px;border-radius:7px;font-family:var(--sans);}
+  .btn{font-size:12.5px;color:var(--navy);background:var(--surface);border:1px solid var(--line);padding:8px 13px;border-radius:7px;cursor:pointer;white-space:nowrap;}
+  .btn.primary{background:var(--navy);color:#fff;border-color:var(--navy);}
+  .count-note{font-size:12px;color:var(--ink-soft);margin:0 0 10px 2px;}
+  .count-note b{color:var(--ink);}
+
+  .tabs{display:flex;gap:6px;margin-bottom:14px;}
+  .tab-btn{font-size:12.5px;padding:8px 14px;border-radius:7px;border:1px solid var(--line);background:var(--surface);color:var(--ink-soft);cursor:pointer;}
+  .tab-btn.active{background:var(--navy);color:#fff;border-color:var(--navy);font-weight:600;}
+  .tab-btn .n{font-family:var(--mono);}
+
+  .table-scroll{background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:auto;}
+  table{border-collapse:collapse;width:100%;font-size:13px;min-width:900px;}
+  thead th{position:sticky;top:0;background:var(--surface-alt);text-align:left;padding:9px 11px;font-size:11px;text-transform:uppercase;color:var(--ink-soft);border-bottom:1px solid var(--line);cursor:pointer;white-space:nowrap;}
+  tbody td{padding:9px 11px;border-bottom:1px solid var(--line);white-space:nowrap;}
+  tbody tr{cursor:pointer;}
+  tbody tr:hover td{background:#F5F8F9;}
+  tbody tr:nth-child(even) td{background:var(--surface-alt);}
+  .num{font-family:var(--mono);text-align:right;}
+  .mono{font-family:var(--mono);}
+  .bucket-flow{display:flex;align-items:center;gap:5px;font-size:11px;}
+  .bpill{display:inline-block;padding:2px 7px;border-radius:20px;font-size:10.5px;font-weight:600;color:#fff;font-family:var(--mono);}
+  .status-pill{font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;}
+  .status-belum{background:#F7E4E1;color:var(--bad);}
+  .status-sudah{background:#E1EFE6;color:var(--good);}
+  .status-lunas{background:#E2E9F2;color:var(--navy);}
+  .empty-row td{text-align:center;padding:36px;color:var(--ink-soft);}
+
+  .overlay{position:fixed;inset:0;background:rgba(15,25,35,0.35);opacity:0;pointer-events:none;transition:opacity .18s ease;z-index:20;}
+  .overlay.show{opacity:1;pointer-events:auto;}
+  .side-panel{position:fixed;top:0;right:0;bottom:0;width:380px;max-width:92vw;background:var(--surface);box-shadow:-6px 0 24px rgba(15,25,35,0.18);transform:translateX(100%);transition:transform .22s ease;z-index:21;overflow-y:auto;}
+  .side-panel.show{transform:translateX(0);}
+  .panel-head{background:var(--navy);color:#EAF0F4;padding:18px 20px;position:sticky;top:0;}
+  .panel-head .pk{font-size:10.5px;text-transform:uppercase;color:#A9BFD1;margin-bottom:4px;}
+  .panel-head h2{margin:0;font-size:16px;font-weight:600;}
+  .panel-head .kontrak{font-family:var(--mono);font-size:12px;color:#BFD2E0;margin-top:4px;}
+  .panel-close{position:absolute;top:14px;right:14px;background:rgba(255,255,255,0.12);border:none;color:#EAF0F4;width:24px;height:24px;border-radius:6px;cursor:pointer;}
+  .panel-body{padding:16px 20px 40px;}
+  .field-group{margin-bottom:18px;}
+  .field-group h3{font-size:10.5px;text-transform:uppercase;color:var(--ink-soft);margin:0 0 8px;border-bottom:1px solid var(--line);padding-bottom:5px;}
+  .field-row{display:flex;justify-content:space-between;gap:10px;padding:4px 0;font-size:12.5px;}
+  .field-row .k{color:var(--ink-soft);flex:none;width:44%;}
+  .field-row .v{text-align:right;font-weight:500;word-break:break-word;}
+
+  @media (max-width:680px){
+    table, thead, tbody, th, td, tr{display:block;}
+    thead tr{display:none;}
+    table{min-width:0;}
+    tbody tr{margin:10px;border:1px solid var(--line);border-radius:10px;overflow:hidden;}
+    tbody td{display:flex;justify-content:space-between;align-items:center;text-align:right;padding:8px 12px;border-bottom:1px solid var(--line);white-space:normal;}
+    tbody td:last-child{border-bottom:none;}
+    tbody td::before{content:attr(data-label);font-weight:600;color:var(--ink-soft);text-align:left;margin-right:10px;font-size:11px;text-transform:uppercase;}
+    .table-scroll{overflow:visible;background:transparent;border:none;}
+  }
+</style>
+</head>
+<body>
+
+<div id="loginScreen" class="login-wrap">
+  <div class="login-card">
+    <img src="icon-192.png" alt="CORE Kendal">
+    <h1>Monitoring System CORE Kendal</h1>
+    <p>Login pakai akun Google yang terdaftar untuk melihat data kontrak collection.</p>
+    <div id="gsiButton"></div>
+    <div class="login-error" id="loginError"></div>
+  </div>
+</div>
+
+<div id="appScreen" style="display:none;">
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div>
+        <h1>Monitoring System CORE Kendal</h1>
+        <div class="sub">Data kontrak collection</div>
+      </div>
+      <div class="who">
+        <div id="whoBox">Memuat akun…</div>
+        <button class="logout-btn" id="logoutBtn">Keluar</button>
+      </div>
+    </div>
+  </div>
+  <div class="wrap" id="wrap">
+    <div class="state-box" id="stateBox"><div class="spinner"></div>Memuat data dari sheet…</div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay"></div>
+<div class="side-panel" id="sidePanel">
+  <div class="panel-head">
+    <button class="panel-close" id="panelClose">✕</button>
+    <div class="pk" id="panelCO"></div>
+    <h2 id="panelName"></h2>
+    <div class="kontrak" id="panelKontrak"></div>
+  </div>
+  <div class="panel-body" id="panelBody"></div>
+</div>
+
+<script>
+const GOOGLE_CLIENT_ID = '579330745631-av2lgoobdsv4mnflu91rfgablc0ug2lr.apps.googleusercontent.com';
+
+const BUCKET_ORDER = ['NOOD','P001_030','P031_060','P061_090','P091_120','P121_150','P151_180','P181_210','P211_240'];
+const BUCKET_COLOR = {
+  'NOOD':'#3E7D5C','P001_030':'#B08A2E','P031_060':'#C4802E','P061_090':'#BC642F',
+  'P091_120':'#AE4C36','P121_150':'#9C3C41','P151_180':'#87304C','P181_210':'#6C2851',
+  'P211_240':'#4F1F4F','NA':'#8A9096'
+};
+const CO_META = {
+  'ACHMAD RAHUL HIDAYAT': {short:'Rahul', role:'Front End'},
+  'MOHAMAD IZZA ULIL WAFA': {short:'Izza', role:'Front End'},
+  'SIGIT KURNIAWAN': {short:'Sigit', role:'Mid Range'}
+};
+const FIELD_GROUPS = [
+  { title:'Identitas & Alamat', fields:['KELURAHAN','KECAMATAN','ALAMAT','NO HP','WHATSAPP'] },
+  { title:'Kontrak & Unit', fields:['TYPE BARANG','NOPOL','TYPE UNIT','GROUP PRODUCT','FLEET/NON FLEET','KRITERIA ACCT'] },
+  { title:'Keuangan', fields:['SIPOK','ANGSURAN','ANGS KE','TENOR','CARA BAYAR','TANGGAL BAYAR BULAN LALU'] },
+  { title:'Tim & Status', fields:['CO FE','CO TAMBAHAN','CMO','EMAIL CO','FLAG TARGET BULAN INI','BUCKET EVER','PEKERJAAN KONSUMEN'] },
+];
+
+let DATA = [];
+let ESCALATIONS = [];
+let ROLE_INFO = null;
+let IS_ADMIN = false;
+let USER_EMAIL = '';
+let ID_TOKEN = null;
+let state = { search:'', co:'ALL', bucket:'ALL', kriteria:'ALL', tipe:'ALL', sortKey:null, sortDir:1, tab:'own' };
+
+function fmtBucket(b){ return (b||'-').replace('_','-'); }
+function fmtRupiah(n){ if(typeof n !== 'number') return '-'; return 'Rp' + Math.round(n).toLocaleString('id-ID'); }
+function fmtDate(s){ if(!s) return '-'; const d = new Date(s); if(isNaN(d)) return s; return d.toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'}); }
+function statusClass(s){ if(!s) return ''; const u=s.toUpperCase(); if(u.includes('LUNAS')) return 'status-lunas'; if(u.includes('SUDAH')) return 'status-sudah'; return 'status-belum'; }
+
+// ---------- LOGIN (Google Identity Services) ----------
+window.onload = function () {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js');
+  }
+  google.accounts.id.initialize({
+    client_id: GOOGLE_CLIENT_ID,
+    callback: handleCredentialResponse,
+    auto_select: true
+  });
+  google.accounts.id.renderButton(document.getElementById('gsiButton'), { theme:'outline', size:'large', text:'signin_with', shape:'pill' });
+  google.accounts.id.prompt();
+};
+
+function handleCredentialResponse(response) {
+  ID_TOKEN = response.credential;
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('appScreen').style.display = 'block';
+  loadData();
+}
+
+function doLogout() {
+  google.accounts.id.disableAutoSelect();
+  ID_TOKEN = null;
+  DATA = []; ESCALATIONS = []; ROLE_INFO = null;
+  document.getElementById('appScreen').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+}
+document.getElementById('logoutBtn').addEventListener('click', doLogout);
+
+// ---------- DATA LOADING ----------
+function loadData(){
+  document.getElementById('wrap').innerHTML = '<div class="state-box" id="stateBox"><div class="spinner"></div>Memuat data dari sheet…</div>';
+  fetch('/api/data', { headers: { Authorization: 'Bearer ' + ID_TOKEN } })
+    .then(r => r.json().then(body => ({ ok: r.ok, body })))
+    .then(({ok, body}) => {
+      if(!ok){ onLoadError(body); return; }
+      onDataLoaded(body);
+    })
+    .catch(err => onLoadError({error: err.message}));
+}
+
+function onLoadError(err){
+  document.getElementById('wrap').innerHTML =
+    '<div class="state-box error">' + (err.error || 'Terjadi kesalahan.') + '<br><br>' +
+    '<button class="btn" onclick="loadData()">Coba lagi</button></div>';
+}
+
+function onDataLoaded(res){
+  DATA = res.records; IS_ADMIN = res.isAdmin; USER_EMAIL = res.email;
+  ESCALATIONS = res.escalations || []; ROLE_INFO = res.roleInfo || null;
+  state.tab = 'own';
+  document.getElementById('whoBox').innerHTML =
+    'Masuk sebagai <b>' + (USER_EMAIL || '-') + '</b>' +
+    '<span class="badge">' + (IS_ADMIN ? 'ADMIN' : 'CO') + '</span>';
+  buildLayout();
+  render();
+}
+
+function bebanAwal_(records, bucket){
+  const rows = records.filter(r => r['BUCKET AWAL'] === bucket);
+  const sipok = rows.reduce((s,r) => s + (typeof r['SIPOK']==='number' ? r['SIPOK'] : 0), 0);
+  return { count: rows.length, sipok: sipok };
+}
+
+function buildLayout(){
+  const isMR = ROLE_INFO && ROLE_INFO.role === 'MR';
+  const isFE = ROLE_INFO && ROLE_INFO.role === 'FE';
+
+  let html = '';
+
+  if(IS_ADMIN){
+    html += `<div class="panel-title">Total Beban Awal (Semua PIC)</div>
+      <div class="grand-row" id="grandRow"></div>`;
+  }
+
+  if(isFE || isMR){
+    html += `<div class="panel-title">Beban Awal Kamu</div>
+      <div class="role-row" id="roleRow"></div>`;
+  }
+
+  html += `
+    <div class="panel-title">Sebaran bucket (klik untuk filter)</div>
+    <div class="bucket-bar" id="bucketBar"></div>
+    <div class="bucket-legend" id="bucketLegend"></div>
+    <div class="co-row" id="coRow" style="${IS_ADMIN ? '' : 'display:none;'}"></div>
+  `;
+
+  if(isMR && ESCALATIONS.length){
+    html += `<div class="tabs" id="tabRow">
+      <button class="tab-btn" data-tab="own">Kontrak Saya <span class="n">(${DATA.length})</span></button>
+      <button class="tab-btn" data-tab="escalation">Limpahan dari 1-30, OD&gt;31 <span class="n">(${ESCALATIONS.length})</span></button>
+    </div>`;
+  }
+
+  html += `
+    <div class="controls">
+      <div class="search-box">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4C6272" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="searchInput" type="text" placeholder="Cari nama konsumen, no kontrak, atau nopol…">
+      </div>
+      ${IS_ADMIN ? `
+      <select class="filter-select" id="bucketSelect">
+        <option value="ALL">Semua Bucket Awal</option>
+        ${BUCKET_ORDER.map(b => `<option value="${b}">${fmtBucket(b)}</option>`).join('')}
+      </select>
+      <select class="filter-select" id="kriteriaSelect">
+        <option value="ALL">Semua Kriteria Acct</option>
+        <option value="FLOW">FLOW</option>
+        <option value="STAY">STAY</option>
+        <option value="LUNAS">LUNAS</option>
+        <option value="BTC">BTC</option>
+      </select>
+      <select class="filter-select" id="tipeSelect">
+        <option value="ALL">Semua Kendaraan</option>
+        <option value="MOTOR">Motor</option>
+        <option value="MOBIL">Mobil</option>
+      </select>` : ''}
+      <button class="btn" id="resetBtn">Reset filter</button>
+      <button class="btn primary" id="refreshBtn">↻ Muat ulang</button>
+    </div>
+    <div class="count-note" id="countNote"></div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th data-key="CO ALL" id="thCO">CO</th>
+            <th data-key="NO KONTRAK">No Kontrak</th>
+            <th data-key="NAMA KONSUMEN">Nama Konsumen</th>
+            <th>Bucket</th>
+            <th data-key="STATUS BAYAR">Status</th>
+            <th data-key="SIPOK" class="num">Sisa Piutang</th>
+            <th data-key="ANGSURAN" class="num">Angsuran</th>
+            <th data-key="DPD" class="num">DPD</th>
+            <th data-key="JATUH TEMPO">Jatuh Tempo</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  `;
+
+  document.getElementById('wrap').innerHTML = html;
+
+  document.querySelectorAll('thead th[data-key]').forEach(th => {
+    th.addEventListener('click', () => {
+      const key = th.getAttribute('data-key');
+      if(state.sortKey === key) state.sortDir *= -1; else { state.sortKey = key; state.sortDir = 1; }
+      renderTable();
+    });
+  });
+  document.getElementById('searchInput').addEventListener('input', e => { state.search = e.target.value; renderTable(); });
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    const keepTab = state.tab;
+    state = { search:'', co:'ALL', bucket:'ALL', kriteria:'ALL', tipe:'ALL', sortKey:null, sortDir:1, tab:keepTab };
+    render();
+  });
+  document.getElementById('refreshBtn').addEventListener('click', loadData);
+  if(IS_ADMIN){
+    document.getElementById('bucketSelect').addEventListener('change', e => { state.bucket = e.target.value; render(); });
+    document.getElementById('kriteriaSelect').addEventListener('change', e => { state.kriteria = e.target.value; renderTable(); });
+    document.getElementById('tipeSelect').addEventListener('change', e => { state.tipe = e.target.value; renderTable(); });
+  }
+  const tabRow = document.getElementById('tabRow');
+  if(tabRow){
+    tabRow.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => { state.tab = btn.getAttribute('data-tab'); state.bucket='ALL'; state.search=''; document.getElementById('searchInput').value=''; render(); });
+    });
+  }
+}
+
+function currentSourceRecords(){
+  return (state.tab === 'escalation') ? ESCALATIONS : DATA;
+}
+
+function render(){
+  if(DATA.length === 0 && !IS_ADMIN && ESCALATIONS.length === 0){
+    document.getElementById('wrap').innerHTML = '<div class="state-box">Belum ada kontrak yang terdaftar untuk akun <b>' + USER_EMAIL + '</b>. Hubungi admin kalau ini seharusnya ada datanya.</div>';
+    return;
+  }
+  renderGrandTotal();
+  renderRoleTiles();
+  renderBucketBar();
+  renderCoRow();
+  renderTable();
+  updateTabButtons();
+  const thCO = document.getElementById('thCO');
+  if(thCO) thCO.style.display = (IS_ADMIN || state.tab==='escalation') ? '' : 'none';
+}
+
+function updateTabButtons(){
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-tab') === state.tab);
+  });
+}
+
+function renderGrandTotal(){
+  const box = document.getElementById('grandRow');
+  if(!box) return;
+  const totalSipok = DATA.reduce((s,r) => s + (typeof r['SIPOK']==='number' ? r['SIPOK'] : 0), 0);
+  box.innerHTML = `
+    <div class="grand-card"><div class="lbl">Total Kontrak</div><div class="val">${DATA.length.toLocaleString('id-ID')}</div></div>
+    <div class="grand-card"><div class="lbl">Total Sisa Piutang</div><div class="val">${fmtRupiah(totalSipok)}</div></div>
+  `;
+}
+
+function renderRoleTiles(){
+  const box = document.getElementById('roleRow');
+  if(!box || !ROLE_INFO) return;
+  let tiles = [];
+  if(ROLE_INFO.role === 'FE'){
+    const asal = ROLE_INFO.asalFlow[0];
+    const target = ROLE_INFO.penyelesaian[0];
+    tiles.push({label:'Beban Awal ' + fmtBucket(asal), bucket:asal, stat:bebanAwal_(DATA, asal)});
+    tiles.push({label:'Beban Awal ' + fmtBucket(target), bucket:target, stat:bebanAwal_(DATA, target)});
+  } else if(ROLE_INFO.role === 'MR'){
+    const target = ROLE_INFO.penyelesaian[0];
+    tiles.push({label:'Beban Awal ' + fmtBucket(target), bucket:target, stat:bebanAwal_(DATA, target)});
+  }
+  box.innerHTML = tiles.map(t => `
+    <div class="co-card ${state.bucket===t.bucket && state.tab==='own' ? 'active':''}" data-bucket="${t.bucket}">
+      <div class="name">${t.label}</div>
+      <div class="stats"><div>Kontrak<b>${t.stat.count}</b></div><div style="text-align:right">Sisa Piutang<b>${fmtRupiah(t.stat.sipok)}</b></div></div>
+    </div>`).join('');
+  box.querySelectorAll('.co-card').forEach(card => {
+    card.onclick = () => { state.tab='own'; const b=card.getAttribute('data-bucket'); state.bucket = state.bucket===b?'ALL':b; render(); };
+  });
+}
+
+function renderBucketBar(){
+  const source = currentSourceRecords();
+  const bucketCounts = {}; BUCKET_ORDER.forEach(b => bucketCounts[b]=0);
+  source.forEach(r => { const b=r['BUCKET AWAL']; bucketCounts[b] = (bucketCounts[b]||0)+1; });
+  const present = BUCKET_ORDER.filter(b => bucketCounts[b] > 0);
+  const total = source.length || 1;
+  const bucketSelect = document.getElementById('bucketSelect');
+  if(bucketSelect) bucketSelect.value = state.bucket;
+  const bar = document.getElementById('bucketBar'); const legend = document.getElementById('bucketLegend');
+  bar.innerHTML=''; legend.innerHTML='';
+  present.forEach(b => {
+    const pct = (bucketCounts[b]/total*100).toFixed(2);
+    const seg = document.createElement('div');
+    seg.className = 'bucket-seg' + (state.bucket!=='ALL' && state.bucket!==b ? ' dim':'');
+    seg.style.flex = pct; seg.style.background = BUCKET_COLOR[b]||'#999';
+    seg.title = fmtBucket(b)+': '+bucketCounts[b]+' kontrak';
+    seg.onclick = () => { state.bucket = state.bucket===b?'ALL':b; render(); };
+    bar.appendChild(seg);
+    const chip = document.createElement('div');
+    chip.className = 'bucket-chip' + (state.bucket===b?' active':'');
+    chip.innerHTML = '<span class="swatch" style="background:'+(BUCKET_COLOR[b]||'#999')+'"></span>'+fmtBucket(b)+' <span class="n">'+bucketCounts[b]+'</span>';
+    chip.onclick = () => { state.bucket = state.bucket===b?'ALL':b; render(); };
+    legend.appendChild(chip);
+  });
+}
+
+function renderCoRow(){
+  if(!IS_ADMIN) return;
+  const coStats = {};
+  DATA.forEach(r => { const co=r['CO ALL']||'LAINNYA'; if(!coStats[co]) coStats[co]={count:0,sipok:0}; coStats[co].count++; if(typeof r['SIPOK']==='number') coStats[co].sipok+=r['SIPOK']; });
+  const row = document.getElementById('coRow'); row.innerHTML='';
+  Object.keys(coStats).forEach(co => {
+    const meta = CO_META[co] || {short:co, role:''};
+    const card = document.createElement('div');
+    card.className = 'co-card' + (state.co===co?' active':'');
+    card.innerHTML = `<div class="name">${meta.short}</div><div class="role">${meta.role}</div>
+      <div class="stats"><div>Kontrak<b>${coStats[co].count}</b></div><div style="text-align:right">Sisa Piutang<b>${fmtRupiah(coStats[co].sipok)}</b></div></div>`;
+    card.onclick = () => { state.co = state.co===co?'ALL':co; render(); };
+    row.appendChild(card);
+  });
+}
+
+function getFiltered(){
+  let rows = currentSourceRecords();
+  if(state.co!=='ALL') rows = rows.filter(r => r['CO ALL']===state.co);
+  if(state.bucket!=='ALL') rows = rows.filter(r => r['BUCKET AWAL']===state.bucket);
+  if(state.kriteria!=='ALL') rows = rows.filter(r => r['KRITERIA ACCT']===state.kriteria);
+  if(state.tipe!=='ALL') rows = rows.filter(r => r['TYPE BARANG']===state.tipe);
+  if(state.search.trim()){
+    const q = state.search.trim().toLowerCase();
+    rows = rows.filter(r => (r['NAMA KONSUMEN']||'').toLowerCase().includes(q) || (r['NO KONTRAK']||'').toLowerCase().includes(q) || (r['NOPOL']||'').toLowerCase().includes(q));
+  }
+  if(state.sortKey){
+    rows = rows.slice().sort((a,b) => {
+      let va=a[state.sortKey], vb=b[state.sortKey];
+      if(typeof va==='number' && typeof vb==='number') return (va-vb)*state.sortDir;
+      va=(va||'').toString().toLowerCase(); vb=(vb||'').toString().toLowerCase();
+      return va.localeCompare(vb)*state.sortDir;
+    });
+  }
+  return rows;
+}
+
+function renderTable(){
+  const rows = getFiltered();
+  const total = currentSourceRecords().length;
+  document.getElementById('countNote').innerHTML = `Menampilkan <b>${rows.length}</b> dari <b>${total}</b> kontrak`;
+  const tbody = document.getElementById('tbody');
+  if(rows.length===0){ tbody.innerHTML = '<tr class="empty-row"><td colspan="9">Tidak ada kontrak yang cocok.</td></tr>'; return; }
+  const showCO = IS_ADMIN || state.tab === 'escalation';
+  tbody.innerHTML = rows.map(r => {
+    const meta = CO_META[r['CO ALL']] || {short:r['CO ALL']||'-'};
+    const differs = r['BUCKET AWAL'] !== r['BUCKET UPDATE'];
+    return `<tr data-kontrak="${r['NO KONTRAK']}">
+      <td data-label="CO" class="mono" style="${showCO?'':'display:none;'}">${meta.short}</td>
+      <td data-label="No Kontrak" class="mono">${r['NO KONTRAK']||'-'}</td>
+      <td data-label="Nama">${r['NAMA KONSUMEN']||'-'}</td>
+      <td data-label="Bucket"><div class="bucket-flow"><span class="bpill" style="background:${BUCKET_COLOR[r['BUCKET AWAL']]||'#999'}">${fmtBucket(r['BUCKET AWAL'])}</span>${differs?' → <span class="bpill" style="background:'+(BUCKET_COLOR[r['BUCKET UPDATE']]||'#999')+'">'+fmtBucket(r['BUCKET UPDATE'])+'</span>':''}</div></td>
+      <td data-label="Status"><span class="status-pill ${statusClass(r['STATUS BAYAR'])}">${r['STATUS BAYAR']||'-'}</span></td>
+      <td data-label="Sisa Piutang" class="num">${fmtRupiah(r['SIPOK'])}</td>
+      <td data-label="Angsuran" class="num">${fmtRupiah(r['ANGSURAN'])}</td>
+      <td data-label="DPD" class="num">${r['DPD'] ?? '-'}</td>
+      <td data-label="Jatuh Tempo" class="mono">${fmtDate(r['JATUH TEMPO'])}</td>
+    </tr>`;
+  }).join('');
+  tbody.querySelectorAll('tr[data-kontrak]').forEach(tr => tr.onclick = () => openPanel(tr.getAttribute('data-kontrak')));
+}
+
+function openPanel(noKontrak){
+  const r = currentSourceRecords().find(x => x['NO KONTRAK']===noKontrak) || DATA.find(x => x['NO KONTRAK']===noKontrak);
+  if(!r) return;
+  const meta = CO_META[r['CO ALL']] || {short:r['CO ALL']};
+  document.getElementById('panelCO').textContent = meta.short + (meta.role?' · '+meta.role:'');
+  document.getElementById('panelName').textContent = r['NAMA KONSUMEN']||'-';
+  document.getElementById('panelKontrak').textContent = r['NO KONTRAK'];
+  const moneyFields = new Set(['SIPOK','ANGSURAN']); const dateFields = new Set(['TANGGAL BAYAR BULAN LALU']);
+  document.getElementById('panelBody').innerHTML = FIELD_GROUPS.map(g => `
+    <div class="field-group"><h3>${g.title}</h3>
+      ${g.fields.map(f => { let v=r[f]; if(moneyFields.has(f)) v=fmtRupiah(v); else if(dateFields.has(f)) v=fmtDate(v); else v=(v===''||v==null)?'-':v;
+        return `<div class="field-row"><span class="k">${f.charAt(0)+f.slice(1).toLowerCase()}</span><span class="v">${v}</span></div>`; }).join('')}
+    </div>`).join('');
+  document.getElementById('overlay').classList.add('show');
+  document.getElementById('sidePanel').classList.add('show');
+}
+document.getElementById('panelClose').onclick = () => { document.getElementById('overlay').classList.remove('show'); document.getElementById('sidePanel').classList.remove('show'); };
+document.getElementById('overlay').onclick = document.getElementById('panelClose').onclick;
+</script>
+</body>
+</html>
