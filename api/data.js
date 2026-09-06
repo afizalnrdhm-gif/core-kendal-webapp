@@ -151,11 +151,9 @@ module.exports = async (req, res) => {
       const mrEntry = Object.values(roleMap).find(r => r.role === 'MR');
       if (!mrEntry) return [];
       const asal = mrEntry.asalFlow[0];
-      const target = mrEntry.penyelesaian[0];
-      const targetIdx = bucketIdx(target);
       return allRecords.filter(r =>
         r['BUCKET AWAL'] === asal &&
-        bucketIdx(r['BUCKET UPDATE']) >= targetIdx &&
+        typeof r['DPD'] === 'number' && r['DPD'] > 31 &&
         ['SUDAH BAYAR', 'LUNAS'].indexOf((r['STATUS BAYAR'] || '').toString().toUpperCase()) === -1
       );
     }
