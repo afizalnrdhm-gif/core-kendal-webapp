@@ -826,6 +826,17 @@ function buildNBQLayout(){
   });
 }
 
+function nbqStatusStat_(rows){
+  const sudah = rows.filter(r => (r['STATUS BAYAR NBQ']||'').toString().trim().toUpperCase() === 'BAYAR');
+  const belum = rows.filter(r => (r['STATUS BAYAR NBQ']||'').toString().trim().toUpperCase() !== 'BAYAR');
+  const sum = arr => arr.reduce((s,r)=> s + (typeof r['SIPOK']==='number' ? r['SIPOK'] : 0), 0);
+  return {
+    total: { count: rows.length, sipok: sum(rows) },
+    sudah: { count: sudah.length, sipok: sum(sudah) },
+    belum: { count: belum.length, sipok: sum(belum) }
+  };
+}
+
 function renderNBQ(){
   const pop = nbqPopulasi();
 
@@ -837,13 +848,19 @@ function renderNBQ(){
   animateCount(document.getElementById('nbqValKontrak'), totalStat.count, false);
   animateCount(document.getElementById('nbqValSipok'), totalStat.sipok, true);
 
-  const checkpoints = [3,9,12].map(chk => ({ chk, stat: nbqStat(pop.filter(r => nbqNum(r) <= chk)) }));
-  document.getElementById('nbqCheckpointRow').innerHTML = checkpoints.map(c => `
+  const checkpoints = [3,9,12].map(chk => ({ chk, rows: pop.filter(r => nbqNum(r) <= chk) }));
+  document.getElementById('nbqCheckpointRow').innerHTML = checkpoints.map(c => {
+    const s = nbqStatusStat_(c.rows);
+    return `
     <div class="status-card" style="cursor:default;">
-      <div class="bhead"><span class="bname">NBQ 1-${c.chk}</span></div>
-      <div class="srow"><span class="slabel">Jumlah Kontrak</span><span class="sval">${c.stat.count}</span></div>
-      <div class="srow"><span class="slabel">Sisa Piutang</span><span class="sval">${fmtRupiah(c.stat.sipok)}</span></div>
-    </div>`).join('');
+      <div class="bhead">
+        <span class="bname">NBQ 1-${c.chk}</span>
+        <span class="btotal">${s.total.count} kontrak · ${fmtRupiah(s.total.sipok)}</span>
+      </div>
+      <div class="srow"><span class="slabel"><span class="dot good"></span>Sudah Bayar</span><span class="sval">${s.sudah.count} · ${fmtRupiah(s.sudah.sipok)}</span></div>
+      <div class="srow"><span class="slabel"><span class="dot bad"></span>Belum Bayar</span><span class="sval">${s.belum.count} · ${fmtRupiah(s.belum.sipok)}</span></div>
+    </div>`;
+  }).join('');
 
   renderNBQTable();
 }
