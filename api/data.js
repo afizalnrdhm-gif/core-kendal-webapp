@@ -62,7 +62,7 @@ async function verifyIdToken(idToken) {
 }
 
 function serialToDateStr(serial) {
-  if (typeof serial !== 'number') return serial;
+  if (typeof serial !== 'number' || serial < 1000) return '';
   const utcDays = Math.floor(serial - 25569);
   const utcValue = utcDays * 86400;
   const dateInfo = new Date(utcValue * 1000);
