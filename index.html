@@ -1218,7 +1218,7 @@ function renderTable(){
 }
 
 function openPanel(noKontrak){
-  const r = currentSourceRecords().find(x => x['NO KONTRAK']===noKontrak) || DATA.find(x => x['NO KONTRAK']===noKontrak);
+  const r = DATA.find(x => x['NO KONTRAK']===noKontrak) || ESCALATIONS.find(x => x['NO KONTRAK']===noKontrak);
   if(!r) return;
   const meta = CO_META[r['CO ALL']] || {short:r['CO ALL']};
   document.getElementById('panelCO').textContent = meta.short + (meta.role?' · '+meta.role:'');
