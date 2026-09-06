@@ -111,9 +111,11 @@
   .wrap{max-width:1280px;margin:0 auto;padding:18px 18px 60px;}
   .wrap.fade-in{animation:fadeIn .3s ease;}
   @keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+  @keyframes splashPulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.72;transform:scale(0.93);}}
 
   .state-box{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:40px 20px;text-align:center;color:var(--ink-soft);font-size:13.5px;}
-  .state-box.error{color:var(--bad);}
+  .state-box.error{color:#8C2F2F;background:#FCF3F2;border-color:#F2D6D3;}
+  .state-box.error .err-icon{font-size:26px;margin-bottom:10px;}
   .spinner{width:26px;height:26px;border:3px solid var(--line);border-top-color:var(--navy-lighter);border-radius:50%;margin:0 auto 14px;animation:spin .8s linear infinite;}
   @keyframes spin{to{transform:rotate(360deg);}}
 
@@ -277,6 +279,10 @@
 </head>
 <body>
 
+<div id="splashScreen" style="position:fixed;inset:0;z-index:999;background:linear-gradient(180deg,#0B3D62 0%,#071F33 100%);display:flex;align-items:center;justify-content:center;transition:opacity .4s ease;">
+  <img src="icon-192.png" alt="" style="width:68px;height:68px;border-radius:15px;animation:splashPulse 1.4s ease-in-out infinite;">
+</div>
+
 <div id="loginScreen" class="login-wrap">
   <div class="login-card">
     <img src="icon-192.png" alt="CORE Kendal">
@@ -387,6 +393,14 @@ window.onload = function () {
   });
   google.accounts.id.renderButton(document.getElementById('gsiButton'), { theme:'outline', size:'large', text:'signin_with', shape:'pill' });
   google.accounts.id.prompt();
+
+  setTimeout(function () {
+    const splash = document.getElementById('splashScreen');
+    if (splash) {
+      splash.style.opacity = '0';
+      setTimeout(() => splash.remove(), 400);
+    }
+  }, 250);
 };
 
 function handleCredentialResponse(response) {
@@ -439,7 +453,7 @@ function loadData(){
 
 function onLoadError(err){
   document.getElementById('wrap').innerHTML =
-    '<div class="state-box error">' + (err.error || 'Terjadi kesalahan.') + '<br><br>' +
+    '<div class="state-box error"><div class="err-icon">⚠</div>' + (err.error || 'Terjadi kesalahan.') + '<br><br>' +
     '<button class="btn" onclick="loadData()">Coba lagi</button></div>';
 }
 
@@ -656,12 +670,12 @@ function loadInsentif(){
   fetch('/api/insentif', { headers: { Authorization: 'Bearer ' + ID_TOKEN } })
     .then(r => r.json().then(body => ({ ok: r.ok, body })))
     .then(({ok, body}) => {
-      if(!ok){ document.getElementById('wrap').innerHTML = '<div class="state-box error">'+(body.error||'Gagal memuat data insentif.')+'<br><br><button class="btn" onclick="loadInsentif()">Coba lagi</button></div>'; return; }
+      if(!ok){ document.getElementById('wrap').innerHTML = '<div class="state-box error"><div class="err-icon">⚠</div>'+(body.error||'Gagal memuat data insentif.')+'<br><br><button class="btn" onclick="loadInsentif()">Coba lagi</button></div>'; return; }
       INSENTIF_DATA = body;
       renderInsentifView();
       triggerFadeIn();
     })
-    .catch(err => { document.getElementById('wrap').innerHTML = '<div class="state-box error">'+err.message+'</div>'; });
+    .catch(err => { document.getElementById('wrap').innerHTML = '<div class="state-box error"><div class="err-icon">⚠</div>'+err.message+'<br><br><button class="btn" onclick="loadInsentif()">Coba lagi</button></div>'; });
 }
 
 function achievementCard(h, extraLabel, extraKey){
