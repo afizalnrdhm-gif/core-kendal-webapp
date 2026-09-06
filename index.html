@@ -312,6 +312,10 @@
           <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
           <span>NBQ</span>
         </button>
+        <button class="nav-item" data-view="feever" id="navFEEver" style="display:none;">
+          <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3l4 4-4 4"/><path d="M21 7H9a4 4 0 0 0-4 4v1"/><path d="M7 21l-4-4 4-4"/><path d="M3 17h12a4 4 0 0 0 4-4v-1"/></svg>
+          <span>FE Ever</span>
+        </button>
         <button class="nav-item" data-view="insentif" id="navInsentif">
           <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 9.3c0-1 1-1.7 3-1.7s3 .7 3 1.7-1.1 1.4-3 1.7-3 .7-3 1.7 1.2 1.8 3 1.8 3-.7 3-1.8"/><line x1="12" y1="6" x2="12" y2="7.1"/><line x1="12" y1="16.9" x2="12" y2="18"/></svg>
           <span>Insentif</span>
@@ -420,6 +424,7 @@ function doLogout() {
 document.getElementById('logoutBtn').addEventListener('click', doLogout);
 document.getElementById('navDashboard').addEventListener('click', () => switchView('dashboard'));
 document.getElementById('navNBQ').addEventListener('click', () => switchView('nbq'));
+document.getElementById('navFEEver').addEventListener('click', () => switchView('feever'));
 document.getElementById('navInsentif').addEventListener('click', () => switchView('insentif'));
 document.getElementById('menuToggle').addEventListener('click', () => {
   document.getElementById('sidebar').classList.add('show');
@@ -464,6 +469,18 @@ function onDataLoaded(res){
   document.getElementById('whoBox').innerHTML =
     '<span class="who-email">Masuk sebagai <b>' + (USER_EMAIL || '-') + '</b></span>' +
     '<span class="badge">' + (IS_ADMIN ? 'ADMIN' : 'CO') + '</span>';
+
+  const isMR = ROLE_INFO && ROLE_INFO.role === 'MR';
+  const navNBQ = document.getElementById('navNBQ');
+  const navFEEver = document.getElementById('navFEEver');
+  if(isMR){
+    navNBQ.style.display = 'none';
+    navFEEver.style.display = 'flex';
+  } else {
+    navNBQ.style.display = 'flex';
+    navFEEver.style.display = IS_ADMIN ? 'flex' : 'none';
+  }
+
   buildLayout();
   render();
 }
@@ -546,13 +563,6 @@ function buildLayout(){
     <div class="co-row" id="coRow" style="${IS_ADMIN ? '' : 'display:none;'}"></div>
   `;
 
-  if(isMR && ESCALATIONS.length){
-    html += `<div class="tabs" id="tabRow">
-      <button class="tab-btn" data-tab="own">Kontrak Saya <span class="n">(${DATA.length})</span></button>
-      <button class="tab-btn" data-tab="escalation">Limpahan dari 1-30, OD&gt;31 <span class="n">(${ESCALATIONS.length})</span></button>
-    </div>`;
-  }
-
   html += `
     <div class="controls">
       <div class="search-box">
@@ -619,18 +629,12 @@ function buildLayout(){
   document.getElementById('bucketSelect').addEventListener('change', e => { state.bucket = e.target.value; render(); });
   document.getElementById('kriteriaSelect').addEventListener('change', e => { state.kriteria = e.target.value; renderTable(); });
   document.getElementById('tipeSelect').addEventListener('change', e => { state.tipe = e.target.value; renderTable(); });
-  const tabRow = document.getElementById('tabRow');
-  if(tabRow){
-    tabRow.querySelectorAll('.tab-btn').forEach(btn => {
-      btn.addEventListener('click', () => { state.tab = btn.getAttribute('data-tab'); state.bucket='ALL'; state.search=''; document.getElementById('searchInput').value=''; render(); });
-    });
-  }
 }
 
 let VIEW_MODE = 'dashboard';
 let INSENTIF_DATA = null;
 
-const VIEW_TITLES = { dashboard: 'Beban Awal', nbq: 'NBQ', insentif: 'Insentif' };
+const VIEW_TITLES = { dashboard: 'Beban Awal', nbq: 'NBQ', feever: 'FE Ever', insentif: 'Insentif' };
 
 function triggerFadeIn(){
   const el = document.getElementById('wrap');
@@ -645,6 +649,7 @@ function switchView(view){
   VIEW_MODE = view;
   document.getElementById('navDashboard').classList.toggle('active', view === 'dashboard');
   document.getElementById('navNBQ').classList.toggle('active', view === 'nbq');
+  document.getElementById('navFEEver').classList.toggle('active', view === 'feever');
   document.getElementById('navInsentif').classList.toggle('active', view === 'insentif');
   document.getElementById('mobilePageTitle').textContent = VIEW_TITLES[view] || '';
   closeSidebarDrawer();
@@ -656,6 +661,10 @@ function switchView(view){
   } else if(view === 'nbq'){
     buildNBQLayout();
     renderNBQ();
+    triggerFadeIn();
+  } else if(view === 'feever'){
+    buildFEEverLayout();
+    renderFEEver();
     triggerFadeIn();
   } else if(view === 'insentif'){
     if(INSENTIF_DATA){ renderInsentifView(); triggerFadeIn(); } else { loadInsentif(); }
@@ -740,6 +749,113 @@ function renderInsentifView(){
   }
 
   document.getElementById('wrap').innerHTML = html;
+}
+
+// ============================================================
+// FE EVER (Limpahan dari 1-30, OD > 31) — khusus MR & Admin
+// ============================================================
+let feeverState = { search:'', sortKey:null, sortDir:1 };
+
+function buildFEEverLayout(){
+  const stat = { count: ESCALATIONS.length, sipok: ESCALATIONS.reduce((s,r)=> s + (typeof r['SIPOK']==='number' ? r['SIPOK'] : 0), 0) };
+
+  document.getElementById('wrap').innerHTML = `
+    <div class="panel-title">Limpahan dari Bucket 1-30 (OD &gt; 31)</div>
+    <div class="grand-row" style="margin-bottom:22px;">
+      <div class="grand-card"><div class="lbl">Jumlah Kontrak</div><div class="val" id="feeverValKontrak">0</div></div>
+      <div class="grand-card"><div class="lbl">Total Sisa Piutang</div><div class="val" id="feeverValSipok">Rp0</div></div>
+    </div>
+    <div class="controls">
+      <div class="search-box">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4C6272" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="feeverSearchInput" type="text" placeholder="Cari nama konsumen, no kontrak, atau nopol…">
+      </div>
+      <button class="btn" id="feeverResetBtn">Reset filter</button>
+      <button class="btn primary" id="feeverRefreshBtn">↻ Muat ulang</button>
+    </div>
+    <div class="count-note" id="feeverCountNote"></div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th data-key="CO ALL">CO Asal</th>
+            <th data-key="NO KONTRAK">No Kontrak</th>
+            <th data-key="NAMA KONSUMEN">Nama Konsumen</th>
+            <th>Bucket</th>
+            <th data-key="STATUS BAYAR">Status</th>
+            <th data-key="SIPOK" class="num">Sisa Piutang</th>
+            <th data-key="DPD" class="num">DPD</th>
+            <th data-key="JATUH TEMPO">Jatuh Tempo</th>
+          </tr>
+        </thead>
+        <tbody id="feeverTbody"></tbody>
+      </table>
+    </div>
+  `;
+
+  animateCount(document.getElementById('feeverValKontrak'), stat.count, false);
+  animateCount(document.getElementById('feeverValSipok'), stat.sipok, true);
+
+  document.querySelectorAll('#wrap thead th[data-key]').forEach(th => {
+    th.addEventListener('click', () => {
+      const key = th.getAttribute('data-key');
+      if(feeverState.sortKey === key) feeverState.sortDir *= -1; else { feeverState.sortKey = key; feeverState.sortDir = 1; }
+      renderFEEverTable();
+    });
+  });
+  document.getElementById('feeverSearchInput').addEventListener('input', e => { feeverState.search = e.target.value; renderFEEverTable(); });
+  document.getElementById('feeverResetBtn').addEventListener('click', () => {
+    feeverState = { search:'', sortKey:null, sortDir:1 };
+    document.getElementById('feeverSearchInput').value = '';
+    renderFEEverTable();
+  });
+  document.getElementById('feeverRefreshBtn').addEventListener('click', loadData);
+}
+
+function renderFEEver(){
+  if(ESCALATIONS.length === 0){
+    document.getElementById('wrap').innerHTML = '<div class="state-box">Tidak ada kontrak limpahan saat ini. 🎉</div>';
+    return;
+  }
+  renderFEEverTable();
+}
+
+function getFEEverFiltered(){
+  let rows = ESCALATIONS;
+  if(feeverState.search.trim()){
+    const q = feeverState.search.trim().toLowerCase();
+    rows = rows.filter(r => (r['NAMA KONSUMEN']||'').toLowerCase().includes(q) || (r['NO KONTRAK']||'').toLowerCase().includes(q) || (r['NOPOL']||'').toLowerCase().includes(q));
+  }
+  if(feeverState.sortKey){
+    rows = rows.slice().sort((a,b) => {
+      let va=a[feeverState.sortKey], vb=b[feeverState.sortKey];
+      if(typeof va==='number' && typeof vb==='number') return (va-vb)*feeverState.sortDir;
+      va=(va||'').toString().toLowerCase(); vb=(vb||'').toString().toLowerCase();
+      return va.localeCompare(vb)*feeverState.sortDir;
+    });
+  }
+  return rows;
+}
+
+function renderFEEverTable(){
+  const rows = getFEEverFiltered();
+  document.getElementById('feeverCountNote').innerHTML = `Menampilkan <b>${rows.length}</b> dari <b>${ESCALATIONS.length}</b> kontrak`;
+  const tbody = document.getElementById('feeverTbody');
+  if(rows.length===0){ tbody.innerHTML = '<tr class="empty-row"><td colspan="8">Tidak ada kontrak yang cocok.</td></tr>'; return; }
+  tbody.innerHTML = rows.map(r => {
+    const meta = CO_META[r['CO ALL']] || {short:r['CO ALL']||'-'};
+    return `<tr data-kontrak="${r['NO KONTRAK']}">
+      <td data-label="CO Asal" class="mono">${meta.short}</td>
+      <td data-label="No Kontrak" class="mono">${r['NO KONTRAK']||'-'}</td>
+      <td data-label="Nama">${r['NAMA KONSUMEN']||'-'}</td>
+      <td data-label="Bucket"><div class="bucket-flow"><span class="bpill" style="background:${BUCKET_COLOR[r['BUCKET AWAL']]||'#999'}">${fmtBucket(r['BUCKET AWAL'])}</span> → <span class="bpill" style="background:${BUCKET_COLOR[r['BUCKET UPDATE']]||'#999'}">${fmtBucket(r['BUCKET UPDATE'])}</span></div></td>
+      <td data-label="Status"><span class="status-pill ${statusClass(r['STATUS BAYAR'])}">${r['STATUS BAYAR']||'-'}</span></td>
+      <td data-label="Sisa Piutang" class="num">${fmtRupiah(r['SIPOK'])}</td>
+      <td data-label="DPD" class="num">${r['DPD'] ?? '-'}</td>
+      <td data-label="Jatuh Tempo" class="mono">${fmtDate(r['JATUH TEMPO'])}</td>
+    </tr>`;
+  }).join('');
+  tbody.querySelectorAll('tr[data-kontrak]').forEach(tr => tr.onclick = () => openPanel(tr.getAttribute('data-kontrak')));
 }
 
 // ============================================================
