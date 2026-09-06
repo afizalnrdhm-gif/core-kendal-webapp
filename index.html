@@ -48,6 +48,58 @@
   .topbar-inner{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;max-width:1280px;margin:0 auto;}
   .topbar h1{margin:0;font-size:18px;font-weight:600;}
   .topbar .sub{color:#A9BFD1;font-size:12px;margin-top:3px;}
+
+  /* ---------- Sidebar layout ---------- */
+  .app-shell{display:flex;min-height:100vh;}
+  .sidebar{
+    width:230px;flex:none;
+    background:linear-gradient(180deg,var(--navy) 0%,#0A2F4D 100%);
+    color:#EAF0F4;
+    display:flex;flex-direction:column;
+    position:sticky;top:0;height:100vh;
+    border-right:2px solid var(--gold);
+  }
+  .sidebar-brand{display:flex;align-items:center;gap:10px;padding:20px 18px;border-bottom:1px solid rgba(255,255,255,0.12);}
+  .sidebar-brand img{width:36px;height:36px;border-radius:9px;flex:none;box-shadow:0 4px 12px rgba(0,0,0,0.25);}
+  .sb-title{font-weight:700;font-size:14px;}
+  .sb-sub{font-size:10.5px;color:#9FC3DC;}
+  .sidebar-nav{padding:14px 0;flex:1;}
+  .nav-item{
+    display:flex;align-items:center;gap:10px;width:100%;text-align:left;
+    padding:11px 18px;background:none;border:none;border-left:3px solid transparent;
+    color:#A9BFD1;font-size:13.5px;cursor:pointer;font-family:var(--sans);
+    transition:background .15s ease, color .15s ease;
+  }
+  .nav-item:hover{background:rgba(255,255,255,0.06);color:#EAF0F4;}
+  .nav-item.active{background:rgba(255,255,255,0.1);color:#fff;border-left-color:var(--gold);font-weight:600;}
+  .sidebar-footer{padding:14px 18px 18px;border-top:1px solid rgba(255,255,255,0.12);font-size:12px;color:#A9BFD1;}
+  .sidebar-footer #whoBox{display:flex;flex-direction:column;gap:5px;margin-bottom:10px;}
+  .sidebar-footer .who-email{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px;}
+  .sidebar-footer .badge{align-self:flex-start;margin-left:0;}
+  .sidebar-footer .logout-btn{width:100%;text-align:center;}
+
+  .main-area{flex:1;min-width:0;}
+  .mobile-topbar{display:none;}
+
+  .sidebar-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.4);opacity:0;pointer-events:none;transition:opacity .2s ease;z-index:29;}
+  .sidebar-overlay.show{opacity:1;pointer-events:auto;}
+
+  @media (max-width: 900px){
+    .sidebar{
+      position:fixed;top:0;left:0;bottom:0;z-index:30;
+      transform:translateX(-100%);transition:transform .25s ease;
+      width:250px;
+    }
+    .sidebar.show{transform:translateX(0);}
+    .mobile-topbar{
+      display:flex;align-items:center;gap:14px;
+      background:linear-gradient(180deg,var(--navy) 0%,#0A2F4D 100%);color:#EAF0F4;
+      padding:14px 16px;border-bottom:2px solid var(--gold);
+      position:sticky;top:0;z-index:10;
+    }
+    .mobile-topbar button{background:none;border:none;color:#EAF0F4;font-size:20px;cursor:pointer;padding:0;line-height:1;}
+    .mobile-topbar span{font-weight:600;font-size:14.5px;}
+  }
   .who{text-align:right;font-size:12px;color:#A9BFD1;line-height:1.6;}
   .who b{color:#EAF0F4;font-weight:600;}
   .badge{display:inline-block;background:rgba(255,255,255,0.14);color:#EAF0F4;font-size:10.5px;padding:2px 8px;border-radius:20px;margin-left:6px;}
@@ -141,6 +193,34 @@
   .status-lunas{background:#E2E9F2;color:var(--navy);}
   .empty-row td{text-align:center;padding:36px;color:var(--ink-soft);}
 
+  /* ---------- Insentif ---------- */
+  .ins-section{margin-bottom:26px;}
+  .ins-section h2{font-size:13px;text-transform:uppercase;letter-spacing:0.5px;color:var(--ink-soft);margin:0 0 12px;border-bottom:1px solid var(--line);padding-bottom:8px;}
+  .ins-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;}
+  .ins-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px 20px;box-shadow:0 2px 8px rgba(20,30,40,0.05);}
+  .ins-card .ihead{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;}
+  .ins-card .iname{font-weight:700;font-size:14.5px;}
+  .ins-card .irole{font-size:11px;color:var(--ink-soft);}
+  .kategori-pill{font-size:10.5px;font-weight:700;padding:3px 10px;border-radius:20px;text-transform:uppercase;letter-spacing:0.3px;white-space:nowrap;}
+  .kat-UNACCEPTABLE{background:#F7E4E1;color:var(--bad);}
+  .kat-NEED_IMPROVEMENT{background:#FBEBD6;color:#B8621B;}
+  .kat-ON_TARGET{background:#E2E9F2;color:var(--navy);}
+  .kat-EXCEED_TARGET{background:#E1EFE6;color:var(--good);}
+  .kat-EXCEPTIONAL{background:var(--gold-soft);color:var(--gold);}
+  .ins-metric{display:flex;justify-content:space-between;font-size:12.5px;padding:6px 0;border-top:1px dashed var(--line);}
+  .ins-metric .mlabel{color:var(--ink-soft);}
+  .ins-metric .mval{font-family:var(--mono);font-weight:600;}
+  .ins-nilai{font-family:var(--mono);font-size:22px;font-weight:700;color:var(--navy);margin:10px 0 4px;}
+  .ins-insentif{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--good);}
+  .ins-gap{margin-top:12px;padding:10px 12px;background:var(--surface-alt);border-radius:8px;font-size:12px;color:var(--ink-soft);}
+  .ins-gap b{color:var(--ink);}
+  .ins-rekom{margin-top:10px;}
+  .ins-rekom-item{display:flex;justify-content:space-between;font-size:12px;padding:6px 0;border-top:1px solid var(--line);}
+  .ins-rekom-item .rname{color:var(--ink);}
+  .ins-rekom-item .rval{font-family:var(--mono);color:var(--ink-soft);white-space:nowrap;margin-left:8px;}
+  .view-toggle-note{font-size:11.5px;color:var(--ink-soft);margin-bottom:14px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;}
+  .view-toggle-note:hover{color:var(--navy);}
+
   .overlay{position:fixed;inset:0;background:rgba(15,25,35,0.35);opacity:0;pointer-events:none;transition:opacity .18s ease;z-index:20;}
   .overlay.show{opacity:1;pointer-events:auto;}
   .side-panel{position:fixed;top:0;right:0;bottom:0;width:380px;max-width:92vw;background:var(--surface);box-shadow:-6px 0 24px rgba(15,25,35,0.18);transform:translateX(100%);transition:transform .22s ease;z-index:21;overflow-y:auto;}
@@ -163,12 +243,13 @@
     .topbar .sub{font-size:11px;}
     .topbar-inner{flex-direction:column;align-items:stretch;gap:10px;}
     .who{
-      display:flex;align-items:center;justify-content:space-between;gap:8px;
+      display:flex;align-items:center;gap:6px;
       text-align:left;width:100%;
     }
     .who #whoBox{display:flex;align-items:center;gap:6px;min-width:0;flex:1;overflow:hidden;}
     .who-email{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
     .badge{flex:none;}
+    #insentifBtn{margin-right:0 !important;font-size:10.5px;padding:5px 9px;}
     .logout-btn{margin-top:0;flex:none;}
     table, thead, tbody, th, td, tr{display:block;}
     thead tr{display:none;}
@@ -194,22 +275,37 @@
 </div>
 
 <div id="appScreen" style="display:none;">
-  <div class="topbar">
-    <div class="topbar-inner">
-      <div>
-        <h1>Monitoring System CORE Kendal</h1>
-        <div class="sub">Data kontrak collection</div>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <img src="icon-192.png" alt="CORE Kendal">
+        <div>
+          <div class="sb-title">CORE Kendal</div>
+          <div class="sb-sub">Monitoring System</div>
+        </div>
       </div>
-      <div class="who">
+      <nav class="sidebar-nav">
+        <button class="nav-item active" data-view="dashboard" id="navDashboard">📊 <span>Beban Awal</span></button>
+        <button class="nav-item" data-view="insentif" id="navInsentif">💰 <span>Insentif</span></button>
+      </nav>
+      <div class="sidebar-footer">
         <div id="whoBox">Memuat akun…</div>
         <button class="logout-btn" id="logoutBtn">Keluar</button>
       </div>
+    </aside>
+    <div class="main-area">
+      <div class="mobile-topbar">
+        <button id="menuToggle" aria-label="Menu">☰</button>
+        <span id="mobilePageTitle">Beban Awal</span>
+      </div>
+      <div class="wrap" id="wrap">
+        <div class="state-box" id="stateBox"><div class="spinner"></div>Memuat data dari sheet…</div>
+      </div>
     </div>
   </div>
-  <div class="wrap" id="wrap">
-    <div class="state-box" id="stateBox"><div class="spinner"></div>Memuat data dari sheet…</div>
-  </div>
 </div>
+
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
 
 <div class="overlay" id="overlay"></div>
 <div class="side-panel" id="sidePanel">
@@ -285,6 +381,17 @@ function doLogout() {
   document.getElementById('loginScreen').style.display = 'flex';
 }
 document.getElementById('logoutBtn').addEventListener('click', doLogout);
+document.getElementById('navDashboard').addEventListener('click', () => switchView('dashboard'));
+document.getElementById('navInsentif').addEventListener('click', () => switchView('insentif'));
+document.getElementById('menuToggle').addEventListener('click', () => {
+  document.getElementById('sidebar').classList.add('show');
+  document.getElementById('sidebarOverlay').classList.add('show');
+});
+document.getElementById('sidebarOverlay').addEventListener('click', closeSidebarDrawer);
+function closeSidebarDrawer(){
+  document.getElementById('sidebar').classList.remove('show');
+  document.getElementById('sidebarOverlay').classList.remove('show');
+}
 
 // ---------- DATA LOADING ----------
 function loadData(){
@@ -481,7 +588,104 @@ function buildLayout(){
   }
 }
 
-function currentSourceRecords(){
+let VIEW_MODE = 'dashboard';
+let INSENTIF_DATA = null;
+
+const VIEW_TITLES = { dashboard: 'Beban Awal', insentif: 'Insentif' };
+
+function switchView(view){
+  if(view === VIEW_MODE){ closeSidebarDrawer(); return; }
+  VIEW_MODE = view;
+  document.getElementById('navDashboard').classList.toggle('active', view === 'dashboard');
+  document.getElementById('navInsentif').classList.toggle('active', view === 'insentif');
+  document.getElementById('mobilePageTitle').textContent = VIEW_TITLES[view] || '';
+  closeSidebarDrawer();
+
+  if(view === 'dashboard'){
+    render();
+  } else if(view === 'insentif'){
+    if(INSENTIF_DATA){ renderInsentifView(); } else { loadInsentif(); }
+  }
+}
+
+function fmtPct(n){ return (typeof n==='number' ? n.toFixed(2) : '0.00') + '%'; }
+function katClass(k){ return 'kat-' + (k||'').replace(/\s+/g,'_'); }
+
+function loadInsentif(){
+  document.getElementById('wrap').innerHTML = `<div class="skeleton-row"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div><div class="skel tall"></div>`;
+  fetch('/api/insentif', { headers: { Authorization: 'Bearer ' + ID_TOKEN } })
+    .then(r => r.json().then(body => ({ ok: r.ok, body })))
+    .then(({ok, body}) => {
+      if(!ok){ document.getElementById('wrap').innerHTML = '<div class="state-box error">'+(body.error||'Gagal memuat data insentif.')+'<br><br><button class="btn" onclick="loadInsentif()">Coba lagi</button></div>'; return; }
+      INSENTIF_DATA = body;
+      renderInsentifView();
+    })
+    .catch(err => { document.getElementById('wrap').innerHTML = '<div class="state-box error">'+err.message+'</div>'; });
+}
+
+function achievementCard(h, extraLabel, extraKey){
+  return `
+  <div class="ins-card">
+    <div class="ihead">
+      <div><div class="iname">${h.namaCO}</div><div class="irole">${h.role}</div></div>
+      <span class="kategori-pill ${katClass(h.kategori)}">${h.kategori}</span>
+    </div>
+    <div class="ins-nilai">${h.totalNilai.toFixed(2)} <span style="font-size:12px;color:var(--ink-soft);font-weight:500;">/ 5.00</span></div>
+    <div class="ins-insentif">${fmtRupiah(h.insentif)}</div>
+    <div class="ins-metric"><span class="mlabel">Balance</span><span class="mval">${fmtPct(h.balancePct)}</span></div>
+    <div class="ins-metric"><span class="mlabel">Flow Ever (${h.flowEverEscaped}/${h.totalAwal})</span><span class="mval">${fmtPct(h.flowEverPct)}</span></div>
+    <div class="ins-metric"><span class="mlabel">${extraLabel}</span><span class="mval">${fmtPct(h[extraKey])}</span></div>
+  </div>`;
+}
+
+function penyelesaianCard(p){
+  const gapHtml = p.gapPct !== null
+    ? `<div class="ins-gap">🎯 Butuh naik <b>${p.gapPct.toFixed(2)}%</b> lagi ke tier berikutnya<br>(± <b>${fmtRupiah(p.gapRupiah)}</b> SIPOK yang perlu diselesaikan)</div>`
+    : `<div class="ins-gap">🏆 Sudah di tier tertinggi minggu ini</div>`;
+  const rekomHtml = p.rekomendasi && p.rekomendasi.length
+    ? `<div class="ins-rekom">
+        <div style="font-size:11px;text-transform:uppercase;color:var(--ink-soft);margin-bottom:4px;">Rekomendasi dikejar (SIPOK terbesar)</div>
+        ${p.rekomendasi.map(r => `<div class="ins-rekom-item"><span class="rname">${r.namaKonsumen}</span><span class="rval">${fmtRupiah(r.sipok)} (+${r.pengaruhPct.toFixed(2)}%)</span></div>`).join('')}
+      </div>` : '';
+  return `
+  <div class="ins-card">
+    <div class="ihead">
+      <div><div class="iname">${p.namaCO}</div><div class="irole">${p.role} · Minggu ${p.minggu}</div></div>
+    </div>
+    <div class="ins-nilai">${fmtPct(p.pct)}</div>
+    <div class="ins-insentif">${fmtRupiah(p.nilai)}</div>
+    ${gapHtml}
+    ${rekomHtml}
+  </div>`;
+}
+
+function renderInsentifView(){
+  const d = INSENTIF_DATA;
+  if(!d) return;
+  let html = `<div class="view-toggle-note" onclick="switchView('dashboard')">← Kembali ke Dashboard</div>`;
+
+  if(d.isAdmin){
+    html += `<div class="ins-section"><h2>Achievement Harian — Front End (FE)</h2><div class="ins-row">${d.achievement.FE.map(h=>achievementCard(h,'Flow No OD','flowNoODPct')).join('')}</div></div>`;
+    html += `<div class="ins-section"><h2>Achievement Harian — Mid Range (MR)</h2><div class="ins-row">${d.achievement.MR.map(h=>achievementCard(h,'Flow 1-30','flowPct')).join('')}</div></div>`;
+    if(d.achievement.BCH){
+      html += `<div class="ins-section"><h2>Achievement Harian — Branch Collection Head (BCH)</h2><div class="ins-row">${achievementCard(d.achievement.BCH,'Flow Forward 31-60','flowForwardPct')}</div></div>`;
+    }
+    html += `<div class="ins-section"><h2>Insentif Penyelesaian — Minggu ${d.minggu}</h2><div class="ins-row">${d.penyelesaian.map(p=>penyelesaianCard(p)).join('')}</div></div>`;
+  } else {
+    if(d.achievement){
+      const extra = d.achievement.role==='FE' ? ['Flow No OD','flowNoODPct'] : d.achievement.role==='MR' ? ['Flow 1-30','flowPct'] : ['Flow Forward 31-60','flowForwardPct'];
+      html += `<div class="ins-section"><h2>Achievement Harian Kamu</h2><div class="ins-row">${achievementCard(d.achievement, extra[0], extra[1])}</div></div>`;
+    }
+    if(d.penyelesaian){
+      html += `<div class="ins-section"><h2>Insentif Penyelesaian — Minggu ${d.minggu}</h2><div class="ins-row">${penyelesaianCard(d.penyelesaian)}</div></div>`;
+    }
+    if(!d.achievement && !d.penyelesaian){
+      html += `<div class="state-box">Data insentif kamu belum ditemukan. Hubungi admin kalau ini seharusnya ada datanya.</div>`;
+    }
+  }
+
+  document.getElementById('wrap').innerHTML = html;
+}
   return (state.tab === 'escalation') ? ESCALATIONS : DATA;
 }
 
