@@ -147,9 +147,22 @@ module.exports = async (req, res) => {
     const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(x => x.trim().toLowerCase());
     const isAdmin = adminEmails.indexOf(email) > -1;
 
+    function computeEscalations() {
+      const mrEntry = Object.values(roleMap).find(r => r.role === 'MR');
+      if (!mrEntry) return [];
+      const asal = mrEntry.asalFlow[0];
+      const target = mrEntry.penyelesaian[0];
+      const targetIdx = bucketIdx(target);
+      return allRecords.filter(r =>
+        r['BUCKET AWAL'] === asal &&
+        bucketIdx(r['BUCKET UPDATE']) >= targetIdx &&
+        ['SUDAH BAYAR', 'LUNAS'].indexOf((r['STATUS BAYAR'] || '').toString().toUpperCase()) === -1
+      );
+    }
+
     if (isAdmin) {
       res.status(200).json({
-        email, isAdmin: true, records: allRecords, roleInfo: null, escalations: [],
+        email, isAdmin: true, records: allRecords, roleInfo: null, escalations: computeEscalations(),
         generatedAt: new Date().toISOString()
       });
       return;
@@ -159,17 +172,7 @@ module.exports = async (req, res) => {
     const myName = myRecords.length ? myRecords[0]['CO ALL'] : null;
     const roleCfg = myName ? roleMap[myName] : null;
 
-    let escalations = [];
-    if (roleCfg && roleCfg.role === 'MR') {
-      const asal = roleCfg.asalFlow[0];
-      const target = roleCfg.penyelesaian[0];
-      const targetIdx = bucketIdx(target);
-      escalations = allRecords.filter(r =>
-        r['BUCKET AWAL'] === asal &&
-        bucketIdx(r['BUCKET UPDATE']) >= targetIdx &&
-        ['SUDAH BAYAR', 'LUNAS'].indexOf((r['STATUS BAYAR'] || '').toString().toUpperCase()) === -1
-      );
-    }
+    const escalations = (roleCfg && roleCfg.role === 'MR') ? computeEscalations() : [];
 
     res.status(200).json({
       email, isAdmin: false, records: myRecords, roleInfo: roleCfg, escalations,
