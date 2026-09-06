@@ -75,6 +75,11 @@ function parseSheetGeneric(values, headerRowIndex) {
 const BUCKET_ORDER = ['NOOD','P001_030','P031_060','P061_090','P091_120','P121_150','P151_180','P181_210','P211_240','P241_270'];
 function bucketIndex(b) { return BUCKET_ORDER.indexOf(String(b || '').trim()); }
 function sipokOf(m) { return typeof m['SIPOK'] === 'number' ? m['SIPOK'] : 0; }
+function isLunas(m) {
+  const status = (m['STATUS BAYAR'] || '').toString().toUpperCase();
+  const kriteria = (m['KRITERIA ACCT'] || '').toString().toUpperCase();
+  return status.includes('LUNAS') || kriteria.includes('LUNAS');
+}
 
 function tieringFlowEver1_30(p){ if(p>60)return 0.3; if(p>55)return 0.6; if(p>50)return 0.9; if(p>45)return 1.2; return 1.5; }
 function tieringBalance1_30(p){ if(p>10)return 0.3; if(p>9.5)return 0.6; if(p>9)return 0.9; if(p>8.5)return 1.2; return 1.5; }
@@ -134,7 +139,7 @@ function hitungFE(masterList, petaKA, configRows) {
     const nilaiBalance = tieringBalance1_30(balancePct);
     const nilaiFlowEver = tieringFlowEver1_30(flowEverPct);
     const nilaiFlowNoOD = tieringFlowNoOD(flowNoODPct);
-    const totalNilai = nilaiBalance * 0.3 + nilaiFlowEver * 0.3 + nilaiFlowNoOD * 0.4;
+    const totalNilai = nilaiBalance + nilaiFlowEver + nilaiFlowNoOD;
     const kategori = kategoriRapor(totalNilai);
     return { namaCO, role: 'FE', balancePct, flowEverPct, flowNoODPct, totalNilai, kategori, insentif: insentifRapor(kategori), totalAwal, flowEverEscaped };
   });
@@ -176,7 +181,7 @@ function hitungMR(masterList, petaKA, configRows) {
     const nilaiBalance = tieringBalance31_60(balancePct);
     const nilaiFlowEver = tieringFlowEver31_60(flowEverPct);
     const nilaiFlow = tieringFlow01_30(flowPct);
-    const totalNilai = nilaiBalance * 0.3 + nilaiFlowEver * 0.3 + nilaiFlow * 0.4;
+    const totalNilai = nilaiBalance + nilaiFlowEver + nilaiFlow;
     const kategori = kategoriRapor(totalNilai);
     return { namaCO, role: 'MR', balancePct, flowEverPct, flowPct, totalNilai, kategori, insentif: insentifRapor(kategori), totalAwal, flowEverEscaped };
   });
@@ -215,7 +220,7 @@ function hitungBCH(masterList, petaKA, configRows) {
   const nilaiFlowEver = tieringFlowEver1_30_BCH(flowEverPct);
   const nilaiFlowForward = tieringFlowForward31_60_BCH(flowForwardPct);
   const nilaiBalance = tieringBalance1_60_BCH(balancePct);
-  const totalNilai = nilaiFlowEver * 0.4 + nilaiFlowForward * 0.4 + nilaiBalance * 0.2;
+  const totalNilai = nilaiFlowEver + nilaiFlowForward + nilaiBalance;
   const kategori = kategoriRapor(totalNilai);
   return { namaCO, role: 'BCH', flowEverPct, flowForwardPct, balancePct, totalNilai, kategori, insentif: insentifRaporBCH(kategori), totalAwal, flowEverEscaped };
 }
