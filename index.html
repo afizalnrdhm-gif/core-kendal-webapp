@@ -602,6 +602,7 @@ function switchView(view){
   closeSidebarDrawer();
 
   if(view === 'dashboard'){
+    buildLayout();
     render();
   } else if(view === 'insentif'){
     if(INSENTIF_DATA){ renderInsentifView(); } else { loadInsentif(); }
