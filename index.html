@@ -341,7 +341,7 @@ const CO_META = {
 const FIELD_GROUPS = [
   { title:'Identitas & Alamat', fields:['KELURAHAN','KECAMATAN','ALAMAT','NO HP','WHATSAPP'] },
   { title:'Kontrak & Unit', fields:['TYPE BARANG','NOPOL','TYPE UNIT','GROUP PRODUCT','FLEET/NON FLEET','KRITERIA ACCT'] },
-  { title:'Keuangan', fields:['SIPOK','ANGSURAN','ANGS KE','TENOR','CARA BAYAR','TANGGAL BAYAR BULAN LALU'] },
+  { title:'Keuangan', fields:['SIPOK','ANGSURAN','ANGS KE','TENOR','JATUH TEMPO','TANGGAL BAYAR BULAN LALU'] },
   { title:'Tim & Status', fields:['CO FE','CO TAMBAHAN','CMO','EMAIL CO','FLAG TARGET BULAN INI','BUCKET EVER','PEKERJAAN KONSUMEN'] },
 ];
 
@@ -1009,7 +1009,7 @@ function openPanel(noKontrak){
   document.getElementById('panelCO').textContent = meta.short + (meta.role?' · '+meta.role:'');
   document.getElementById('panelName').textContent = r['NAMA KONSUMEN']||'-';
   document.getElementById('panelKontrak').textContent = r['NO KONTRAK'];
-  const moneyFields = new Set(['SIPOK','ANGSURAN']); const dateFields = new Set(['TANGGAL BAYAR BULAN LALU']);
+  const moneyFields = new Set(['SIPOK','ANGSURAN']); const dateFields = new Set(['TANGGAL BAYAR BULAN LALU','JATUH TEMPO']);
   document.getElementById('panelBody').innerHTML = FIELD_GROUPS.map(g => `
     <div class="field-group"><h3>${g.title}</h3>
       ${g.fields.map(f => { let v=r[f]; if(moneyFields.has(f)) v=fmtRupiah(v); else if(dateFields.has(f)) v=fmtDate(v); else v=(v===''||v==null)?'-':v;
