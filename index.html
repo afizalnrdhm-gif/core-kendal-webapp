@@ -195,6 +195,27 @@
   .ms-link-btn{background:none;border:none;color:var(--navy-lighter);font-size:11.5px;font-weight:600;cursor:pointer;padding:0;}
   .ms-link-btn:hover{text-decoration:underline;}
 
+  .pill-toggle{display:inline-flex;background:var(--surface-alt);border-radius:20px;padding:3px;border:1px solid var(--line);}
+  .pill-toggle button{border:none;background:none;padding:7px 18px;border-radius:16px;font-size:12.5px;font-weight:600;color:var(--ink-soft);cursor:pointer;font-family:var(--sans);transition:background .15s ease,color .15s ease;}
+  .pill-toggle button.active{background:var(--navy);color:#fff;}
+
+  .rk-header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:20px;}
+  .rk-header h1{font-size:16px;margin:0;color:var(--ink);}
+
+  .bar-list{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:6px 18px;}
+  .bar-row{padding:13px 0;border-bottom:1px solid var(--line);}
+  .bar-row:last-child{border-bottom:none;}
+  .bar-row.emphasis{background:linear-gradient(90deg,var(--gold-soft),transparent);margin:0 -18px;padding:13px 18px;border-radius:8px;border-bottom:none;}
+  .bar-row-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:7px;}
+  .bar-row-label{font-weight:600;font-size:13px;color:var(--ink);}
+  .bar-row-meta{font-size:11.5px;color:var(--ink-soft);font-family:var(--mono);white-space:nowrap;}
+  .bar-row-right{display:flex;align-items:baseline;gap:10px;flex:none;}
+  .bar-row-amount{font-family:var(--mono);font-size:12.5px;color:var(--ink);}
+  .bar-row-pct{font-family:var(--mono);font-weight:700;font-size:13.5px;color:var(--navy);min-width:56px;text-align:right;}
+  .bar-track{height:7px;border-radius:4px;background:var(--surface-alt);overflow:hidden;}
+  .bar-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--navy-lighter),var(--navy));transition:width .5s ease;}
+  .bar-fill.gold{background:linear-gradient(90deg,var(--gold),#8a5f1f);}
+
   .filter-drawer{position:relative;display:inline-block;}
   .filter-trigger-btn{display:flex;align-items:center;gap:7px;}
   .filter-badge{background:var(--navy);color:#fff;font-size:10.5px;font-weight:700;padding:1px 7px;border-radius:20px;display:inline-flex;align-items:center;}
@@ -1054,6 +1075,7 @@ function renderFEEverTable(){
 // DASHBOARD (Ringkasan Eksekutif) — khusus Admin
 // ============================================================
 let RINGKASAN_DATA = null;
+let RINGKASAN_FLEET_MODE = 'nonfleet';
 
 function loadRingkasan(){
   document.getElementById('wrap').innerHTML = `<div class="skeleton-row"><div class="skel"></div><div class="skel"></div></div><div class="skel tall"></div>`;
@@ -1068,29 +1090,66 @@ function loadRingkasan(){
     .catch(err => { document.getElementById('wrap').innerHTML = '<div class="state-box error"><div class="err-icon">⚠</div>'+err.message+'</div>'; });
 }
 
-function ringkasanTable(title, rows, showEnrRow){
+function barListSection(title, rows, opts){
+  opts = opts || {};
+  const maxPct = Math.max(...rows.map(r => r.pct), 1);
   return `
   <div class="ins-section">
     <h2>${title}</h2>
-    <div class="table-scroll">
-      <table>
-        <thead><tr><th style="cursor:default;">Parameter</th><th class="num" style="cursor:default;">Amount</th><th class="num" style="cursor:default;">Percent</th></tr></thead>
-        <tbody>
-          ${rows.map(r => `<tr><td>${r.label}</td><td class="num mono">${fmtRupiah(r.amount)}</td><td class="num mono">${r.pct===null?'-':r.pct.toFixed(2)+'%'}</td></tr>`).join('')}
-          ${showEnrRow ? `<tr style="font-weight:700;background:var(--surface-alt);"><td>ENR</td><td class="num mono">${fmtRupiah(showEnrRow)}</td><td class="num mono">100.00%</td></tr>` : ''}
-        </tbody>
-      </table>
+    <div class="bar-list">
+      ${rows.map(r => `
+        <div class="bar-row ${opts.emphasisLast && r === rows[rows.length-1] ? 'emphasis' : ''}">
+          <div class="bar-row-top">
+            <span class="bar-row-label">${r.label}</span>
+            <div class="bar-row-right">
+              <span class="bar-row-meta">${r.count.toLocaleString('id-ID')} akun</span>
+              <span class="bar-row-amount">${fmtRupiah(r.amount)}</span>
+              <span class="bar-row-pct">${r.pct.toFixed(2)}%</span>
+            </div>
+          </div>
+          <div class="bar-track"><div class="bar-fill ${opts.gold?'gold':''}" style="width:${Math.min(r.pct/maxPct*100,100)}%"></div></div>
+        </div>`).join('')}
     </div>
   </div>`;
 }
 
 function renderRingkasanView(){
-  const d = RINGKASAN_DATA;
-  if(!d) return;
-  const html =
-    ringkasanTable('Sebaran per Bucket (Kondisi Aktual)', d.perBucket, d.enr) +
-    ringkasanTable('Analisis Kumulatif & Flow', [...d.cumulative, ...d.flowBtc.map(r=>({label:r.label, amount:r.amount, pct:r.pct}))], null);
-  document.getElementById('wrap').innerHTML = html;
+  const full = RINGKASAN_DATA;
+  if(!full) return;
+  const d = full[RINGKASAN_FLEET_MODE];
+
+  document.getElementById('wrap').innerHTML = `
+    <div class="rk-header">
+      <h1>Ringkasan Portofolio Cabang</h1>
+      <div class="pill-toggle" id="rkFleetToggle">
+        <button type="button" data-mode="nonfleet">Non-Fleet</button>
+        <button type="button" data-mode="all">Semua (+Fleet)</button>
+      </div>
+    </div>
+    <div class="grand-row" style="margin-bottom:24px;">
+      <div class="grand-card"><div class="lbl">Total Kontrak (ENR)</div><div class="val" id="rkValCount">0</div></div>
+      <div class="grand-card"><div class="lbl">Total Sisa Piutang (ENR)</div><div class="val" id="rkValAmt">Rp0</div></div>
+    </div>
+    ${barListSection('Sebaran per Bucket (Kondisi Aktual)', d.perBucket)}
+    ${barListSection('Analisis Kumulatif Overdue', d.cumulative, {gold:true})}
+    ${barListSection('Flow & Back-to-Current (Branch-wide)', d.flowBtc)}
+    <div class="ins-section">
+      <div style="text-align:center;padding:24px;border:1px dashed var(--line);border-radius:12px;color:var(--ink-soft);font-size:12.5px;">
+        Section tambahan bisa ditaruh di sini nanti 👇
+      </div>
+    </div>
+  `;
+
+  animateCount(document.getElementById('rkValCount'), d.enrCount, false);
+  animateCount(document.getElementById('rkValAmt'), d.enr, true);
+
+  document.querySelectorAll('#rkFleetToggle button').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-mode') === RINGKASAN_FLEET_MODE);
+    btn.addEventListener('click', () => {
+      RINGKASAN_FLEET_MODE = btn.getAttribute('data-mode');
+      renderRingkasanView();
+    });
+  });
 }
 
 // ============================================================
