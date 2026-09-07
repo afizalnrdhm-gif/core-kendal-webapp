@@ -199,22 +199,47 @@
   .pill-toggle button{border:none;background:none;padding:7px 18px;border-radius:16px;font-size:12.5px;font-weight:600;color:var(--ink-soft);cursor:pointer;font-family:var(--sans);transition:background .15s ease,color .15s ease;}
   .pill-toggle button.active{background:var(--navy);color:#fff;}
 
-  .rk-header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:20px;}
-  .rk-header h1{font-size:16px;margin:0;color:var(--ink);}
+  .rk-header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px;}
+  .rk-header h1{font-size:17px;margin:0;color:var(--ink);font-weight:700;}
+  .rk-date{font-size:12px;color:var(--ink-soft);font-family:var(--mono);}
 
-  .bar-list{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:6px 18px;}
-  .bar-row{padding:13px 0;border-bottom:1px solid var(--line);}
+  .rk-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start;}
+  @media (max-width:900px){ .rk-grid{grid-template-columns:1fr;} }
+
+  .bar-list{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:4px 14px;}
+  .bar-row{padding:8px 0;border-bottom:1px solid var(--line);}
   .bar-row:last-child{border-bottom:none;}
-  .bar-row.emphasis{background:linear-gradient(90deg,var(--gold-soft),transparent);margin:0 -18px;padding:13px 18px;border-radius:8px;border-bottom:none;}
-  .bar-row-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:7px;}
-  .bar-row-label{font-weight:600;font-size:13px;color:var(--ink);}
-  .bar-row-meta{font-size:11.5px;color:var(--ink-soft);font-family:var(--mono);white-space:nowrap;}
-  .bar-row-right{display:flex;align-items:baseline;gap:10px;flex:none;}
-  .bar-row-amount{font-family:var(--mono);font-size:12.5px;color:var(--ink);}
-  .bar-row-pct{font-family:var(--mono);font-weight:700;font-size:13.5px;color:var(--navy);min-width:56px;text-align:right;}
-  .bar-track{height:7px;border-radius:4px;background:var(--surface-alt);overflow:hidden;}
-  .bar-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--navy-lighter),var(--navy));transition:width .5s ease;}
+  .bar-row.emphasis{background:linear-gradient(90deg,var(--gold-soft),transparent);margin:0 -14px;padding:8px 14px;border-radius:6px;border-bottom:none;}
+  .bar-row-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:4px;}
+  .bar-row-label{font-weight:600;font-size:12px;color:var(--ink);}
+  .bar-row-meta{font-size:10.5px;color:var(--ink-soft);font-family:var(--mono);white-space:nowrap;}
+  .bar-row-right{display:flex;align-items:baseline;gap:8px;flex:none;}
+  .bar-row-amount{font-family:var(--mono);font-size:11px;color:var(--ink);}
+  .bar-row-pct{font-family:var(--mono);font-weight:700;font-size:12px;color:var(--navy);min-width:48px;text-align:right;}
+  .bar-track{height:5px;border-radius:3px;background:var(--surface-alt);overflow:hidden;}
+  .bar-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--navy-lighter),var(--navy));transition:width .5s ease;}
   .bar-fill.gold{background:linear-gradient(90deg,var(--gold),#8a5f1f);}
+
+  .rk-report-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px 24px;}
+  .rk-report-header{text-align:center;padding-bottom:14px;margin-bottom:16px;border-bottom:2px solid var(--gold);}
+  .rk-report-title{font-size:16px;font-weight:800;color:var(--navy);letter-spacing:0.3px;}
+  .rk-report-date{font-size:11.5px;color:var(--ink-soft);margin-top:3px;font-family:var(--mono);}
+  .rk-hero-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
+  .rk-hero-card{background:#0B3D62;border-radius:9px;padding:10px 14px;text-align:center;}
+  .rk-hero-card .lbl{font-size:10px;color:#9FC3DC;margin:0;text-transform:uppercase;letter-spacing:0.3px;}
+  .rk-hero-card .val{font-size:17px;font-weight:700;color:#fff;margin-top:2px;font-family:var(--mono);}
+
+  .rk-compact .ins-section{margin-bottom:14px;}
+  .rk-compact .ins-section h2{margin-bottom:6px;font-size:11px;}
+  .rk-compact .bar-list{padding:2px 12px;}
+  .rk-compact .bar-row{padding:6px 0;}
+  .rk-compact .bar-row.emphasis{padding:6px 12px;margin:0 -12px;}
+  .rk-compact .bar-row-top{margin-bottom:4px;}
+  .rk-compact .bar-row-label{font-size:11.5px;}
+  .rk-compact .bar-row-meta{font-size:10px;}
+  .rk-compact .bar-row-amount{font-size:11px;}
+  .rk-compact .bar-row-pct{font-size:12px;min-width:48px;}
+  .rk-compact .bar-track{height:5px;}
 
   .filter-drawer{position:relative;display:inline-block;}
   .filter-trigger-btn{display:flex;align-items:center;gap:7px;}
@@ -1117,25 +1142,30 @@ function renderRingkasanView(){
   const full = RINGKASAN_DATA;
   if(!full) return;
   const d = full[RINGKASAN_FLEET_MODE];
+  const todayStr = new Date().toLocaleDateString('id-ID', {day:'2-digit', month:'long', year:'numeric'});
 
   document.getElementById('wrap').innerHTML = `
     <div class="rk-header">
-      <h1>Ringkasan Portofolio Cabang</h1>
       <div class="pill-toggle" id="rkFleetToggle">
         <button type="button" data-mode="nonfleet">Non-Fleet</button>
         <button type="button" data-mode="all">Semua (+Fleet)</button>
       </div>
     </div>
-    <div class="grand-row" style="margin-bottom:24px;">
-      <div class="grand-card"><div class="lbl">Total Kontrak (ENR)</div><div class="val" id="rkValCount">0</div></div>
-      <div class="grand-card"><div class="lbl">Total Sisa Piutang (ENR)</div><div class="val" id="rkValAmt">Rp0</div></div>
-    </div>
-    ${barListSection('Sebaran per Bucket (Kondisi Aktual)', d.perBucket)}
-    ${barListSection('Analisis Kumulatif Overdue', d.cumulative, {gold:true})}
-    ${barListSection('Flow & Back-to-Current (Branch-wide)', d.flowBtc)}
-    <div class="ins-section">
-      <div style="text-align:center;padding:24px;border:1px dashed var(--line);border-radius:12px;color:var(--ink-soft);font-size:12.5px;">
-        Section tambahan bisa ditaruh di sini nanti 👇
+    <div class="rk-report-card rk-compact" id="rkReportCard">
+      <div class="rk-report-header">
+        <div class="rk-report-title">📊 DASHBOARD PERFORMANCE CORE KENDAL</div>
+        <div class="rk-report-date">Update per: ${todayStr}</div>
+      </div>
+      <div class="rk-hero-row">
+        <div class="rk-hero-card"><div class="lbl">Total Kontrak (ENR)</div><div class="val" id="rkValCount">0</div></div>
+        <div class="rk-hero-card"><div class="lbl">Total Sisa Piutang (ENR)</div><div class="val" id="rkValAmt">Rp0</div></div>
+      </div>
+      <div class="rk-grid">
+        <div>${barListSection('Sebaran per Bucket (Kondisi Aktual)', d.perBucket)}</div>
+        <div>
+          ${barListSection('Analisis Kumulatif Overdue', d.cumulative, {gold:true})}
+          ${barListSection('Flow & Back-to-Current (Branch-wide)', d.flowBtc)}
+        </div>
       </div>
     </div>
   `;
