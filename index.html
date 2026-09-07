@@ -241,6 +241,31 @@
   .rk-compact .bar-row-pct{font-size:12px;min-width:48px;}
   .rk-compact .bar-track{height:5px;}
 
+  .bigcust-card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:10px;}
+  .bigcust-card:last-child{margin-bottom:0;}
+  .bigcust-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--line);}
+  .bigcust-head .bname{font-weight:700;font-size:12.5px;color:var(--ink);}
+  .bigcust-head .btotal{font-size:11px;color:var(--ink-soft);font-family:var(--mono);}
+  .bigcust-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}
+  .bigcust-stat{font-size:11px;}
+  .bigcust-stat .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px;}
+  .bigcust-stat .dot.good{background:var(--good);}
+  .bigcust-stat .dot.bad{background:var(--bad);}
+  .bigcust-stat b{display:block;font-family:var(--mono);font-size:12.5px;margin-top:2px;}
+  .bigcust-co-list{background:var(--surface-alt);border-radius:7px;padding:7px 10px;}
+  .bigcust-co-row{display:flex;justify-content:space-between;font-size:10.5px;padding:2px 0;}
+  .bigcust-co-row .n{color:var(--ink-soft);}
+
+  .update-banner{
+    position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+    background:var(--navy);color:#fff;padding:12px 14px 12px 18px;border-radius:12px;
+    display:flex;align-items:center;gap:14px;box-shadow:0 10px 30px rgba(0,0,0,0.3);
+    z-index:50;font-size:13px;animation:fadeIn .3s ease;max-width:92vw;
+  }
+  .update-banner button{border:none;border-radius:8px;padding:7px 14px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:var(--sans);}
+  .update-banner #updateBannerBtn{background:var(--gold);color:#1a1204;}
+  .update-banner #updateBannerClose{background:none;color:#B8CBDA;padding:4px 6px;}
+
   .filter-drawer{position:relative;display:inline-block;}
   .filter-trigger-btn{display:flex;align-items:center;gap:7px;}
   .filter-badge{background:var(--navy);color:#fff;font-size:10.5px;font-weight:700;padding:1px 7px;border-radius:20px;display:inline-flex;align-items:center;}
@@ -524,16 +549,79 @@ window.onload = function () {
   }, 250);
 };
 
+let LAST_KNOWN_MODIFIED = null;
+
+function startUpdateWatcher(){
+  checkForUpdate(true); // simpan baseline dulu, jangan langsung munculin banner
+  setInterval(() => checkForUpdate(false), 2 * 60 * 1000); // cek tiap 2 menit
+}
+
+function checkForUpdate(isBaseline){
+  fetch('/api/check-update', { headers: { Authorization: 'Bearer ' + ID_TOKEN } })
+    .then(r => r.json().then(body => ({ ok: r.ok, body })))
+    .then(({ok, body}) => {
+      if(!ok || !body.modifiedTime) return;
+      if(isBaseline || !LAST_KNOWN_MODIFIED){
+        LAST_KNOWN_MODIFIED = body.modifiedTime;
+        return;
+      }
+      if(body.modifiedTime !== LAST_KNOWN_MODIFIED){
+        showUpdateBanner();
+      }
+    })
+    .catch(() => {}); // gagal cek update nggak perlu ganggu user, diam-diam aja
+}
+
+function showUpdateBanner(){
+  if(document.getElementById('updateBanner')) return; // sudah tampil, jangan dobel
+  const banner = document.createElement('div');
+  banner.id = 'updateBanner';
+  banner.className = 'update-banner';
+  banner.innerHTML = `
+    <span>🔄 Data spreadsheet baru saja diperbarui</span>
+    <button id="updateBannerBtn">Muat Ulang</button>
+    <button id="updateBannerClose" aria-label="Tutup">✕</button>
+  `;
+  document.body.appendChild(banner);
+  document.getElementById('updateBannerBtn').addEventListener('click', () => {
+    LAST_KNOWN_MODIFIED = null;
+    banner.remove();
+    if(VIEW_MODE === 'ringkasan') loadRingkasan();
+    else if(VIEW_MODE === 'dashboard') loadData();
+    else if(VIEW_MODE === 'nbq' || VIEW_MODE === 'feever') loadData();
+    else if(VIEW_MODE === 'insentif') loadInsentif();
+  });
+  document.getElementById('updateBannerClose').addEventListener('click', () => {
+    LAST_KNOWN_MODIFIED = null; // reset biar nggak nge-banner ulang terus untuk perubahan yang sama
+    banner.remove();
+  });
+}
+
+let hasInitializedApp = false;
+let hasLoggedInOnce = false;
 function handleCredentialResponse(response) {
   ID_TOKEN = response.credential;
-  document.getElementById('loginScreen').style.display = 'none';
-  document.getElementById('appScreen').style.display = 'block';
-  loadData();
+  if (!hasLoggedInOnce) {
+    hasLoggedInOnce = true;
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('appScreen').style.display = 'block';
+    loadData();
+    startSilentSessionRefresh();
+    startUpdateWatcher();
+  }
+  // Kalau ini refresh diam-diam (bukan login pertama), cukup update ID_TOKEN tanpa ganggu tampilan.
+}
+
+function startSilentSessionRefresh(){
+  setInterval(() => {
+    google.accounts.id.prompt();
+  }, 45 * 60 * 1000); // setiap 45 menit, biar token selalu segar tanpa perlu login manual
 }
 
 function doLogout() {
   google.accounts.id.disableAutoSelect();
   ID_TOKEN = null;
+  hasLoggedInOnce = false;
   DATA = []; ESCALATIONS = []; ROLE_INFO = null;
   document.getElementById('appScreen').style.display = 'none';
   document.getElementById('loginScreen').style.display = 'flex';
@@ -607,8 +695,24 @@ function onDataLoaded(res){
     navFEEver.style.display = IS_ADMIN ? 'flex' : 'none';
   }
 
-  buildLayout();
-  render();
+  if(!hasInitializedApp){
+    hasInitializedApp = true;
+    if(IS_ADMIN){
+      VIEW_MODE = 'ringkasan';
+      document.getElementById('navRingkasan').classList.add('active');
+      document.getElementById('navDashboard').classList.remove('active');
+      document.getElementById('mobilePageTitle').textContent = 'Dashboard';
+      loadRingkasan();
+    } else {
+      buildLayout();
+      render();
+    }
+  } else {
+    // Refresh biasa (bukan load pertama) — render ulang halaman yang lagi aktif, jangan pindah halaman
+    if(VIEW_MODE === 'dashboard'){ buildLayout(); render(); }
+    else if(VIEW_MODE === 'nbq'){ buildNBQLayout(); renderNBQ(); }
+    else if(VIEW_MODE === 'feever'){ buildFEEverLayout(); renderFEEver(); }
+  }
 }
 
 function isSudahBayar_(status){
@@ -1138,6 +1242,28 @@ function barListSection(title, rows, opts){
   </div>`;
 }
 
+function bigCustSection(bigCust){
+  return `
+  <div class="ins-section">
+    <h2>Big Customer Non-Realisasi (SIPOK &gt; Rp100jt)</h2>
+    ${bigCust.map(b => `
+      <div class="bigcust-card">
+        <div class="bigcust-head">
+          <span class="bname">${b.label}</span>
+          <span class="btotal">${b.total.count} akun · ${fmtRupiah(b.total.amount)}</span>
+        </div>
+        <div class="bigcust-stats">
+          <div class="bigcust-stat"><span class="dot good"></span>Sudah Bayar<b>${b.sudah.count} · ${fmtRupiah(b.sudah.amount)}</b></div>
+          <div class="bigcust-stat"><span class="dot bad"></span>Belum Bayar<b>${b.belum.count} · ${fmtRupiah(b.belum.amount)}</b></div>
+        </div>
+        ${b.belumPerCO.length ? `
+        <div class="bigcust-co-list">
+          ${b.belumPerCO.map(c => `<div class="bigcust-co-row"><span>${(CO_META[c.co]||{short:c.co}).short}</span><span class="n">${c.count} akun · ${fmtRupiah(c.amount)}</span></div>`).join('')}
+        </div>` : ''}
+      </div>`).join('')}
+  </div>`;
+}
+
 function renderRingkasanView(){
   const full = RINGKASAN_DATA;
   if(!full) return;
@@ -1167,6 +1293,7 @@ function renderRingkasanView(){
           ${barListSection('Flow & Back-to-Current (Branch-wide)', d.flowBtc)}
         </div>
       </div>
+      ${bigCustSection(d.bigCust)}
     </div>
   `;
 
