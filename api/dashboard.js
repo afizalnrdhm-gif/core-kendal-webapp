@@ -92,57 +92,66 @@ module.exports = async (req, res) => {
     const masterRows = parseSheetValues(masterJson.values || []).filter(r => r['NO KONTRAK']);
     const kaRows = parseSheetValues(kaJson.values || [], 15).filter(r => r['NO KONTRAK']); // header KA HARIAN di baris 16
 
-    // ---- Tabel 1: sebaran per bucket, dari KA HARIAN, dikelompokkan BUCKET UPDATE ----
-    const bucketAmounts = {};
-    BUCKET_ORDER.forEach(b => bucketAmounts[b] = 0);
-    kaRows.forEach(ka => {
-      if (ka['FLEET/NON FLEET'] === 'FLEET') return;
-      const b = ka['BUCKET UPDATE'];
-      if (BUCKET_ORDER.indexOf(b) > -1) bucketAmounts[b] += sisaOf(ka);
-    });
-    const enr = BUCKET_ORDER.reduce((s, b) => s + bucketAmounts[b], 0);
+    function computeVariant(includeFleet) {
+      const passFleet = (row) => includeFleet || row['FLEET/NON FLEET'] !== 'FLEET';
 
-    const perBucket = BUCKET_ORDER.map(b => ({
-      label: BUCKET_LABEL[b],
-      amount: bucketAmounts[b],
-      pct: enr > 0 ? (bucketAmounts[b] / enr) * 100 : 0
-    }));
-
-    // ---- Tabel 2: kumulatif overdue, dari data yang sama ----
-    function cumulativeFrom(startIdx) {
-      return BUCKET_ORDER.slice(startIdx).reduce((s, b) => s + bucketAmounts[b], 0);
-    }
-    const cumulative = [
-      { label: '0+ (TOD)', amount: cumulativeFrom(1), pct: enr > 0 ? (cumulativeFrom(1) / enr) * 100 : 0 },
-      { label: '30+ (Delq)', amount: cumulativeFrom(2), pct: enr > 0 ? (cumulativeFrom(2) / enr) * 100 : 0 },
-      { label: '60+', amount: cumulativeFrom(3), pct: enr > 0 ? (cumulativeFrom(3) / enr) * 100 : 0 },
-      { label: '90+ (NPL)', amount: cumulativeFrom(4), pct: enr > 0 ? (cumulativeFrom(4) / enr) * 100 : 0 },
-      { label: '180+', amount: cumulativeFrom(7), pct: enr > 0 ? (cumulativeFrom(7) / enr) * 100 : 0 }
-    ];
-
-    // ---- Flow & Btc: dari MASTER, branch-wide, BUCKET AWAL -> BUCKET UPDATE ----
-    function flowStat(asal, target) {
-      let totalAsal = 0, amt = 0;
-      masterRows.forEach(m => {
-        if (m['FLEET/NON FLEET'] === 'FLEET') return;
-        if (m['BUCKET AWAL'] !== asal) return;
-        const sipok = sipokOf(m);
-        totalAsal += sipok;
-        if (m['BUCKET UPDATE'] === target) amt += sipok;
+      const bucketAmounts = {}; const bucketCounts = {};
+      BUCKET_ORDER.forEach(b => { bucketAmounts[b] = 0; bucketCounts[b] = 0; });
+      kaRows.forEach(ka => {
+        if (!passFleet(ka)) return;
+        const b = ka['BUCKET UPDATE'];
+        if (BUCKET_ORDER.indexOf(b) > -1) { bucketAmounts[b] += sisaOf(ka); bucketCounts[b] += 1; }
       });
-      return { amount: amt, pct: totalAsal > 0 ? (amt / totalAsal) * 100 : 0 };
-    }
+      const enr = BUCKET_ORDER.reduce((s, b) => s + bucketAmounts[b], 0);
+      const enrCount = BUCKET_ORDER.reduce((s, b) => s + bucketCounts[b], 0);
 
-    const flowBtc = [
-      { label: 'Flow NOOD', ...flowStat('NOOD', 'P001_030') },
-      { label: 'Flow 1-30', ...flowStat('P001_030', 'P031_060') },
-      { label: 'Flow 31-60', ...flowStat('P031_060', 'P061_090') },
-      { label: 'Btc 01-30', ...flowStat('P001_030', 'NOOD') },
-      { label: 'Btc 31-60', ...flowStat('P031_060', 'NOOD') }
-    ];
+      const perBucket = BUCKET_ORDER.map(b => ({
+        label: BUCKET_LABEL[b],
+        amount: bucketAmounts[b],
+        count: bucketCounts[b],
+        pct: enr > 0 ? (bucketAmounts[b] / enr) * 100 : 0
+      }));
+
+      function cumulativeFrom(startIdx) {
+        return {
+          amount: BUCKET_ORDER.slice(startIdx).reduce((s, b) => s + bucketAmounts[b], 0),
+          count: BUCKET_ORDER.slice(startIdx).reduce((s, b) => s + bucketCounts[b], 0)
+        };
+      }
+      const cumulative = [
+        { label: '0+ (TOD)', ...cumulativeFrom(1) },
+        { label: '30+ (Delq)', ...cumulativeFrom(2) },
+        { label: '60+', ...cumulativeFrom(3) },
+        { label: '90+ (NPL)', ...cumulativeFrom(4) },
+        { label: '180+', ...cumulativeFrom(7) }
+      ].map(r => ({ ...r, pct: enr > 0 ? (r.amount / enr) * 100 : 0 }));
+
+      function flowStat(asal, target) {
+        let totalAsal = 0, amt = 0, countAmt = 0;
+        masterRows.forEach(m => {
+          if (!passFleet(m)) return;
+          if (m['BUCKET AWAL'] !== asal) return;
+          const sipok = sipokOf(m);
+          totalAsal += sipok;
+          if (m['BUCKET UPDATE'] === target) { amt += sipok; countAmt += 1; }
+        });
+        return { amount: amt, count: countAmt, pct: totalAsal > 0 ? (amt / totalAsal) * 100 : 0 };
+      }
+
+      const flowBtc = [
+        { label: 'Flow NOOD', ...flowStat('NOOD', 'P001_030') },
+        { label: 'Flow 1-30', ...flowStat('P001_030', 'P031_060') },
+        { label: 'Flow 31-60', ...flowStat('P031_060', 'P061_090') },
+        { label: 'Btc 01-30', ...flowStat('P001_030', 'NOOD') },
+        { label: 'Btc 31-60', ...flowStat('P031_060', 'NOOD') }
+      ];
+
+      return { enr, enrCount, perBucket, cumulative, flowBtc };
+    }
 
     res.status(200).json({
-      enr, perBucket, cumulative, flowBtc,
+      all: computeVariant(true),
+      nonfleet: computeVariant(false),
       generatedAt: new Date().toISOString()
     });
   } catch (err) {
