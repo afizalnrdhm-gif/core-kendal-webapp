@@ -74,9 +74,10 @@ function serialToDateStr(serial) {
 
 const DATE_FIELDS = new Set(['JATUH TEMPO', 'TANGGAL BAYAR BULAN LALU']);
 
-function parseSheetValues(values) {
-  if (!values || !values.length) return [];
-  const header = values[0];
+function parseSheetValues(values, headerRowIndex) {
+  headerRowIndex = headerRowIndex || 0;
+  if (!values || values.length <= headerRowIndex) return [];
+  const header = values[headerRowIndex];
   const seen = {};
   const keepIdx = [];
   header.forEach((h, i) => {
@@ -87,7 +88,7 @@ function parseSheetValues(values) {
   });
   const finalHeader = keepIdx.map(i => (header[i] || '').toString().trim());
   const rows = [];
-  for (let r = 1; r < values.length; r++) {
+  for (let r = headerRowIndex + 1; r < values.length; r++) {
     const raw = values[r] || [];
     const rec = {};
     keepIdx.forEach((idx, j) => {
@@ -117,16 +118,20 @@ module.exports = async (req, res) => {
     const accessToken = await getAccessToken();
     const sheetId = process.env.GOOGLE_SHEET_ID;
 
-    const [masterRes, roleRes] = await Promise.all([
+    const [masterRes, roleRes, kaRes] = await Promise.all([
       fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/MASTER?valueRenderOption=UNFORMATTED_VALUE`, {
         headers: { Authorization: 'Bearer ' + accessToken }
       }),
       fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/CONFIG_ROLE?valueRenderOption=UNFORMATTED_VALUE`, {
         headers: { Authorization: 'Bearer ' + accessToken }
+      }),
+      fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent('KA HARIAN')}?valueRenderOption=UNFORMATTED_VALUE`, {
+        headers: { Authorization: 'Bearer ' + accessToken }
       })
     ]);
     const masterJson = await masterRes.json();
     const roleJson = await roleRes.json();
+    const kaJson = await kaRes.json();
 
     if (!masterJson.values) {
       throw new Error('Gagal baca sheet MASTER: ' + JSON.stringify(masterJson));
@@ -142,6 +147,23 @@ module.exports = async (req, res) => {
         penyelesaian: (r['BUCKET_PENYELESAIAN'] || '').split(',').map(x => x.trim()),
         asalFlow: (r['BUCKET_ASAL_FLOW'] || '').split(',').map(x => x.trim())
       };
+    });
+
+    // KA HARIAN: header ada di baris ke-16 (index 15)
+    const kaRows = kaJson.values ? parseSheetValues(kaJson.values, 15) : [];
+    const petaKA = {};
+    kaRows.forEach(r => { if (r['NO KONTRAK']) petaKA[r['NO KONTRAK']] = r; });
+
+    // Tempelkan STATUS EVER ke tiap kontrak yang berada di bucket "penyelesaian" milik role-nya sendiri
+    allRecords.forEach(m => {
+      const roleCfg = roleMap[m['CO ALL']];
+      m['STATUS EVER'] = '';
+      if (!roleCfg) return;
+      const targetBucket = roleCfg.penyelesaian[0];
+      if (m['BUCKET AWAL'] !== targetBucket) return;
+      const ka = petaKA[m['NO KONTRAK']];
+      if (!ka || !ka['FLOW EVER']) return;
+      m['STATUS EVER'] = bucketIdx(ka['FLOW EVER']) > bucketIdx(targetBucket) ? 'SUDAH EVER' : 'BELUM EVER';
     });
 
     const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(x => x.trim().toLowerCase());
