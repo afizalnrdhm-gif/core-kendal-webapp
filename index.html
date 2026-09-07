@@ -172,12 +172,18 @@
   .search-box svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);opacity:0.45;}
   select.filter-select{font-size:12.5px;color:var(--ink);background:var(--surface);border:1px solid var(--line);padding:8px 10px;border-radius:7px;font-family:var(--sans);}
   .multi-select{position:relative;display:inline-block;}
-  .multi-select-btn{cursor:pointer;text-align:left;min-width:130px;}
-  .multi-select-panel{display:none;position:absolute;top:calc(100% + 5px);left:0;background:var(--surface);border:1px solid var(--line);border-radius:8px;box-shadow:0 10px 24px rgba(20,30,40,0.14);padding:8px;z-index:15;min-width:170px;max-height:230px;overflow-y:auto;}
+  .multi-select-btn{cursor:pointer;text-align:left;min-width:130px;display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  .multi-select-btn::after{content:'▾';font-size:10px;color:var(--ink-soft);}
+  .multi-select-panel{display:none;position:absolute;top:calc(100% + 6px);left:0;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 28px rgba(20,30,40,0.16);padding:12px;z-index:15;min-width:220px;}
   .multi-select-panel.show{display:block;}
-  .ms-option{display:flex;align-items:center;gap:8px;font-size:12.5px;padding:5px 6px;border-radius:5px;cursor:pointer;color:var(--ink);}
+  .ms-panel-title{font-size:10.5px;text-transform:uppercase;letter-spacing:0.4px;color:var(--ink-soft);margin:0 0 8px;font-weight:600;}
+  .ms-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px 10px;}
+  .ms-option{display:flex;align-items:center;gap:6px;font-size:12.5px;padding:5px 4px;border-radius:5px;cursor:pointer;color:var(--ink);}
   .ms-option:hover{background:var(--surface-alt);}
-  .ms-option input{cursor:pointer;}
+  .ms-option input{cursor:pointer;accent-color:var(--navy);width:14px;height:14px;flex:none;}
+  .ms-panel-footer{display:flex;justify-content:space-between;margin-top:10px;padding-top:8px;border-top:1px solid var(--line);}
+  .ms-link-btn{background:none;border:none;color:var(--navy-lighter);font-size:11.5px;font-weight:600;cursor:pointer;padding:0;}
+  .ms-link-btn:hover{text-decoration:underline;}
   .btn{font-size:12.5px;color:var(--navy);background:var(--surface);border:1px solid var(--line);padding:8px 13px;border-radius:7px;cursor:pointer;white-space:nowrap;}
   .btn.primary{background:var(--navy);color:#fff;border-color:var(--navy);}
   .count-note{font-size:12px;color:var(--ink-soft);margin:0 0 10px 2px;}
@@ -936,9 +942,16 @@ function buildNBQLayout(){
         ${getBucketOptions().map(b => `<option value="${b}">${fmtBucket(b)}</option>`).join('')}
       </select>
       <div class="multi-select" id="nbqNbqMultiSelect">
-        <button type="button" class="filter-select multi-select-btn" id="nbqNbqBtn">Semua NBQ</button>
+        <button type="button" class="filter-select multi-select-btn" id="nbqNbqBtn"><span>Semua NBQ</span></button>
         <div class="multi-select-panel" id="nbqNbqPanel">
-          ${nbqValues.map(n => `<label class="ms-option"><input type="checkbox" value="${n}"> ${n} MOB</label>`).join('')}
+          <div class="ms-panel-title">Pilih NBQ (boleh lebih dari satu)</div>
+          <div class="ms-grid">
+            ${nbqValues.map(n => `<label class="ms-option"><input type="checkbox" value="${n}"> ${n} MOB</label>`).join('')}
+          </div>
+          <div class="ms-panel-footer">
+            <button type="button" class="ms-link-btn" id="nbqSelectAllBtn">Pilih semua</button>
+            <button type="button" class="ms-link-btn" id="nbqClearBtn">Bersihkan</button>
+          </div>
         </div>
       </div>
       <select class="filter-select" id="nbqStatusSelect">
@@ -982,11 +995,12 @@ function buildNBQLayout(){
   document.getElementById('nbqSearchInput').addEventListener('input', e => { nbqState.search = e.target.value; renderNBQTable(); });
   document.getElementById('nbqBucketSelect').addEventListener('change', e => { nbqState.bucket = e.target.value; renderNBQTable(); });
   const nbqBtn = document.getElementById('nbqNbqBtn');
+  const nbqBtnLabel = nbqBtn.querySelector('span');
   const nbqPanel = document.getElementById('nbqNbqPanel');
   function updateNbqBtnLabel(){
-    if(nbqState.nbqList.length === 0) nbqBtn.textContent = 'Semua NBQ';
-    else if(nbqState.nbqList.length === 1) nbqBtn.textContent = nbqState.nbqList[0] + ' MOB';
-    else nbqBtn.textContent = nbqState.nbqList.length + ' MOB dipilih';
+    if(nbqState.nbqList.length === 0) nbqBtnLabel.textContent = 'Semua NBQ';
+    else if(nbqState.nbqList.length === 1) nbqBtnLabel.textContent = nbqState.nbqList[0] + ' MOB';
+    else nbqBtnLabel.textContent = nbqState.nbqList.length + ' MOB dipilih';
   }
   updateNbqBtnLabel();
   nbqBtn.addEventListener('click', (e) => { e.stopPropagation(); nbqPanel.classList.toggle('show'); });
@@ -999,6 +1013,18 @@ function buildNBQLayout(){
       updateNbqBtnLabel();
       renderNBQTable();
     });
+  });
+  document.getElementById('nbqSelectAllBtn').addEventListener('click', () => {
+    nbqState.nbqList = nbqValues.slice();
+    nbqPanel.querySelectorAll('input[type=checkbox]').forEach(cb => cb.checked = true);
+    updateNbqBtnLabel();
+    renderNBQTable();
+  });
+  document.getElementById('nbqClearBtn').addEventListener('click', () => {
+    nbqState.nbqList = [];
+    nbqPanel.querySelectorAll('input[type=checkbox]').forEach(cb => cb.checked = false);
+    updateNbqBtnLabel();
+    renderNBQTable();
   });
   document.addEventListener('click', (e) => {
     if(!document.getElementById('nbqNbqMultiSelect').contains(e.target)) nbqPanel.classList.remove('show');
@@ -1170,8 +1196,9 @@ function renderBucketBar(){
   const source = currentSourceRecords();
   const bucketCounts = {}; BUCKET_ORDER.forEach(b => bucketCounts[b]=0);
   source.forEach(r => { const b=r['BUCKET AWAL']; bucketCounts[b] = (bucketCounts[b]||0)+1; });
-  const present = BUCKET_ORDER.filter(b => bucketCounts[b] > 0);
-  const total = source.length || 1;
+  const relevantBuckets = IS_ADMIN ? BUCKET_ORDER : getBucketOptions();
+  const present = BUCKET_ORDER.filter(b => relevantBuckets.includes(b) && bucketCounts[b] > 0);
+  const total = present.reduce((s,b) => s + bucketCounts[b], 0) || 1;
   const bucketSelect = document.getElementById('bucketSelect');
   if(bucketSelect) bucketSelect.value = state.bucket;
   const bar = document.getElementById('bucketBar'); const legend = document.getElementById('bucketLegend');
