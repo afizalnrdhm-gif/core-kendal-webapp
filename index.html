@@ -195,6 +195,30 @@
   .ms-link-btn{background:none;border:none;color:var(--navy-lighter);font-size:11.5px;font-weight:600;cursor:pointer;padding:0;}
   .ms-link-btn:hover{text-decoration:underline;}
 
+  .filter-drawer{position:relative;display:inline-block;}
+  .filter-trigger-btn{display:flex;align-items:center;gap:7px;}
+  .filter-badge{background:var(--navy);color:#fff;font-size:10.5px;font-weight:700;padding:1px 7px;border-radius:20px;display:inline-flex;align-items:center;}
+  .filter-drawer-panel{
+    display:none;position:absolute;top:calc(100% + 6px);right:0;
+    background:var(--surface);border:1px solid var(--line);border-radius:12px;
+    box-shadow:0 14px 32px rgba(20,30,40,0.18);
+    padding:16px;z-index:16;width:300px;max-height:75vh;overflow-y:auto;
+  }
+  .filter-drawer-panel.show{display:block;}
+  .fd-header{font-size:13px;font-weight:700;color:var(--ink);margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--line);}
+  .fd-field{margin-bottom:14px;}
+  .fd-field:last-child{margin-bottom:0;}
+
+  @media (max-width:680px){
+    .filter-drawer-panel{
+      position:fixed;
+      left:14px; right:14px; bottom:14px; top:auto;
+      width:auto; max-height:75vh;
+      box-shadow:0 -8px 30px rgba(0,0,0,0.25);
+      z-index:40;
+    }
+  }
+
   @media (max-width:680px){
     .multi-select-panel{
       position:fixed;
@@ -631,39 +655,62 @@ function buildLayout(){
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4C6272" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input id="searchInput" type="text" placeholder="Cari nama konsumen, no kontrak, atau nopol…">
       </div>
-      <select class="filter-select" id="bucketSelect">
-        <option value="ALL">Semua Bucket Awal</option>
-        ${getBucketOptions().map(b => `<option value="${b}">${fmtBucket(b)}</option>`).join('')}
-      </select>
-      <select class="filter-select" id="kriteriaSelect">
-        <option value="ALL">Semua Kriteria Acct</option>
-        <option value="FLOW">FLOW</option>
-        <option value="STAY">STAY</option>
-        <option value="LUNAS">LUNAS</option>
-        <option value="BTC">BTC</option>
-      </select>
-      <select class="filter-select" id="tipeSelect">
-        <option value="ALL">Semua Kendaraan</option>
-        <option value="MOTOR">Motor</option>
-        <option value="MOBIL">Mobil</option>
-      </select>
-      <select class="filter-select" id="kecamatanSelect">
-        <option value="ALL">Semua Kecamatan</option>
-        ${[...new Set(DATA.map(r=>r['KECAMATAN']).filter(Boolean))].sort().map(k => `<option value="${k}">${k}</option>`).join('')}
-      </select>
-      <select class="filter-select" id="everSelect">
-        <option value="ALL">Semua Status Ever</option>
-        <option value="SUDAH EVER">Sudah Ever</option>
-        <option value="BELUM EVER">Belum Ever</option>
-      </select>
-      <div class="multi-select" id="janjiMultiSelect">
-        <button type="button" class="filter-select multi-select-btn" id="janjiBtn"><span>Semua Janji Bayar</span></button>
-        <div class="multi-select-panel" id="janjiPanel">
-          <div class="ms-panel-title">Pilih Tanggal Janji Bayar</div>
-          <div class="ms-grid" id="janjiGrid"></div>
-          <div class="ms-panel-footer">
-            <button type="button" class="ms-link-btn" id="janjiSelectAllBtn">Pilih semua</button>
-            <button type="button" class="ms-link-btn" id="janjiClearBtn">Bersihkan</button>
+      <div class="filter-drawer" id="filterDrawer">
+        <button type="button" class="btn filter-trigger-btn" id="filterTriggerBtn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+          Filter <span class="filter-badge" id="filterBadge" style="display:none;">0</span>
+        </button>
+        <div class="filter-drawer-panel" id="filterDrawerPanel">
+          <div class="fd-header"><span>Filter</span></div>
+          <div class="fd-field">
+            <label class="edit-label">Bucket Awal</label>
+            <select class="filter-select" id="bucketSelect" style="width:100%;">
+              <option value="ALL">Semua Bucket Awal</option>
+              ${getBucketOptions().map(b => `<option value="${b}">${fmtBucket(b)}</option>`).join('')}
+            </select>
+          </div>
+          <div class="fd-field">
+            <label class="edit-label">Kriteria Acct</label>
+            <select class="filter-select" id="kriteriaSelect" style="width:100%;">
+              <option value="ALL">Semua Kriteria Acct</option>
+              <option value="FLOW">FLOW</option>
+              <option value="STAY">STAY</option>
+              <option value="LUNAS">LUNAS</option>
+              <option value="BTC">BTC</option>
+            </select>
+          </div>
+          <div class="fd-field">
+            <label class="edit-label">Kendaraan</label>
+            <select class="filter-select" id="tipeSelect" style="width:100%;">
+              <option value="ALL">Semua Kendaraan</option>
+              <option value="MOTOR">Motor</option>
+              <option value="MOBIL">Mobil</option>
+            </select>
+          </div>
+          <div class="fd-field">
+            <label class="edit-label">Kecamatan</label>
+            <select class="filter-select" id="kecamatanSelect" style="width:100%;">
+              <option value="ALL">Semua Kecamatan</option>
+              ${[...new Set(DATA.map(r=>r['KECAMATAN']).filter(Boolean))].sort().map(k => `<option value="${k}">${k}</option>`).join('')}
+            </select>
+          </div>
+          <div class="fd-field">
+            <label class="edit-label">Status Ever</label>
+            <select class="filter-select" id="everSelect" style="width:100%;">
+              <option value="ALL">Semua Status Ever</option>
+              <option value="SUDAH EVER">Sudah Ever</option>
+              <option value="BELUM EVER">Belum Ever</option>
+            </select>
+          </div>
+          <div class="fd-field">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <label class="edit-label" style="margin:0;">Janji Bayar</label>
+              <div style="display:flex;gap:10px;">
+                <button type="button" class="ms-link-btn" id="janjiSelectAllBtn">Pilih semua</button>
+                <button type="button" class="ms-link-btn" id="janjiClearBtn">Bersihkan</button>
+              </div>
+            </div>
+            <div class="ms-grid" id="janjiGrid"></div>
           </div>
         </div>
       </div>
@@ -719,40 +766,51 @@ function buildLayout(){
   const janjiValues = [...new Set(DATA.map(r=>(r['JANJI BAYAR']||'').toString().trim()).filter(Boolean))].sort();
   const janjiGrid = document.getElementById('janjiGrid');
   janjiGrid.innerHTML = janjiValues.map(v => `<label class="ms-option"><input type="checkbox" value="${v}"> ${v}</label>`).join('') || '<div style="font-size:12px;color:var(--ink-soft);padding:4px;">Belum ada data</div>';
-  const janjiBtn = document.getElementById('janjiBtn');
-  const janjiBtnLabel = janjiBtn.querySelector('span');
-  const janjiPanel = document.getElementById('janjiPanel');
-  function updateJanjiBtnLabel(){
-    if(state.janjiList.length === 0) janjiBtnLabel.textContent = 'Semua Janji Bayar';
-    else if(state.janjiList.length === 1) janjiBtnLabel.textContent = 'Tgl ' + state.janjiList[0];
-    else janjiBtnLabel.textContent = state.janjiList.length + ' tanggal dipilih';
-  }
-  updateJanjiBtnLabel();
-  janjiBtn.addEventListener('click', (e) => { e.stopPropagation(); janjiPanel.classList.toggle('show'); });
   janjiGrid.querySelectorAll('input[type=checkbox]').forEach(cb => {
     cb.checked = state.janjiList.includes(cb.value);
     cb.addEventListener('change', () => {
       if(cb.checked) state.janjiList.push(cb.value);
       else state.janjiList = state.janjiList.filter(v => v!==cb.value);
-      updateJanjiBtnLabel();
+      updateFilterBadge();
       renderTable();
     });
   });
   document.getElementById('janjiSelectAllBtn').addEventListener('click', () => {
     state.janjiList = janjiValues.slice();
     janjiGrid.querySelectorAll('input[type=checkbox]').forEach(cb => cb.checked = true);
-    updateJanjiBtnLabel();
+    updateFilterBadge();
     renderTable();
   });
   document.getElementById('janjiClearBtn').addEventListener('click', () => {
     state.janjiList = [];
     janjiGrid.querySelectorAll('input[type=checkbox]').forEach(cb => cb.checked = false);
-    updateJanjiBtnLabel();
+    updateFilterBadge();
     renderTable();
   });
+
+  const filterTriggerBtn = document.getElementById('filterTriggerBtn');
+  const filterDrawerPanel = document.getElementById('filterDrawerPanel');
+  filterTriggerBtn.addEventListener('click', (e) => { e.stopPropagation(); filterDrawerPanel.classList.toggle('show'); });
   document.addEventListener('click', (e) => {
-    if(!document.getElementById('janjiMultiSelect').contains(e.target)) janjiPanel.classList.remove('show');
+    if(!document.getElementById('filterDrawer').contains(e.target)) filterDrawerPanel.classList.remove('show');
   });
+  ['bucketSelect','kriteriaSelect','tipeSelect','kecamatanSelect','everSelect'].forEach(id => {
+    document.getElementById(id).addEventListener('change', updateFilterBadge);
+  });
+  updateFilterBadge();
+}
+
+function updateFilterBadge(){
+  const badge = document.getElementById('filterBadge');
+  if(!badge) return;
+  let n = 0;
+  if(state.bucket!=='ALL') n++;
+  if(state.kriteria!=='ALL') n++;
+  if(state.tipe!=='ALL') n++;
+  if(state.kecamatan!=='ALL') n++;
+  if(state.ever!=='ALL') n++;
+  if(state.janjiList.length>0) n++;
+  if(n>0){ badge.style.display='inline-flex'; badge.textContent=n; } else { badge.style.display='none'; }
 }
 
 let VIEW_MODE = 'dashboard';
@@ -1018,32 +1076,49 @@ function buildNBQLayout(){
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4C6272" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input id="nbqSearchInput" type="text" placeholder="Cari nama konsumen, no kontrak, atau nopol…">
       </div>
-      <select class="filter-select" id="nbqBucketSelect">
-        <option value="ALL">Semua Bucket Awal</option>
-        ${getBucketOptions().map(b => `<option value="${b}">${fmtBucket(b)}</option>`).join('')}
-      </select>
-      <div class="multi-select" id="nbqNbqMultiSelect">
-        <button type="button" class="filter-select multi-select-btn" id="nbqNbqBtn"><span>Semua NBQ</span></button>
-        <div class="multi-select-panel" id="nbqNbqPanel">
-          <div class="ms-panel-title">Pilih NBQ (boleh lebih dari satu)</div>
-          <div class="ms-grid">
-            ${nbqValues.map(n => `<label class="ms-option"><input type="checkbox" value="${n}"> ${n} MOB</label>`).join('')}
+      <div class="filter-drawer" id="nbqFilterDrawer">
+        <button type="button" class="btn filter-trigger-btn" id="nbqFilterTriggerBtn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+          Filter <span class="filter-badge" id="nbqFilterBadge" style="display:none;">0</span>
+        </button>
+        <div class="filter-drawer-panel" id="nbqFilterDrawerPanel">
+          <div class="fd-header"><span>Filter</span></div>
+          <div class="fd-field">
+            <label class="edit-label">Bucket Awal</label>
+            <select class="filter-select" id="nbqBucketSelect" style="width:100%;">
+              <option value="ALL">Semua Bucket Awal</option>
+              ${getBucketOptions().map(b => `<option value="${b}">${fmtBucket(b)}</option>`).join('')}
+            </select>
           </div>
-          <div class="ms-panel-footer">
-            <button type="button" class="ms-link-btn" id="nbqSelectAllBtn">Pilih semua</button>
-            <button type="button" class="ms-link-btn" id="nbqClearBtn">Bersihkan</button>
+          <div class="fd-field">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <label class="edit-label" style="margin:0;">NBQ (boleh lebih dari satu)</label>
+              <div style="display:flex;gap:10px;">
+                <button type="button" class="ms-link-btn" id="nbqSelectAllBtn">Pilih semua</button>
+                <button type="button" class="ms-link-btn" id="nbqClearBtn">Bersihkan</button>
+              </div>
+            </div>
+            <div class="ms-grid">
+              ${nbqValues.map(n => `<label class="ms-option"><input type="checkbox" value="${n}"> ${n} MOB</label>`).join('')}
+            </div>
+          </div>
+          <div class="fd-field">
+            <label class="edit-label">Status NBQ</label>
+            <select class="filter-select" id="nbqStatusSelect" style="width:100%;">
+              <option value="ALL">Semua Status NBQ</option>
+              ${statusNbqValues.map(s => `<option value="${s}">${s}</option>`).join('')}
+            </select>
+          </div>
+          <div class="fd-field">
+            <label class="edit-label">Status Bayar NBQ</label>
+            <select class="filter-select" id="nbqBayarSelect" style="width:100%;">
+              <option value="ALL">Semua Status Bayar NBQ</option>
+              <option value="BAYAR">BAYAR</option>
+              <option value="BELUM BAYAR">BELUM BAYAR</option>
+            </select>
           </div>
         </div>
       </div>
-      <select class="filter-select" id="nbqStatusSelect">
-        <option value="ALL">Semua Status NBQ</option>
-        ${statusNbqValues.map(s => `<option value="${s}">${s}</option>`).join('')}
-      </select>
-      <select class="filter-select" id="nbqBayarSelect">
-        <option value="ALL">Semua Status Bayar NBQ</option>
-        <option value="BAYAR">BAYAR</option>
-        <option value="BELUM BAYAR">BELUM BAYAR</option>
-      </select>
       <button class="btn" id="nbqResetBtn">Reset filter</button>
     </div>
     <div class="count-note" id="nbqCountNote"></div>
@@ -1074,49 +1149,55 @@ function buildNBQLayout(){
     });
   });
   document.getElementById('nbqSearchInput').addEventListener('input', e => { nbqState.search = e.target.value; renderNBQTable(); });
-  document.getElementById('nbqBucketSelect').addEventListener('change', e => { nbqState.bucket = e.target.value; renderNBQTable(); });
-  const nbqBtn = document.getElementById('nbqNbqBtn');
-  const nbqBtnLabel = nbqBtn.querySelector('span');
-  const nbqPanel = document.getElementById('nbqNbqPanel');
-  function updateNbqBtnLabel(){
-    if(nbqState.nbqList.length === 0) nbqBtnLabel.textContent = 'Semua NBQ';
-    else if(nbqState.nbqList.length === 1) nbqBtnLabel.textContent = nbqState.nbqList[0] + ' MOB';
-    else nbqBtnLabel.textContent = nbqState.nbqList.length + ' MOB dipilih';
-  }
-  updateNbqBtnLabel();
-  nbqBtn.addEventListener('click', (e) => { e.stopPropagation(); nbqPanel.classList.toggle('show'); });
-  nbqPanel.querySelectorAll('input[type=checkbox]').forEach(cb => {
+  document.getElementById('nbqBucketSelect').addEventListener('change', e => { nbqState.bucket = e.target.value; updateNbqFilterBadge(); renderNBQTable(); });
+  const nbqDrawerPanel = document.getElementById('nbqFilterDrawerPanel');
+  nbqDrawerPanel.querySelectorAll('input[type=checkbox]').forEach(cb => {
     cb.checked = nbqState.nbqList.includes(parseInt(cb.value,10));
     cb.addEventListener('change', () => {
       const val = parseInt(cb.value,10);
       if(cb.checked) nbqState.nbqList.push(val);
       else nbqState.nbqList = nbqState.nbqList.filter(v => v!==val);
-      updateNbqBtnLabel();
+      updateNbqFilterBadge();
       renderNBQTable();
     });
   });
   document.getElementById('nbqSelectAllBtn').addEventListener('click', () => {
     nbqState.nbqList = nbqValues.slice();
-    nbqPanel.querySelectorAll('input[type=checkbox]').forEach(cb => cb.checked = true);
-    updateNbqBtnLabel();
+    nbqDrawerPanel.querySelectorAll('input[type=checkbox]').forEach(cb => cb.checked = true);
+    updateNbqFilterBadge();
     renderNBQTable();
   });
   document.getElementById('nbqClearBtn').addEventListener('click', () => {
     nbqState.nbqList = [];
-    nbqPanel.querySelectorAll('input[type=checkbox]').forEach(cb => cb.checked = false);
-    updateNbqBtnLabel();
+    nbqDrawerPanel.querySelectorAll('input[type=checkbox]').forEach(cb => cb.checked = false);
+    updateNbqFilterBadge();
     renderNBQTable();
   });
-  document.addEventListener('click', (e) => {
-    if(!document.getElementById('nbqNbqMultiSelect').contains(e.target)) nbqPanel.classList.remove('show');
-  });
-  document.getElementById('nbqStatusSelect').addEventListener('change', e => { nbqState.statusNbq = e.target.value; renderNBQTable(); });
-  document.getElementById('nbqBayarSelect').addEventListener('change', e => { nbqState.statusBayarNbq = e.target.value; renderNBQTable(); });
+  document.getElementById('nbqStatusSelect').addEventListener('change', e => { nbqState.statusNbq = e.target.value; updateNbqFilterBadge(); renderNBQTable(); });
+  document.getElementById('nbqBayarSelect').addEventListener('change', e => { nbqState.statusBayarNbq = e.target.value; updateNbqFilterBadge(); renderNBQTable(); });
   document.getElementById('nbqResetBtn').addEventListener('click', () => {
     nbqState = { search:'', bucket:'ALL', nbqList:[], statusNbq:'ALL', statusBayarNbq:'ALL', sortKey:'JATUH TEMPO', sortDir:1 };
     buildNBQLayout();
     renderNBQTable();
   });
+
+  const nbqFilterTriggerBtn = document.getElementById('nbqFilterTriggerBtn');
+  nbqFilterTriggerBtn.addEventListener('click', (e) => { e.stopPropagation(); nbqDrawerPanel.classList.toggle('show'); });
+  document.addEventListener('click', (e) => {
+    if(!document.getElementById('nbqFilterDrawer').contains(e.target)) nbqDrawerPanel.classList.remove('show');
+  });
+  updateNbqFilterBadge();
+}
+
+function updateNbqFilterBadge(){
+  const badge = document.getElementById('nbqFilterBadge');
+  if(!badge) return;
+  let n = 0;
+  if(nbqState.bucket!=='ALL') n++;
+  if(nbqState.nbqList.length>0) n++;
+  if(nbqState.statusNbq!=='ALL') n++;
+  if(nbqState.statusBayarNbq!=='ALL') n++;
+  if(n>0){ badge.style.display='inline-flex'; badge.textContent=n; } else { badge.style.display='none'; }
 }
 
 function nbqStatusStat_(rows){
@@ -1183,10 +1264,10 @@ function renderNBQChips(){
   const box = document.getElementById('nbqActiveChips');
   if(!box) return;
   const chips = [];
-  if(nbqState.bucket !== 'ALL') chips.push({label:'Bucket', value:fmtBucket(nbqState.bucket), clear:() => { nbqState.bucket='ALL'; document.getElementById('nbqBucketSelect').value='ALL'; renderNBQTable(); }});
+  if(nbqState.bucket !== 'ALL') chips.push({label:'Bucket', value:fmtBucket(nbqState.bucket), clear:() => { nbqState.bucket='ALL'; document.getElementById('nbqBucketSelect').value='ALL'; updateNbqFilterBadge(); renderNBQTable(); }});
   if(nbqState.nbqList.length > 0) chips.push({label:'NBQ', value:nbqState.nbqList.map(n=>n+' MOB').join(', '), clear:() => { nbqState.nbqList=[]; buildNBQLayout(); renderNBQTable(); }});
-  if(nbqState.statusNbq !== 'ALL') chips.push({label:'Status NBQ', value:nbqState.statusNbq, clear:() => { nbqState.statusNbq='ALL'; document.getElementById('nbqStatusSelect').value='ALL'; renderNBQTable(); }});
-  if(nbqState.statusBayarNbq !== 'ALL') chips.push({label:'Status Bayar', value:nbqState.statusBayarNbq, clear:() => { nbqState.statusBayarNbq='ALL'; document.getElementById('nbqBayarSelect').value='ALL'; renderNBQTable(); }});
+  if(nbqState.statusNbq !== 'ALL') chips.push({label:'Status NBQ', value:nbqState.statusNbq, clear:() => { nbqState.statusNbq='ALL'; document.getElementById('nbqStatusSelect').value='ALL'; updateNbqFilterBadge(); renderNBQTable(); }});
+  if(nbqState.statusBayarNbq !== 'ALL') chips.push({label:'Status Bayar', value:nbqState.statusBayarNbq, clear:() => { nbqState.statusBayarNbq='ALL'; document.getElementById('nbqBayarSelect').value='ALL'; updateNbqFilterBadge(); renderNBQTable(); }});
   if(nbqState.search.trim()) chips.push({label:'Cari', value:nbqState.search, clear:() => { nbqState.search=''; document.getElementById('nbqSearchInput').value=''; renderNBQTable(); }});
 
   if(chips.length === 0){ box.style.display='none'; box.innerHTML=''; return; }
@@ -1282,6 +1363,7 @@ function renderBucketBar(){
   const total = present.reduce((s,b) => s + bucketCounts[b], 0) || 1;
   const bucketSelect = document.getElementById('bucketSelect');
   if(bucketSelect) bucketSelect.value = state.bucket;
+  updateFilterBadge();
   const bar = document.getElementById('bucketBar'); const legend = document.getElementById('bucketLegend');
   bar.innerHTML=''; legend.innerHTML='';
   present.forEach(b => {
@@ -1346,10 +1428,10 @@ function renderActiveChips(){
   const chips = [];
   if(state.co !== 'ALL') chips.push({label:'CO', value:(CO_META[state.co]||{}).short || state.co, clear:() => { state.co='ALL'; render(); }});
   if(state.bucket !== 'ALL') chips.push({label:'Bucket', value:fmtBucket(state.bucket), clear:() => { state.bucket='ALL'; const s=document.getElementById('bucketSelect'); if(s)s.value='ALL'; render(); }});
-  if(state.kriteria !== 'ALL') chips.push({label:'Kriteria', value:state.kriteria, clear:() => { state.kriteria='ALL'; const s=document.getElementById('kriteriaSelect'); if(s)s.value='ALL'; renderTable(); }});
-  if(state.tipe !== 'ALL') chips.push({label:'Kendaraan', value:state.tipe, clear:() => { state.tipe='ALL'; const s=document.getElementById('tipeSelect'); if(s)s.value='ALL'; renderTable(); }});
-  if(state.kecamatan !== 'ALL') chips.push({label:'Kecamatan', value:state.kecamatan, clear:() => { state.kecamatan='ALL'; const s=document.getElementById('kecamatanSelect'); if(s)s.value='ALL'; renderTable(); }});
-  if(state.ever !== 'ALL') chips.push({label:'Status Ever', value:state.ever, clear:() => { state.ever='ALL'; const s=document.getElementById('everSelect'); if(s)s.value='ALL'; renderTable(); }});
+  if(state.kriteria !== 'ALL') chips.push({label:'Kriteria', value:state.kriteria, clear:() => { state.kriteria='ALL'; const s=document.getElementById('kriteriaSelect'); if(s)s.value='ALL'; updateFilterBadge(); renderTable(); }});
+  if(state.tipe !== 'ALL') chips.push({label:'Kendaraan', value:state.tipe, clear:() => { state.tipe='ALL'; const s=document.getElementById('tipeSelect'); if(s)s.value='ALL'; updateFilterBadge(); renderTable(); }});
+  if(state.kecamatan !== 'ALL') chips.push({label:'Kecamatan', value:state.kecamatan, clear:() => { state.kecamatan='ALL'; const s=document.getElementById('kecamatanSelect'); if(s)s.value='ALL'; updateFilterBadge(); renderTable(); }});
+  if(state.ever !== 'ALL') chips.push({label:'Status Ever', value:state.ever, clear:() => { state.ever='ALL'; const s=document.getElementById('everSelect'); if(s)s.value='ALL'; updateFilterBadge(); renderTable(); }});
   if(state.janjiList.length > 0) chips.push({label:'Janji Bayar', value:state.janjiList.join(', '), clear:() => { state.janjiList=[]; buildLayout(); render(); }});
   if(state.search.trim()) chips.push({label:'Cari', value:state.search, clear:() => { state.search=''; const i=document.getElementById('searchInput'); if(i)i.value=''; renderTable(); }});
 
