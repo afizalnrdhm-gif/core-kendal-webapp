@@ -367,6 +367,10 @@
         </div>
       </div>
       <nav class="sidebar-nav">
+        <button class="nav-item" data-view="ringkasan" id="navRingkasan" style="display:none;">
+          <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+          <span>Dashboard</span>
+        </button>
         <button class="nav-item active" data-view="dashboard" id="navDashboard">
           <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="20" x2="6" y2="12"/><line x1="12" y1="20" x2="12" y2="6"/><line x1="18" y1="20" x2="18" y2="14"/></svg>
           <span>Beban Awal</span>
@@ -489,6 +493,7 @@ function doLogout() {
   document.getElementById('loginScreen').style.display = 'flex';
 }
 document.getElementById('logoutBtn').addEventListener('click', doLogout);
+document.getElementById('navRingkasan').addEventListener('click', () => switchView('ringkasan'));
 document.getElementById('navDashboard').addEventListener('click', () => switchView('dashboard'));
 document.getElementById('navNBQ').addEventListener('click', () => switchView('nbq'));
 document.getElementById('navFEEver').addEventListener('click', () => switchView('feever'));
@@ -544,6 +549,8 @@ function onDataLoaded(res){
     '<span class="badge">' + (IS_ADMIN ? 'ADMIN' : 'CO') + '</span>';
 
   const isMR = ROLE_INFO && ROLE_INFO.role === 'MR';
+  const navRingkasan = document.getElementById('navRingkasan');
+  navRingkasan.style.display = IS_ADMIN ? 'flex' : 'none';
   const navNBQ = document.getElementById('navNBQ');
   const navFEEver = document.getElementById('navFEEver');
   if(isMR){
@@ -816,7 +823,7 @@ function updateFilterBadge(){
 let VIEW_MODE = 'dashboard';
 let INSENTIF_DATA = null;
 
-const VIEW_TITLES = { dashboard: 'Beban Awal', nbq: 'NBQ', feever: 'FE Ever', insentif: 'Insentif' };
+const VIEW_TITLES = { ringkasan: 'Dashboard', dashboard: 'Beban Awal', nbq: 'NBQ', feever: 'FE Ever', insentif: 'Insentif' };
 
 function triggerFadeIn(){
   const el = document.getElementById('wrap');
@@ -829,6 +836,7 @@ function triggerFadeIn(){
 function switchView(view){
   if(view === VIEW_MODE){ closeSidebarDrawer(); return; }
   VIEW_MODE = view;
+  document.getElementById('navRingkasan').classList.toggle('active', view === 'ringkasan');
   document.getElementById('navDashboard').classList.toggle('active', view === 'dashboard');
   document.getElementById('navNBQ').classList.toggle('active', view === 'nbq');
   document.getElementById('navFEEver').classList.toggle('active', view === 'feever');
@@ -836,7 +844,9 @@ function switchView(view){
   document.getElementById('mobilePageTitle').textContent = VIEW_TITLES[view] || '';
   closeSidebarDrawer();
 
-  if(view === 'dashboard'){
+  if(view === 'ringkasan'){
+    if(RINGKASAN_DATA){ renderRingkasanView(); triggerFadeIn(); } else { loadRingkasan(); }
+  } else if(view === 'dashboard'){
     buildLayout();
     render();
     triggerFadeIn();
@@ -1038,6 +1048,49 @@ function renderFEEverTable(){
     </tr>`;
   }).join('');
   tbody.querySelectorAll('tr[data-kontrak]').forEach(tr => tr.onclick = () => openPanel(tr.getAttribute('data-kontrak')));
+}
+
+// ============================================================
+// DASHBOARD (Ringkasan Eksekutif) — khusus Admin
+// ============================================================
+let RINGKASAN_DATA = null;
+
+function loadRingkasan(){
+  document.getElementById('wrap').innerHTML = `<div class="skeleton-row"><div class="skel"></div><div class="skel"></div></div><div class="skel tall"></div>`;
+  fetch('/api/dashboard', { headers: { Authorization: 'Bearer ' + ID_TOKEN } })
+    .then(r => r.json().then(body => ({ ok: r.ok, body })))
+    .then(({ok, body}) => {
+      if(!ok){ document.getElementById('wrap').innerHTML = '<div class="state-box error"><div class="err-icon">⚠</div>'+(body.error||'Gagal memuat dashboard.')+'<br><br><button class="btn" onclick="loadRingkasan()">Coba lagi</button></div>'; return; }
+      RINGKASAN_DATA = body;
+      renderRingkasanView();
+      triggerFadeIn();
+    })
+    .catch(err => { document.getElementById('wrap').innerHTML = '<div class="state-box error"><div class="err-icon">⚠</div>'+err.message+'</div>'; });
+}
+
+function ringkasanTable(title, rows, showEnrRow){
+  return `
+  <div class="ins-section">
+    <h2>${title}</h2>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th style="cursor:default;">Parameter</th><th class="num" style="cursor:default;">Amount</th><th class="num" style="cursor:default;">Percent</th></tr></thead>
+        <tbody>
+          ${rows.map(r => `<tr><td>${r.label}</td><td class="num mono">${fmtRupiah(r.amount)}</td><td class="num mono">${r.pct===null?'-':r.pct.toFixed(2)+'%'}</td></tr>`).join('')}
+          ${showEnrRow ? `<tr style="font-weight:700;background:var(--surface-alt);"><td>ENR</td><td class="num mono">${fmtRupiah(showEnrRow)}</td><td class="num mono">100.00%</td></tr>` : ''}
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+function renderRingkasanView(){
+  const d = RINGKASAN_DATA;
+  if(!d) return;
+  const html =
+    ringkasanTable('Sebaran per Bucket (Kondisi Aktual)', d.perBucket, d.enr) +
+    ringkasanTable('Analisis Kumulatif & Flow', [...d.cumulative, ...d.flowBtc.map(r=>({label:r.label, amount:r.amount, pct:r.pct}))], null);
+  document.getElementById('wrap').innerHTML = html;
 }
 
 // ============================================================
