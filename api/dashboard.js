@@ -153,9 +153,10 @@ module.exports = async (req, res) => {
       ];
 
       const bigCust = BIGCUST_BUCKETS.map(b => {
-        const rows = masterRows.filter(m => passFleet(m) && m['BUCKET UPDATE'] === b && sipokOf(m) > BIGCUST_THRESHOLD);
-        const sudahRows = rows.filter(isSudahBayar);
-        const belumRows = rows.filter(m => !isSudahBayar(m));
+        const rows = masterRows.filter(m => passFleet(m) && m['BUCKET AWAL'] === b && sipokOf(m) > BIGCUST_THRESHOLD);
+        const isBelum = m => (m['KRITERIA ACCT'] || '').toString().trim().toUpperCase() === 'FLOW';
+        const belumRows = rows.filter(isBelum);
+        const sudahRows = rows.filter(m => !isBelum(m));
         const sum = arr => arr.reduce((s, m) => s + sipokOf(m), 0);
         const perCO = {};
         belumRows.forEach(m => {
@@ -164,12 +165,17 @@ module.exports = async (req, res) => {
           perCO[co].count += 1;
           perCO[co].amount += sipokOf(m);
         });
+        const detailBelum = belumRows
+          .slice().sort((a, b2) => sipokOf(b2) - sipokOf(a))
+          .slice(0, 10)
+          .map(m => ({ nama: m['NAMA KONSUMEN'] || '-', noKontrak: m['NO KONTRAK'] || '-', co: m['CO ALL'] || '-', sipok: sipokOf(m) }));
         return {
           label: BUCKET_LABEL[b],
           total: { count: rows.length, amount: sum(rows) },
           sudah: { count: sudahRows.length, amount: sum(sudahRows) },
           belum: { count: belumRows.length, amount: sum(belumRows) },
-          belumPerCO: Object.keys(perCO).map(co => ({ co, count: perCO[co].count, amount: perCO[co].amount })).sort((a, b) => b.amount - a.amount)
+          belumPerCO: Object.keys(perCO).map(co => ({ co, count: perCO[co].count, amount: perCO[co].amount })).sort((a, b) => b.amount - a.amount),
+          detailBelum
         };
       });
 
