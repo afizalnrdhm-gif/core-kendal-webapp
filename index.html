@@ -68,8 +68,10 @@
     display:flex;align-items:center;gap:10px;width:100%;text-align:left;
     padding:11px 18px;background:none;border:none;border-left:3px solid transparent;
     color:#A9BFD1;font-size:13.5px;cursor:pointer;font-family:var(--sans);
-    transition:background .15s ease, color .15s ease;
+    transition:background .15s ease, color .15s ease, opacity .3s ease, max-height .3s ease, padding .3s ease;
+    max-height:44px;opacity:1;overflow:hidden;
   }
+  .nav-item.nav-hidden{max-height:0;opacity:0;padding-top:0;padding-bottom:0;pointer-events:none;}
   .nav-icon{flex:none;opacity:0.85;}
   .nav-item.active .nav-icon{opacity:1;}
   .nav-item:hover{background:rgba(255,255,255,0.06);color:#EAF0F4;}
@@ -255,6 +257,12 @@
   .bigcust-co-list{background:var(--surface-alt);border-radius:7px;padding:7px 10px;}
   .bigcust-co-row{display:flex;justify-content:space-between;font-size:10.5px;padding:2px 0;}
   .bigcust-co-row .n{color:var(--ink-soft);}
+  .bigcust-detail-list{margin-top:8px;border-top:1px dashed var(--line);padding-top:8px;}
+  .bigcust-detail-row{display:flex;justify-content:space-between;gap:8px;font-size:10.5px;padding:3px 0;}
+  .bigcust-detail-name{flex:1;color:var(--ink);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .bigcust-detail-co{color:var(--ink-soft);flex:none;}
+  .bigcust-detail-sipok{font-family:var(--mono);flex:none;color:var(--bad);}
+  .bigcust-detail-more{font-size:10px;color:var(--ink-soft);text-align:center;padding-top:4px;font-style:italic;}
 
   .update-banner{
     position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
@@ -438,7 +446,7 @@
         </div>
       </div>
       <nav class="sidebar-nav">
-        <button class="nav-item" data-view="ringkasan" id="navRingkasan" style="display:none;">
+        <button class="nav-item nav-hidden" data-view="ringkasan" id="navRingkasan">
           <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
           <span>Dashboard</span>
         </button>
@@ -450,7 +458,7 @@
           <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
           <span>NBQ</span>
         </button>
-        <button class="nav-item" data-view="feever" id="navFEEver" style="display:none;">
+        <button class="nav-item nav-hidden" data-view="feever" id="navFEEver">
           <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3l4 4-4 4"/><path d="M21 7H9a4 4 0 0 0-4 4v1"/><path d="M7 21l-4-4 4-4"/><path d="M3 17h12a4 4 0 0 0 4-4v-1"/></svg>
           <span>FE Ever</span>
         </button>
@@ -684,15 +692,15 @@ function onDataLoaded(res){
 
   const isMR = ROLE_INFO && ROLE_INFO.role === 'MR';
   const navRingkasan = document.getElementById('navRingkasan');
-  navRingkasan.style.display = IS_ADMIN ? 'flex' : 'none';
+  navRingkasan.classList.toggle('nav-hidden', !IS_ADMIN);
   const navNBQ = document.getElementById('navNBQ');
   const navFEEver = document.getElementById('navFEEver');
   if(isMR){
-    navNBQ.style.display = 'none';
-    navFEEver.style.display = 'flex';
+    navNBQ.classList.add('nav-hidden');
+    navFEEver.classList.remove('nav-hidden');
   } else {
-    navNBQ.style.display = 'flex';
-    navFEEver.style.display = IS_ADMIN ? 'flex' : 'none';
+    navNBQ.classList.remove('nav-hidden');
+    navFEEver.classList.toggle('nav-hidden', !IS_ADMIN);
   }
 
   if(!hasInitializedApp){
@@ -1259,6 +1267,16 @@ function bigCustSection(bigCust){
         ${b.belumPerCO.length ? `
         <div class="bigcust-co-list">
           ${b.belumPerCO.map(c => `<div class="bigcust-co-row"><span>${(CO_META[c.co]||{short:c.co}).short}</span><span class="n">${c.count} akun · ${fmtRupiah(c.amount)}</span></div>`).join('')}
+        </div>` : ''}
+        ${b.detailBelum.length ? `
+        <div class="bigcust-detail-list">
+          ${b.detailBelum.map(d => `
+            <div class="bigcust-detail-row">
+              <span class="bigcust-detail-name">${d.nama}</span>
+              <span class="bigcust-detail-co">${(CO_META[d.co]||{short:d.co}).short}</span>
+              <span class="bigcust-detail-sipok">${fmtRupiah(d.sipok)}</span>
+            </div>`).join('')}
+          ${b.belum.count > 10 ? `<div class="bigcust-detail-more">+${b.belum.count - 10} kontrak lainnya</div>` : ''}
         </div>` : ''}
       </div>`).join('')}
   </div>`;
