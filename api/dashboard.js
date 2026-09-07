@@ -65,6 +65,12 @@ const BUCKET_LABEL = {
 };
 function sipokOf(m){ return typeof m['SIPOK'] === 'number' ? m['SIPOK'] : 0; }
 function sisaOf(k){ return typeof k['SISA PIUTANG'] === 'number' ? k['SISA PIUTANG'] : 0; }
+function isSudahBayar(m){
+  const st = (m['STATUS BAYAR'] || '').toString().trim().toUpperCase();
+  return st.includes('SUDAH') || st.includes('LUNAS');
+}
+const BIGCUST_THRESHOLD = 100000000;
+const BIGCUST_BUCKETS = ['NOOD', 'P001_030', 'P031_060'];
 
 module.exports = async (req, res) => {
   try {
@@ -146,7 +152,28 @@ module.exports = async (req, res) => {
         { label: 'Btc 31-60', ...flowStat('P031_060', 'NOOD') }
       ];
 
-      return { enr, enrCount, perBucket, cumulative, flowBtc };
+      const bigCust = BIGCUST_BUCKETS.map(b => {
+        const rows = masterRows.filter(m => passFleet(m) && m['BUCKET UPDATE'] === b && sipokOf(m) > BIGCUST_THRESHOLD);
+        const sudahRows = rows.filter(isSudahBayar);
+        const belumRows = rows.filter(m => !isSudahBayar(m));
+        const sum = arr => arr.reduce((s, m) => s + sipokOf(m), 0);
+        const perCO = {};
+        belumRows.forEach(m => {
+          const co = m['CO ALL'] || '(Tidak diketahui)';
+          if (!perCO[co]) perCO[co] = { count: 0, amount: 0 };
+          perCO[co].count += 1;
+          perCO[co].amount += sipokOf(m);
+        });
+        return {
+          label: BUCKET_LABEL[b],
+          total: { count: rows.length, amount: sum(rows) },
+          sudah: { count: sudahRows.length, amount: sum(sudahRows) },
+          belum: { count: belumRows.length, amount: sum(belumRows) },
+          belumPerCO: Object.keys(perCO).map(co => ({ co, count: perCO[co].count, amount: perCO[co].amount })).sort((a, b) => b.amount - a.amount)
+        };
+      });
+
+      return { enr, enrCount, perBucket, cumulative, flowBtc, bigCust };
     }
 
     res.status(200).json({
