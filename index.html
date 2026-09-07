@@ -171,6 +171,13 @@
   .search-box input:focus{outline:none;border-color:var(--navy-lighter);}
   .search-box svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);opacity:0.45;}
   select.filter-select{font-size:12.5px;color:var(--ink);background:var(--surface);border:1px solid var(--line);padding:8px 10px;border-radius:7px;font-family:var(--sans);}
+  .multi-select{position:relative;display:inline-block;}
+  .multi-select-btn{cursor:pointer;text-align:left;min-width:130px;}
+  .multi-select-panel{display:none;position:absolute;top:calc(100% + 5px);left:0;background:var(--surface);border:1px solid var(--line);border-radius:8px;box-shadow:0 10px 24px rgba(20,30,40,0.14);padding:8px;z-index:15;min-width:170px;max-height:230px;overflow-y:auto;}
+  .multi-select-panel.show{display:block;}
+  .ms-option{display:flex;align-items:center;gap:8px;font-size:12.5px;padding:5px 6px;border-radius:5px;cursor:pointer;color:var(--ink);}
+  .ms-option:hover{background:var(--surface-alt);}
+  .ms-option input{cursor:pointer;}
   .btn{font-size:12.5px;color:var(--navy);background:var(--surface);border:1px solid var(--line);padding:8px 13px;border-radius:7px;cursor:pointer;white-space:nowrap;}
   .btn.primary{background:var(--navy);color:#fff;border-color:var(--navy);}
   .count-note{font-size:12px;color:var(--ink-soft);margin:0 0 10px 2px;}
@@ -347,6 +354,10 @@
     <div class="pk" id="panelCO"></div>
     <h2 id="panelName"></h2>
     <div class="kontrak" id="panelKontrak"></div>
+    <a href="#" target="_blank" rel="noopener" id="panelWaBtn" style="display:none;margin-top:10px;align-items:center;gap:6px;background:#25D366;color:#fff;font-size:12.5px;font-weight:600;padding:7px 14px;border-radius:20px;text-decoration:none;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2c-5.46 0-9.9 4.44-9.9 9.9 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38a9.9 9.9 0 0 0 4.74 1.21h.01c5.46 0 9.9-4.44 9.9-9.9s-4.44-9.9-9.91-9.9zm0 18.1a8.2 8.2 0 0 1-4.18-1.14l-.3-.18-3.12.82.83-3.04-.2-.31a8.2 8.2 0 1 1 6.97 3.85z"/></svg>
+      Chat WhatsApp
+    </a>
   </div>
   <div class="panel-body" id="panelBody"></div>
 </div>
@@ -378,7 +389,7 @@ let ROLE_INFO = null;
 let IS_ADMIN = false;
 let USER_EMAIL = '';
 let ID_TOKEN = null;
-let state = { search:'', co:'ALL', bucket:'ALL', kriteria:'ALL', tipe:'ALL', sortKey:null, sortDir:1, tab:'own' };
+let state = { search:'', co:'ALL', bucket:'ALL', kriteria:'ALL', tipe:'ALL', kecamatan:'ALL', ever:'ALL', sortKey:'JATUH TEMPO', sortDir:1, tab:'own' };
 
 function fmtBucket(b){ return (b||'-').replace('_','-'); }
 function fmtRupiah(n){ if(typeof n !== 'number') return '-'; return 'Rp' + Math.round(n).toLocaleString('id-ID'); }
@@ -502,11 +513,21 @@ function bucketStatusStat_(records, bucket){
   };
 }
 
+function everStat_(records, bucket){
+  const rows = records.filter(r => r['BUCKET AWAL'] === bucket && r['STATUS EVER']);
+  const sudah = rows.filter(r => r['STATUS EVER'] === 'SUDAH EVER');
+  const belum = rows.filter(r => r['STATUS EVER'] === 'BELUM EVER');
+  const sum = arr => arr.reduce((s,r)=> s + (typeof r['SIPOK']==='number' ? r['SIPOK'] : 0), 0);
+  return { sudah: { count: sudah.length, sipok: sum(sudah) }, belum: { count: belum.length, sipok: sum(belum) } };
+}
+
 function renderStatusCards(containerId, records, buckets){
   const box = document.getElementById(containerId);
   if(!box) return;
   box.innerHTML = buckets.map(b => {
     const s = bucketStatusStat_(records, b);
+    const showEver = (b === 'P001_030' || b === 'P031_060');
+    const e = showEver ? everStat_(records, b) : null;
     return `
     <div class="status-card ${state.bucket===b && state.tab==='own' ? 'active':''}" data-bucket="${b}">
       <div class="bhead">
@@ -515,6 +536,9 @@ function renderStatusCards(containerId, records, buckets){
       </div>
       <div class="srow"><span class="slabel"><span class="dot good"></span>Sudah Bayar</span><span class="sval">${s.sudah.count} · ${fmtRupiah(s.sudah.sipok)}</span></div>
       <div class="srow"><span class="slabel"><span class="dot bad"></span>Belum Bayar</span><span class="sval">${s.belum.count} · ${fmtRupiah(s.belum.sipok)}</span></div>
+      ${showEver ? `
+      <div class="srow"><span class="slabel"><span class="dot bad"></span>Sudah Ever</span><span class="sval">${e.sudah.count} · ${fmtRupiah(e.sudah.sipok)}</span></div>
+      <div class="srow"><span class="slabel"><span class="dot good"></span>Belum Ever</span><span class="sval">${e.belum.count} · ${fmtRupiah(e.belum.sipok)}</span></div>` : ''}
     </div>`;
   }).join('');
   box.querySelectorAll('.status-card').forEach(card => {
@@ -585,6 +609,15 @@ function buildLayout(){
         <option value="MOTOR">Motor</option>
         <option value="MOBIL">Mobil</option>
       </select>
+      <select class="filter-select" id="kecamatanSelect">
+        <option value="ALL">Semua Kecamatan</option>
+        ${[...new Set(DATA.map(r=>r['KECAMATAN']).filter(Boolean))].sort().map(k => `<option value="${k}">${k}</option>`).join('')}
+      </select>
+      <select class="filter-select" id="everSelect">
+        <option value="ALL">Semua Status Ever</option>
+        <option value="SUDAH EVER">Sudah Ever</option>
+        <option value="BELUM EVER">Belum Ever</option>
+      </select>
       <button class="btn" id="resetBtn">Reset filter</button>
       <button class="btn primary" id="refreshBtn">↻ Muat ulang</button>
     </div>
@@ -602,6 +635,7 @@ function buildLayout(){
             <th data-key="SIPOK" class="num">Sisa Piutang</th>
             <th data-key="ANGSURAN" class="num">Angsuran</th>
             <th data-key="DPD" class="num">DPD</th>
+            <th data-key="STATUS EVER">Status Ever</th>
             <th data-key="JATUH TEMPO">Jatuh Tempo</th>
           </tr>
         </thead>
@@ -622,13 +656,16 @@ function buildLayout(){
   document.getElementById('searchInput').addEventListener('input', e => { state.search = e.target.value; renderTable(); });
   document.getElementById('resetBtn').addEventListener('click', () => {
     const keepTab = state.tab;
-    state = { search:'', co:'ALL', bucket:'ALL', kriteria:'ALL', tipe:'ALL', sortKey:null, sortDir:1, tab:keepTab };
+    state = { search:'', co:'ALL', bucket:'ALL', kriteria:'ALL', tipe:'ALL', kecamatan:'ALL', ever:'ALL', sortKey:'JATUH TEMPO', sortDir:1, tab:keepTab };
+    buildLayout();
     render();
   });
   document.getElementById('refreshBtn').addEventListener('click', loadData);
   document.getElementById('bucketSelect').addEventListener('change', e => { state.bucket = e.target.value; render(); });
   document.getElementById('kriteriaSelect').addEventListener('change', e => { state.kriteria = e.target.value; renderTable(); });
   document.getElementById('tipeSelect').addEventListener('change', e => { state.tipe = e.target.value; renderTable(); });
+  document.getElementById('kecamatanSelect').addEventListener('change', e => { state.kecamatan = e.target.value; renderTable(); });
+  document.getElementById('everSelect').addEventListener('change', e => { state.ever = e.target.value; renderTable(); });
 }
 
 let VIEW_MODE = 'dashboard';
@@ -754,7 +791,7 @@ function renderInsentifView(){
 // ============================================================
 // FE EVER (Limpahan dari 1-30, OD > 31) — khusus MR & Admin
 // ============================================================
-let feeverState = { search:'', sortKey:null, sortDir:1 };
+let feeverState = { search:'', sortKey:'JATUH TEMPO', sortDir:1 };
 
 function buildFEEverLayout(){
   const stat = { count: ESCALATIONS.length, sipok: ESCALATIONS.reduce((s,r)=> s + (typeof r['SIPOK']==='number' ? r['SIPOK'] : 0), 0) };
@@ -805,7 +842,7 @@ function buildFEEverLayout(){
   });
   document.getElementById('feeverSearchInput').addEventListener('input', e => { feeverState.search = e.target.value; renderFEEverTable(); });
   document.getElementById('feeverResetBtn').addEventListener('click', () => {
-    feeverState = { search:'', sortKey:null, sortDir:1 };
+    feeverState = { search:'', sortKey:'JATUH TEMPO', sortDir:1 };
     document.getElementById('feeverSearchInput').value = '';
     renderFEEverTable();
   });
@@ -861,7 +898,7 @@ function renderFEEverTable(){
 // ============================================================
 // NBQ (New Booking Quality)
 // ============================================================
-let nbqState = { search:'', bucket:'ALL', nbq:'ALL', statusNbq:'ALL', statusBayarNbq:'ALL', sortKey:null, sortDir:1 };
+let nbqState = { search:'', bucket:'ALL', nbqList:[], statusNbq:'ALL', statusBayarNbq:'ALL', sortKey:'JATUH TEMPO', sortDir:1 };
 
 function nbqNum(rec){
   const v = (rec['NBQ']||'').toString().trim();
@@ -898,10 +935,12 @@ function buildNBQLayout(){
         <option value="ALL">Semua Bucket Awal</option>
         ${getBucketOptions().map(b => `<option value="${b}">${fmtBucket(b)}</option>`).join('')}
       </select>
-      <select class="filter-select" id="nbqNbqSelect">
-        <option value="ALL">Semua NBQ</option>
-        ${nbqValues.map(n => `<option value="${n}">${n} MOB</option>`).join('')}
-      </select>
+      <div class="multi-select" id="nbqNbqMultiSelect">
+        <button type="button" class="filter-select multi-select-btn" id="nbqNbqBtn">Semua NBQ</button>
+        <div class="multi-select-panel" id="nbqNbqPanel">
+          ${nbqValues.map(n => `<label class="ms-option"><input type="checkbox" value="${n}"> ${n} MOB</label>`).join('')}
+        </div>
+      </div>
       <select class="filter-select" id="nbqStatusSelect">
         <option value="ALL">Semua Status NBQ</option>
         ${statusNbqValues.map(s => `<option value="${s}">${s}</option>`).join('')}
@@ -942,16 +981,33 @@ function buildNBQLayout(){
   });
   document.getElementById('nbqSearchInput').addEventListener('input', e => { nbqState.search = e.target.value; renderNBQTable(); });
   document.getElementById('nbqBucketSelect').addEventListener('change', e => { nbqState.bucket = e.target.value; renderNBQTable(); });
-  document.getElementById('nbqNbqSelect').addEventListener('change', e => { nbqState.nbq = e.target.value; renderNBQTable(); });
+  const nbqBtn = document.getElementById('nbqNbqBtn');
+  const nbqPanel = document.getElementById('nbqNbqPanel');
+  function updateNbqBtnLabel(){
+    if(nbqState.nbqList.length === 0) nbqBtn.textContent = 'Semua NBQ';
+    else if(nbqState.nbqList.length === 1) nbqBtn.textContent = nbqState.nbqList[0] + ' MOB';
+    else nbqBtn.textContent = nbqState.nbqList.length + ' MOB dipilih';
+  }
+  updateNbqBtnLabel();
+  nbqBtn.addEventListener('click', (e) => { e.stopPropagation(); nbqPanel.classList.toggle('show'); });
+  nbqPanel.querySelectorAll('input[type=checkbox]').forEach(cb => {
+    cb.checked = nbqState.nbqList.includes(parseInt(cb.value,10));
+    cb.addEventListener('change', () => {
+      const val = parseInt(cb.value,10);
+      if(cb.checked) nbqState.nbqList.push(val);
+      else nbqState.nbqList = nbqState.nbqList.filter(v => v!==val);
+      updateNbqBtnLabel();
+      renderNBQTable();
+    });
+  });
+  document.addEventListener('click', (e) => {
+    if(!document.getElementById('nbqNbqMultiSelect').contains(e.target)) nbqPanel.classList.remove('show');
+  });
   document.getElementById('nbqStatusSelect').addEventListener('change', e => { nbqState.statusNbq = e.target.value; renderNBQTable(); });
   document.getElementById('nbqBayarSelect').addEventListener('change', e => { nbqState.statusBayarNbq = e.target.value; renderNBQTable(); });
   document.getElementById('nbqResetBtn').addEventListener('click', () => {
-    nbqState = { search:'', bucket:'ALL', nbq:'ALL', statusNbq:'ALL', statusBayarNbq:'ALL', sortKey:null, sortDir:1 };
-    document.getElementById('nbqSearchInput').value = '';
-    document.getElementById('nbqBucketSelect').value = 'ALL';
-    document.getElementById('nbqNbqSelect').value = 'ALL';
-    document.getElementById('nbqStatusSelect').value = 'ALL';
-    document.getElementById('nbqBayarSelect').value = 'ALL';
+    nbqState = { search:'', bucket:'ALL', nbqList:[], statusNbq:'ALL', statusBayarNbq:'ALL', sortKey:'JATUH TEMPO', sortDir:1 };
+    buildNBQLayout();
     renderNBQTable();
   });
 }
@@ -998,7 +1054,7 @@ function renderNBQ(){
 function getNBQFiltered(){
   let rows = nbqPopulasi();
   if(nbqState.bucket!=='ALL') rows = rows.filter(r => r['BUCKET AWAL']===nbqState.bucket);
-  if(nbqState.nbq!=='ALL') rows = rows.filter(r => nbqNum(r)===parseInt(nbqState.nbq,10));
+  if(nbqState.nbqList.length > 0) rows = rows.filter(r => nbqState.nbqList.includes(nbqNum(r)));
   if(nbqState.statusNbq!=='ALL') rows = rows.filter(r => r['STATUS NBQ']===nbqState.statusNbq);
   if(nbqState.statusBayarNbq!=='ALL') rows = rows.filter(r => (r['STATUS BAYAR NBQ']||'').toString().trim().toUpperCase()===nbqState.statusBayarNbq);
   if(nbqState.search.trim()){
@@ -1021,7 +1077,7 @@ function renderNBQChips(){
   if(!box) return;
   const chips = [];
   if(nbqState.bucket !== 'ALL') chips.push({label:'Bucket', value:fmtBucket(nbqState.bucket), clear:() => { nbqState.bucket='ALL'; document.getElementById('nbqBucketSelect').value='ALL'; renderNBQTable(); }});
-  if(nbqState.nbq !== 'ALL') chips.push({label:'NBQ', value:nbqState.nbq+' MOB', clear:() => { nbqState.nbq='ALL'; document.getElementById('nbqNbqSelect').value='ALL'; renderNBQTable(); }});
+  if(nbqState.nbqList.length > 0) chips.push({label:'NBQ', value:nbqState.nbqList.map(n=>n+' MOB').join(', '), clear:() => { nbqState.nbqList=[]; buildNBQLayout(); renderNBQTable(); }});
   if(nbqState.statusNbq !== 'ALL') chips.push({label:'Status NBQ', value:nbqState.statusNbq, clear:() => { nbqState.statusNbq='ALL'; document.getElementById('nbqStatusSelect').value='ALL'; renderNBQTable(); }});
   if(nbqState.statusBayarNbq !== 'ALL') chips.push({label:'Status Bayar', value:nbqState.statusBayarNbq, clear:() => { nbqState.statusBayarNbq='ALL'; document.getElementById('nbqBayarSelect').value='ALL'; renderNBQTable(); }});
   if(nbqState.search.trim()) chips.push({label:'Cari', value:nbqState.search, clear:() => { nbqState.search=''; document.getElementById('nbqSearchInput').value=''; renderNBQTable(); }});
@@ -1158,6 +1214,8 @@ function getFiltered(){
   if(state.bucket!=='ALL') rows = rows.filter(r => r['BUCKET AWAL']===state.bucket);
   if(state.kriteria!=='ALL') rows = rows.filter(r => r['KRITERIA ACCT']===state.kriteria);
   if(state.tipe!=='ALL') rows = rows.filter(r => r['TYPE BARANG']===state.tipe);
+  if(state.kecamatan!=='ALL') rows = rows.filter(r => r['KECAMATAN']===state.kecamatan);
+  if(state.ever!=='ALL') rows = rows.filter(r => r['STATUS EVER']===state.ever);
   if(state.search.trim()){
     const q = state.search.trim().toLowerCase();
     rows = rows.filter(r => (r['NAMA KONSUMEN']||'').toLowerCase().includes(q) || (r['NO KONTRAK']||'').toLowerCase().includes(q) || (r['NOPOL']||'').toLowerCase().includes(q));
@@ -1181,6 +1239,8 @@ function renderActiveChips(){
   if(state.bucket !== 'ALL') chips.push({label:'Bucket', value:fmtBucket(state.bucket), clear:() => { state.bucket='ALL'; const s=document.getElementById('bucketSelect'); if(s)s.value='ALL'; render(); }});
   if(state.kriteria !== 'ALL') chips.push({label:'Kriteria', value:state.kriteria, clear:() => { state.kriteria='ALL'; const s=document.getElementById('kriteriaSelect'); if(s)s.value='ALL'; renderTable(); }});
   if(state.tipe !== 'ALL') chips.push({label:'Kendaraan', value:state.tipe, clear:() => { state.tipe='ALL'; const s=document.getElementById('tipeSelect'); if(s)s.value='ALL'; renderTable(); }});
+  if(state.kecamatan !== 'ALL') chips.push({label:'Kecamatan', value:state.kecamatan, clear:() => { state.kecamatan='ALL'; const s=document.getElementById('kecamatanSelect'); if(s)s.value='ALL'; renderTable(); }});
+  if(state.ever !== 'ALL') chips.push({label:'Status Ever', value:state.ever, clear:() => { state.ever='ALL'; const s=document.getElementById('everSelect'); if(s)s.value='ALL'; renderTable(); }});
   if(state.search.trim()) chips.push({label:'Cari', value:state.search, clear:() => { state.search=''; const i=document.getElementById('searchInput'); if(i)i.value=''; renderTable(); }});
 
   if(chips.length === 0){ box.style.display='none'; box.innerHTML=''; return; }
@@ -1196,7 +1256,7 @@ function renderTable(){
   const total = currentSourceRecords().length;
   document.getElementById('countNote').innerHTML = `Menampilkan <b>${rows.length}</b> dari <b>${total}</b> kontrak`;
   const tbody = document.getElementById('tbody');
-  if(rows.length===0){ tbody.innerHTML = '<tr class="empty-row"><td colspan="9">Tidak ada kontrak yang cocok.</td></tr>'; return; }
+  if(rows.length===0){ tbody.innerHTML = '<tr class="empty-row"><td colspan="10">Tidak ada kontrak yang cocok.</td></tr>'; return; }
   const showCO = IS_ADMIN || state.tab === 'escalation';
   tbody.innerHTML = rows.map(r => {
     const meta = CO_META[r['CO ALL']] || {short:r['CO ALL']||'-'};
@@ -1210,11 +1270,20 @@ function renderTable(){
       <td data-label="Sisa Piutang" class="num">${fmtRupiah(r['SIPOK'])}</td>
       <td data-label="Angsuran" class="num">${fmtRupiah(r['ANGSURAN'])}</td>
       <td data-label="DPD" class="num">${r['DPD'] ?? '-'}</td>
+      <td data-label="Status Ever">${r['STATUS EVER'] ? `<span class="status-pill ${r['STATUS EVER']==='SUDAH EVER'?'status-belum':'status-sudah'}">${r['STATUS EVER']}</span>` : '-'}</td>
       <td data-label="Jatuh Tempo" class="mono">${fmtDate(r['JATUH TEMPO'])}</td>
     </tr>`;
   }).join('');
   tbody.querySelectorAll('tr[data-kontrak]').forEach(tr => tr.onclick = () => openPanel(tr.getAttribute('data-kontrak')));
   renderActiveChips();
+}
+
+function waLink(raw){
+  let d = (raw||'').toString().replace(/[^0-9]/g,'');
+  if(!d) return null;
+  if(d.startsWith('0')) d = '62' + d.slice(1);
+  else if(!d.startsWith('62')) d = '62' + d;
+  return 'https://wa.me/' + d;
 }
 
 function openPanel(noKontrak){
@@ -1224,6 +1293,9 @@ function openPanel(noKontrak){
   document.getElementById('panelCO').textContent = meta.short + (meta.role?' · '+meta.role:'');
   document.getElementById('panelName').textContent = r['NAMA KONSUMEN']||'-';
   document.getElementById('panelKontrak').textContent = r['NO KONTRAK'];
+  const wa = waLink(r['WHATSAPP'] || r['NO HP']);
+  const waBtn = document.getElementById('panelWaBtn');
+  if(wa){ waBtn.style.display='inline-flex'; waBtn.href = wa; } else { waBtn.style.display='none'; }
   const moneyFields = new Set(['SIPOK','ANGSURAN']); const dateFields = new Set(['TANGGAL BAYAR BULAN LALU','JATUH TEMPO']);
   document.getElementById('panelBody').innerHTML = FIELD_GROUPS.map(g => `
     <div class="field-group"><h3>${g.title}</h3>
