@@ -172,7 +172,7 @@
   .search-box svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);opacity:0.45;}
   select.filter-select{font-size:12.5px;color:var(--ink);background:var(--surface);border:1px solid var(--line);padding:8px 10px;border-radius:7px;font-family:var(--sans);}
   .multi-select{position:relative;display:inline-block;}
-  .multi-select-btn{cursor:pointer;text-align:left;min-width:130px;display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  .multi-select-btn{cursor:pointer;text-align:left;min-width:130px;display:flex;align-items:center;justify-content:space-between;gap:8px;font-weight:400;color:var(--ink);}
   .multi-select-btn::after{content:'▾';font-size:10px;color:var(--ink-soft);}
   .multi-select-panel{display:none;position:absolute;top:calc(100% + 6px);left:0;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 28px rgba(20,30,40,0.16);padding:12px;z-index:15;min-width:220px;}
   .multi-select-panel.show{display:block;}
@@ -264,6 +264,10 @@
   .field-row{display:flex;justify-content:space-between;gap:10px;padding:4px 0;font-size:12.5px;}
   .field-row .k{color:var(--ink-soft);flex:none;width:44%;}
   .field-row .v{text-align:right;font-weight:500;word-break:break-word;}
+  .edit-label{display:block;font-size:11px;color:var(--ink-soft);margin-bottom:5px;font-weight:600;text-transform:uppercase;letter-spacing:0.3px;}
+  .edit-input, .edit-textarea{width:100%;border:1px solid var(--line);border-radius:7px;padding:8px 10px;font-size:13px;font-family:var(--sans);color:var(--ink);background:var(--surface-alt);box-sizing:border-box;}
+  .edit-input:focus, .edit-textarea:focus{outline:none;border-color:var(--navy-lighter);background:var(--surface);}
+  .edit-textarea{min-height:70px;resize:vertical;}
 
   @media (max-width:680px){
     .topbar{padding:14px 16px 13px;}
@@ -395,7 +399,7 @@ let ROLE_INFO = null;
 let IS_ADMIN = false;
 let USER_EMAIL = '';
 let ID_TOKEN = null;
-let state = { search:'', co:'ALL', bucket:'ALL', kriteria:'ALL', tipe:'ALL', kecamatan:'ALL', ever:'ALL', sortKey:'JATUH TEMPO', sortDir:1, tab:'own' };
+let state = { search:'', co:'ALL', bucket:'ALL', kriteria:'ALL', tipe:'ALL', kecamatan:'ALL', ever:'ALL', janjiList:[], sortKey:'JATUH TEMPO', sortDir:1, tab:'own' };
 
 function fmtBucket(b){ return (b||'-').replace('_','-'); }
 function fmtRupiah(n){ if(typeof n !== 'number') return '-'; return 'Rp' + Math.round(n).toLocaleString('id-ID'); }
@@ -483,6 +487,12 @@ function onDataLoaded(res){
   DATA = res.records; IS_ADMIN = res.isAdmin; USER_EMAIL = res.email;
   ESCALATIONS = res.escalations || []; ROLE_INFO = res.roleInfo || null;
   state.tab = 'own';
+
+  if(!IS_ADMIN && ROLE_INFO){
+    const allowedBuckets = getBucketOptions();
+    DATA = DATA.filter(r => allowedBuckets.includes(r['BUCKET AWAL']));
+  }
+
   document.getElementById('whoBox').innerHTML =
     '<span class="who-email">Masuk sebagai <b>' + (USER_EMAIL || '-') + '</b></span>' +
     '<span class="badge">' + (IS_ADMIN ? 'ADMIN' : 'CO') + '</span>';
@@ -624,6 +634,17 @@ function buildLayout(){
         <option value="SUDAH EVER">Sudah Ever</option>
         <option value="BELUM EVER">Belum Ever</option>
       </select>
+      <div class="multi-select" id="janjiMultiSelect">
+        <button type="button" class="filter-select multi-select-btn" id="janjiBtn"><span>Semua Janji Bayar</span></button>
+        <div class="multi-select-panel" id="janjiPanel">
+          <div class="ms-panel-title">Pilih Tanggal Janji Bayar</div>
+          <div class="ms-grid" id="janjiGrid"></div>
+          <div class="ms-panel-footer">
+            <button type="button" class="ms-link-btn" id="janjiSelectAllBtn">Pilih semua</button>
+            <button type="button" class="ms-link-btn" id="janjiClearBtn">Bersihkan</button>
+          </div>
+        </div>
+      </div>
       <button class="btn" id="resetBtn">Reset filter</button>
       <button class="btn primary" id="refreshBtn">↻ Muat ulang</button>
     </div>
@@ -662,7 +683,7 @@ function buildLayout(){
   document.getElementById('searchInput').addEventListener('input', e => { state.search = e.target.value; renderTable(); });
   document.getElementById('resetBtn').addEventListener('click', () => {
     const keepTab = state.tab;
-    state = { search:'', co:'ALL', bucket:'ALL', kriteria:'ALL', tipe:'ALL', kecamatan:'ALL', ever:'ALL', sortKey:'JATUH TEMPO', sortDir:1, tab:keepTab };
+    state = { search:'', co:'ALL', bucket:'ALL', kriteria:'ALL', tipe:'ALL', kecamatan:'ALL', ever:'ALL', janjiList:[], sortKey:'JATUH TEMPO', sortDir:1, tab:keepTab };
     buildLayout();
     render();
   });
@@ -672,6 +693,44 @@ function buildLayout(){
   document.getElementById('tipeSelect').addEventListener('change', e => { state.tipe = e.target.value; renderTable(); });
   document.getElementById('kecamatanSelect').addEventListener('change', e => { state.kecamatan = e.target.value; renderTable(); });
   document.getElementById('everSelect').addEventListener('change', e => { state.ever = e.target.value; renderTable(); });
+
+  const janjiValues = [...new Set(DATA.map(r=>(r['JANJI BAYAR']||'').toString().trim()).filter(Boolean))].sort();
+  const janjiGrid = document.getElementById('janjiGrid');
+  janjiGrid.innerHTML = janjiValues.map(v => `<label class="ms-option"><input type="checkbox" value="${v}"> ${v}</label>`).join('') || '<div style="font-size:12px;color:var(--ink-soft);padding:4px;">Belum ada data</div>';
+  const janjiBtn = document.getElementById('janjiBtn');
+  const janjiBtnLabel = janjiBtn.querySelector('span');
+  const janjiPanel = document.getElementById('janjiPanel');
+  function updateJanjiBtnLabel(){
+    if(state.janjiList.length === 0) janjiBtnLabel.textContent = 'Semua Janji Bayar';
+    else if(state.janjiList.length === 1) janjiBtnLabel.textContent = 'Tgl ' + state.janjiList[0];
+    else janjiBtnLabel.textContent = state.janjiList.length + ' tanggal dipilih';
+  }
+  updateJanjiBtnLabel();
+  janjiBtn.addEventListener('click', (e) => { e.stopPropagation(); janjiPanel.classList.toggle('show'); });
+  janjiGrid.querySelectorAll('input[type=checkbox]').forEach(cb => {
+    cb.checked = state.janjiList.includes(cb.value);
+    cb.addEventListener('change', () => {
+      if(cb.checked) state.janjiList.push(cb.value);
+      else state.janjiList = state.janjiList.filter(v => v!==cb.value);
+      updateJanjiBtnLabel();
+      renderTable();
+    });
+  });
+  document.getElementById('janjiSelectAllBtn').addEventListener('click', () => {
+    state.janjiList = janjiValues.slice();
+    janjiGrid.querySelectorAll('input[type=checkbox]').forEach(cb => cb.checked = true);
+    updateJanjiBtnLabel();
+    renderTable();
+  });
+  document.getElementById('janjiClearBtn').addEventListener('click', () => {
+    state.janjiList = [];
+    janjiGrid.querySelectorAll('input[type=checkbox]').forEach(cb => cb.checked = false);
+    updateJanjiBtnLabel();
+    renderTable();
+  });
+  document.addEventListener('click', (e) => {
+    if(!document.getElementById('janjiMultiSelect').contains(e.target)) janjiPanel.classList.remove('show');
+  });
 }
 
 let VIEW_MODE = 'dashboard';
@@ -1243,6 +1302,7 @@ function getFiltered(){
   if(state.tipe!=='ALL') rows = rows.filter(r => r['TYPE BARANG']===state.tipe);
   if(state.kecamatan!=='ALL') rows = rows.filter(r => r['KECAMATAN']===state.kecamatan);
   if(state.ever!=='ALL') rows = rows.filter(r => r['STATUS EVER']===state.ever);
+  if(state.janjiList.length > 0) rows = rows.filter(r => state.janjiList.includes((r['JANJI BAYAR']||'').toString().trim()));
   if(state.search.trim()){
     const q = state.search.trim().toLowerCase();
     rows = rows.filter(r => (r['NAMA KONSUMEN']||'').toLowerCase().includes(q) || (r['NO KONTRAK']||'').toLowerCase().includes(q) || (r['NOPOL']||'').toLowerCase().includes(q));
@@ -1268,6 +1328,7 @@ function renderActiveChips(){
   if(state.tipe !== 'ALL') chips.push({label:'Kendaraan', value:state.tipe, clear:() => { state.tipe='ALL'; const s=document.getElementById('tipeSelect'); if(s)s.value='ALL'; renderTable(); }});
   if(state.kecamatan !== 'ALL') chips.push({label:'Kecamatan', value:state.kecamatan, clear:() => { state.kecamatan='ALL'; const s=document.getElementById('kecamatanSelect'); if(s)s.value='ALL'; renderTable(); }});
   if(state.ever !== 'ALL') chips.push({label:'Status Ever', value:state.ever, clear:() => { state.ever='ALL'; const s=document.getElementById('everSelect'); if(s)s.value='ALL'; renderTable(); }});
+  if(state.janjiList.length > 0) chips.push({label:'Janji Bayar', value:state.janjiList.join(', '), clear:() => { state.janjiList=[]; buildLayout(); render(); }});
   if(state.search.trim()) chips.push({label:'Cari', value:state.search, clear:() => { state.search=''; const i=document.getElementById('searchInput'); if(i)i.value=''; renderTable(); }});
 
   if(chips.length === 0){ box.style.display='none'; box.innerHTML=''; return; }
@@ -1324,13 +1385,60 @@ function openPanel(noKontrak){
   const waBtn = document.getElementById('panelWaBtn');
   if(wa){ waBtn.style.display='inline-flex'; waBtn.href = wa; } else { waBtn.style.display='none'; }
   const moneyFields = new Set(['SIPOK','ANGSURAN']); const dateFields = new Set(['TANGGAL BAYAR BULAN LALU','JATUH TEMPO']);
+  const canEdit = IS_ADMIN || (r['EMAIL CO']||'').toString().trim().toLowerCase() === USER_EMAIL.toLowerCase();
   document.getElementById('panelBody').innerHTML = FIELD_GROUPS.map(g => `
     <div class="field-group"><h3>${g.title}</h3>
       ${g.fields.map(f => { let v=r[f]; if(moneyFields.has(f)) v=fmtRupiah(v); else if(dateFields.has(f)) v=fmtDate(v); else v=(v===''||v==null)?'-':v;
         return `<div class="field-row"><span class="k">${f.charAt(0)+f.slice(1).toLowerCase()}</span><span class="v">${v}</span></div>`; }).join('')}
-    </div>`).join('');
+    </div>`).join('') + `
+    <div class="field-group">
+      <h3>Progress Penanganan</h3>
+      ${canEdit ? `
+        <label class="edit-label">Janji Bayar (tgl)</label>
+        <input type="text" id="janjiBayarInput" class="edit-input" placeholder="misal: 07" value="${(r['JANJI BAYAR']||'').toString()}" maxlength="2">
+        <label class="edit-label" style="margin-top:10px;">Kronologis</label>
+        <textarea id="kronologisInput" class="edit-textarea" placeholder="Catatan hasil follow up…">${(r['KRONOLOGIS']||'').toString()}</textarea>
+        <button class="btn primary" id="saveProgressBtn" style="width:100%;margin-top:10px;">Simpan</button>
+        <div id="saveProgressMsg" style="font-size:11.5px;margin-top:8px;"></div>
+      ` : `
+        <div class="field-row"><span class="k">Janji Bayar</span><span class="v">${r['JANJI BAYAR']||'-'}</span></div>
+        <div class="field-row"><span class="k">Kronologis</span><span class="v">${r['KRONOLOGIS']||'-'}</span></div>
+      `}
+    </div>`;
+
+  if(canEdit){
+    document.getElementById('saveProgressBtn').addEventListener('click', () => saveProgress(r));
+  }
+
   document.getElementById('overlay').classList.add('show');
   document.getElementById('sidePanel').classList.add('show');
+}
+
+function saveProgress(r){
+  const btn = document.getElementById('saveProgressBtn');
+  const msg = document.getElementById('saveProgressMsg');
+  const janjiBayar = document.getElementById('janjiBayarInput').value.trim();
+  const kronologis = document.getElementById('kronologisInput').value.trim();
+  btn.disabled = true; btn.textContent = 'Menyimpan…';
+  msg.textContent = ''; msg.style.color = '';
+
+  fetch('/api/save-progress', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + ID_TOKEN },
+    body: JSON.stringify({ noKontrak: r['NO KONTRAK'], rowNumber: r['_rowNumber'], janjiBayar, kronologis })
+  })
+  .then(res => res.json().then(body => ({ ok: res.ok, body })))
+  .then(({ok, body}) => {
+    btn.disabled = false; btn.textContent = 'Simpan';
+    if(!ok){ msg.style.color = 'var(--bad)'; msg.textContent = body.error || 'Gagal menyimpan.'; return; }
+    r['JANJI BAYAR'] = janjiBayar; r['KRONOLOGIS'] = kronologis;
+    msg.style.color = 'var(--good)'; msg.textContent = '✓ Tersimpan';
+    if(VIEW_MODE==='dashboard') renderTable();
+  })
+  .catch(err => {
+    btn.disabled = false; btn.textContent = 'Simpan';
+    msg.style.color = 'var(--bad)'; msg.textContent = err.message;
+  });
 }
 document.getElementById('panelClose').onclick = () => { document.getElementById('overlay').classList.remove('show'); document.getElementById('sidePanel').classList.remove('show'); };
 document.getElementById('overlay').onclick = document.getElementById('panelClose').onclick;
