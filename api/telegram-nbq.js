@@ -1,19 +1,37 @@
-const crypto = require('crypto');
-const fs = require('fs');
-const path = require('path');
-const satori = require('satori').default;
-const { Resvg } = require('@resvg/resvg-js');
+import { ImageResponse } from '@vercel/og';
+import { FONT_REGULAR_B64, FONT_SEMIBOLD_B64, FONT_BOLD_B64 } from './_font-data.js';
+
+export const config = { runtime: 'edge' };
 
 // ============================================================
-// AUTH KE GOOGLE SHEETS (sama pola dengan endpoint lain)
+// UTIL: base64 -> bytes (Web API, tanpa Buffer karena di Edge Runtime tidak ada)
 // ============================================================
-function base64url(input) {
-  return Buffer.from(input).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+function base64ToBytes(b64) {
+  const binary = atob(b64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+function base64urlFromBytes(bytes) {
+  let str = btoa(String.fromCharCode(...new Uint8Array(bytes)));
+  return str.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function base64urlFromString(str) {
+  return base64urlFromBytes(new TextEncoder().encode(str));
+}
+
+// ============================================================
+// AUTH KE GOOGLE SHEETS — pakai Web Crypto API (bukan Node 'crypto')
+// ============================================================
+function pemToBytes(pem) {
+  const b64 = pem.replace(/-----BEGIN PRIVATE KEY-----/, '').replace(/-----END PRIVATE KEY-----/, '').replace(/\s/g, '');
+  return base64ToBytes(b64);
 }
 
 async function getAccessToken() {
   const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-  const privateKey = (process.env.GOOGLE_PRIVATE_KEY || '').replace(/\\n/g, '\n');
+  const privateKeyPem = (process.env.GOOGLE_PRIVATE_KEY || '').replace(/\\n/g, '\n');
+
   const header = { alg: 'RS256', typ: 'JWT' };
   const now = Math.floor(Date.now() / 1000);
   const claimSet = {
@@ -23,12 +41,15 @@ async function getAccessToken() {
     iat: now,
     exp: now + 3600
   };
-  const unsigned = base64url(JSON.stringify(header)) + '.' + base64url(JSON.stringify(claimSet));
-  const signer = crypto.createSign('RSA-SHA256');
-  signer.update(unsigned);
-  signer.end();
-  const signature = signer.sign(privateKey).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-  const jwt = unsigned + '.' + signature;
+  const unsigned = base64urlFromString(JSON.stringify(header)) + '.' + base64urlFromString(JSON.stringify(claimSet));
+
+  const keyBytes = pemToBytes(privateKeyPem);
+  const cryptoKey = await crypto.subtle.importKey(
+    'pkcs8', keyBytes, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['sign']
+  );
+  const signature = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', cryptoKey, new TextEncoder().encode(unsigned));
+  const jwt = unsigned + '.' + base64urlFromBytes(signature);
+
   const res = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -65,11 +86,11 @@ const CO_ALIAS = {
 };
 
 // ============================================================
-// TANGGAL WIB — dipakai buat rentang Jatuh Tempo (tgl 3 s/d H-1)
+// TANGGAL WIB — rentang Jatuh Tempo (tgl 3 s/d H-1)
 // ============================================================
 function getWibDateParts() {
   const now = new Date();
-  const wib = new Date(now.getTime() + 7 * 60 * 60 * 1000); // UTC+7
+  const wib = new Date(now.getTime() + 7 * 60 * 60 * 1000);
   return { year: wib.getUTCFullYear(), month: wib.getUTCMonth(), day: wib.getUTCDate() };
 }
 function toIsoDate(y, m, d) {
@@ -77,9 +98,7 @@ function toIsoDate(y, m, d) {
 }
 function getJatuhTempoRange() {
   const { year, month, day } = getWibDateParts();
-  const start = toIsoDate(year, month, 3);
-  const end = toIsoDate(year, month, day - 1); // H-1
-  return { start, end };
+  return { start: toIsoDate(year, month, 3), end: toIsoDate(year, month, day - 1) };
 }
 function fmtTanggalIndo(isoStr) {
   const [y, m, d] = isoStr.split('-').map(Number);
@@ -93,12 +112,11 @@ function fmtTanggalIndo(isoStr) {
 function parseCommand(text) {
   const t = (text || '').trim();
   const parts = t.split(/\s+/);
-  const cmd = (parts[0] || '').toLowerCase().replace(/@\w+$/, ''); // buang @NamaBot kalau ada
+  const cmd = (parts[0] || '').toLowerCase().replace(/@\w+$/, '');
   const arg = (parts[1] || '').toLowerCase();
 
   if (cmd === '/fpd') return { type: 'mob', mobList: [1], title: 'FPD (First Payment Default)' };
   if (cmd === '/spd') return { type: 'mob', mobList: [2], title: 'SPD (Second Payment Default)' };
-
   if (cmd !== '/nbq') return null;
 
   if (CO_ALIAS[arg]) return { type: 'co', co: CO_ALIAS[arg], title: 'NBQ — ' + CO_ALIAS[arg] };
@@ -113,7 +131,6 @@ function parseCommand(text) {
     for (let i = from; i <= to; i++) mobList.push(i);
     return { type: 'mob', mobList, title: `NBQ — MOB ${from}-${to}` };
   }
-
   return { type: 'invalid' };
 }
 
@@ -124,20 +141,8 @@ function nbqNum(rec) {
 }
 
 // ============================================================
-// GENERATE GAMBAR TABEL (Satori -> SVG -> PNG)
+// GENERATE GAMBAR TABEL (@vercel/og)
 // ============================================================
-const FONT_DIR = __dirname;
-let FONT_CACHE = null;
-function loadFonts() {
-  if (FONT_CACHE) return FONT_CACHE;
-  FONT_CACHE = [
-    { name: 'PJS', data: fs.readFileSync(path.join(FONT_DIR, 'PJS-Regular.woff')), weight: 400, style: 'normal' },
-    { name: 'PJS', data: fs.readFileSync(path.join(FONT_DIR, 'PJS-SemiBold.woff')), weight: 600, style: 'normal' },
-    { name: 'PJS', data: fs.readFileSync(path.join(FONT_DIR, 'PJS-Bold.woff')), weight: 700, style: 'normal' }
-  ];
-  return FONT_CACHE;
-}
-
 const COLS = [
   { key: 'NO KONTRAK', label: 'No Kontrak', width: 145 },
   { key: 'NAMA KONSUMEN', label: 'Nama Konsumen', width: 165, bold: true },
@@ -178,10 +183,7 @@ async function renderTableImage(title, subtitle, rows) {
   const bodyRows = rows.map((r, idx) => ({
     type: 'div', props: {
       style: { display: 'flex', background: idx % 2 === 0 ? '#ffffff' : '#F5F8FA', borderBottom: '1px solid #E2E9EE' },
-      children: COLS.map(c => cellDiv(r[c.key], c.width, {
-        weight: c.bold ? 600 : 400,
-        color: c.danger ? '#B23B2E' : undefined
-      }))
+      children: COLS.map(c => cellDiv(r[c.key], c.width, { weight: c.bold ? 600 : 400, color: c.danger ? '#B23B2E' : undefined }))
     }
   }));
 
@@ -198,9 +200,15 @@ async function renderTableImage(title, subtitle, rows) {
     }
   };
 
-  const svg = await satori(tree, { width: totalWidth, fonts: loadFonts() });
-  const resvg = new Resvg(svg, { fitTo: { mode: 'width', value: totalWidth * 2 } });
-  return resvg.render().asPng();
+  const imgResponse = new ImageResponse(tree, {
+    width: totalWidth,
+    fonts: [
+      { name: 'PJS', data: base64ToBytes(FONT_REGULAR_B64).buffer, weight: 400, style: 'normal' },
+      { name: 'PJS', data: base64ToBytes(FONT_SEMIBOLD_B64).buffer, weight: 600, style: 'normal' },
+      { name: 'PJS', data: base64ToBytes(FONT_BOLD_B64).buffer, weight: 700, style: 'normal' }
+    ]
+  });
+  return new Uint8Array(await imgResponse.arrayBuffer());
 }
 
 // ============================================================
@@ -215,35 +223,43 @@ async function sendTelegramMessage(chatId, text) {
   });
 }
 
-async function sendTelegramPhoto(chatId, pngBuffer, caption) {
+async function sendTelegramPhoto(chatId, pngBytes) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const form = new FormData();
   form.append('chat_id', String(chatId));
-  if (caption) form.append('caption', caption);
-  form.append('photo', new Blob([pngBuffer], { type: 'image/png' }), 'nbq.png');
+  form.append('photo', new Blob([pngBytes], { type: 'image/png' }), 'nbq.png');
   await fetch(`https://api.telegram.org/bot${token}/sendPhoto`, { method: 'POST', body: form });
 }
 
 // ============================================================
-// HANDLER UTAMA
+// TANGGAL SERIAL SHEETS -> STRING
 // ============================================================
-module.exports = async (req, res) => {
+function serialToDateStr(serial) {
+  if (typeof serial !== 'number' || serial < 1000) return '';
+  const utcDays = Math.floor(serial - 25569);
+  const d = new Date(utcDays * 86400 * 1000);
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+}
+
+// ============================================================
+// HANDLER UTAMA (Edge Function)
+// ============================================================
+export default async function handler(req) {
   try {
-    if (req.method !== 'POST') { res.status(200).json({ ok: true }); return; }
-    let update = req.body;
-    if (typeof update === 'string') { try { update = JSON.parse(update); } catch (e) { res.status(200).json({ ok: true }); return; } }
+    if (req.method !== 'POST') return new Response('OK');
+    let update;
+    try { update = await req.json(); } catch (e) { return new Response('OK'); }
 
     const msg = update && update.message;
-    if (!msg || !msg.text) { res.status(200).json({ ok: true }); return; }
+    if (!msg || !msg.text) return new Response('OK');
     const chatId = msg.chat.id;
 
     const parsed = parseCommand(msg.text);
-    if (!parsed) { res.status(200).json({ ok: true }); return; } // bukan command yang kita tangani
+    if (!parsed) return new Response('OK');
 
     if (parsed.type === 'invalid') {
       await sendTelegramMessage(chatId, 'Command tidak dikenali. Coba: /nbq rahul, /nbq ulil, /nbq mobilku, /nbq motorku, /nbq nb, /nbq 1-3, /nbq 1-6, /nbq 1-9, /fpd, /spd');
-      res.status(200).json({ ok: true });
-      return;
+      return new Response('OK');
     }
 
     const accessToken = await getAccessToken();
@@ -252,17 +268,9 @@ module.exports = async (req, res) => {
       headers: { Authorization: 'Bearer ' + accessToken }
     });
     const masterJson = await masterRes.json();
-    if (!masterJson.values) { await sendTelegramMessage(chatId, 'Gagal ambil data sheet.'); res.status(200).json({ ok: true }); return; }
+    if (!masterJson.values) { await sendTelegramMessage(chatId, 'Gagal ambil data sheet.'); return new Response('OK'); }
 
-    // NOTE: parseSheetValues generik tidak convert tanggal; JATUH TEMPO di MASTER
-    // sudah dalam format serial number. Kita perlu konversi manual di sini.
     const allRows = parseSheetValues(masterJson.values).filter(r => r['NO KONTRAK']);
-    function serialToDateStr(serial) {
-      if (typeof serial !== 'number' || serial < 1000) return '';
-      const utcDays = Math.floor(serial - 25569);
-      const d = new Date(utcDays * 86400 * 1000);
-      return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
-    }
     allRows.forEach(r => { r['JATUH TEMPO'] = serialToDateStr(r['JATUH TEMPO']); });
 
     const { start, end } = getJatuhTempoRange();
@@ -283,16 +291,15 @@ module.exports = async (req, res) => {
 
     if (rows.length === 0) {
       await sendTelegramMessage(chatId, `${parsed.title} sudah bayar semua ✅`);
-      res.status(200).json({ ok: true });
-      return;
+      return new Response('OK');
     }
 
     const subtitle = `Jatuh Tempo: ${fmtTanggalIndo(start)} – ${fmtTanggalIndo(end)}`;
     const png = await renderTableImage(parsed.title, subtitle, rows);
     await sendTelegramPhoto(chatId, png);
-    res.status(200).json({ ok: true });
+    return new Response('OK');
   } catch (err) {
     console.log('Error telegram-nbq:', err.message);
-    try { res.status(200).json({ ok: true }); } catch (e) {}
+    return new Response('OK');
   }
-};
+}
