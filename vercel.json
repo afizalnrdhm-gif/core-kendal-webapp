@@ -1,7 +1,7 @@
 {
   "functions": {
     "api/telegram-nbq.js": {
-      "includeFiles": "node_modules/@resvg/**"
+      "includeFiles": "node_modules/sharp/**"
     }
   }
 }
