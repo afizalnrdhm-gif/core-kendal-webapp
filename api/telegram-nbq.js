@@ -228,23 +228,21 @@ async function sendTelegramPhoto(chatId, pngBuffer, caption) {
 // HANDLER UTAMA
 // ============================================================
 module.exports = async (req, res) => {
-  // Selalu balas 200 cepat ke Telegram, apapun hasilnya, biar nggak dianggap gagal & di-retry
-  res.status(200).json({ ok: true });
-
   try {
-    if (req.method !== 'POST') return;
+    if (req.method !== 'POST') { res.status(200).json({ ok: true }); return; }
     let update = req.body;
-    if (typeof update === 'string') { try { update = JSON.parse(update); } catch (e) { return; } }
+    if (typeof update === 'string') { try { update = JSON.parse(update); } catch (e) { res.status(200).json({ ok: true }); return; } }
 
     const msg = update && update.message;
-    if (!msg || !msg.text) return;
+    if (!msg || !msg.text) { res.status(200).json({ ok: true }); return; }
     const chatId = msg.chat.id;
 
     const parsed = parseCommand(msg.text);
-    if (!parsed) return; // bukan command yang kita tangani
+    if (!parsed) { res.status(200).json({ ok: true }); return; } // bukan command yang kita tangani
 
     if (parsed.type === 'invalid') {
       await sendTelegramMessage(chatId, 'Command tidak dikenali. Coba: /nbq rahul, /nbq ulil, /nbq mobilku, /nbq motorku, /nbq nb, /nbq 1-3, /nbq 1-6, /nbq 1-9, /fpd, /spd');
+      res.status(200).json({ ok: true });
       return;
     }
 
@@ -254,7 +252,7 @@ module.exports = async (req, res) => {
       headers: { Authorization: 'Bearer ' + accessToken }
     });
     const masterJson = await masterRes.json();
-    if (!masterJson.values) { await sendTelegramMessage(chatId, 'Gagal ambil data sheet.'); return; }
+    if (!masterJson.values) { await sendTelegramMessage(chatId, 'Gagal ambil data sheet.'); res.status(200).json({ ok: true }); return; }
 
     // NOTE: parseSheetValues generik tidak convert tanggal; JATUH TEMPO di MASTER
     // sudah dalam format serial number. Kita perlu konversi manual di sini.
@@ -285,13 +283,16 @@ module.exports = async (req, res) => {
 
     if (rows.length === 0) {
       await sendTelegramMessage(chatId, `${parsed.title} sudah bayar semua ✅`);
+      res.status(200).json({ ok: true });
       return;
     }
 
     const subtitle = `Jatuh Tempo: ${fmtTanggalIndo(start)} – ${fmtTanggalIndo(end)}`;
     const png = await renderTableImage(parsed.title, subtitle, rows);
     await sendTelegramPhoto(chatId, png);
+    res.status(200).json({ ok: true });
   } catch (err) {
     console.log('Error telegram-nbq:', err.message);
+    try { res.status(200).json({ ok: true }); } catch (e) {}
   }
 };
