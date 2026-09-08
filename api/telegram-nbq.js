@@ -263,7 +263,7 @@ module.exports = async (req, res) => {
       m['FLEET/NON FLEET'] !== 'FLEET' &&
       m['BUCKET AWAL'] === 'NOOD' &&
       (m['KRITERIA ACCT'] || '').toString().trim().toUpperCase() === 'FLOW' &&
-      nbqNum(m) !== null &&
+      nbqNum(m) !== null && nbqNum(m) <= 12 &&
       m['JATUH TEMPO'] >= start && m['JATUH TEMPO'] <= end
     );
 
