@@ -2,7 +2,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const satori = require('satori').default;
-const { Resvg } = require('@resvg/resvg-js');
+const sharp = require('sharp');
 
 // ============================================================
 // AUTH KE GOOGLE SHEETS (sama pola dengan endpoint lain)
@@ -191,8 +191,8 @@ async function renderTableImage(title, subtitle, rows) {
   };
 
   const svg = await satori(tree, { width: totalWidth, fonts: loadFonts() });
-  const resvg = new Resvg(svg, { fitTo: { mode: 'width', value: totalWidth * 2 } });
-  return resvg.render().asPng();
+  const png = await sharp(Buffer.from(svg)).png().toBuffer();
+  return png;
 }
 
 // ============================================================
