@@ -126,7 +126,7 @@ function nbqNum(rec) {
 // ============================================================
 // GENERATE GAMBAR TABEL (Satori -> SVG -> PNG)
 // ============================================================
-const FONT_DIR = path.join(__dirname, '_fonts');
+const FONT_DIR = __dirname;
 let FONT_CACHE = null;
 function loadFonts() {
   if (FONT_CACHE) return FONT_CACHE;
