@@ -4,7 +4,6 @@
   "private": true,
   "dependencies": {
     "satori": "^0.33.4",
-    "@resvg/resvg-js": "^2.6.2",
-    "@resvg/resvg-js-linux-x64-gnu": "^2.6.2"
+    "sharp": "^0.35.4"
   }
 }
