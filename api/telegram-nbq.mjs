@@ -1,37 +1,19 @@
-import { ImageResponse } from '@vercel/og';
-import { FONT_REGULAR_B64, FONT_SEMIBOLD_B64, FONT_BOLD_B64 } from './_font-data.mjs';
-
-export const config = { runtime: 'edge' };
-
-// ============================================================
-// UTIL: base64 -> bytes (Web API, tanpa Buffer karena di Edge Runtime tidak ada)
-// ============================================================
-function base64ToBytes(b64) {
-  const binary = atob(b64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return bytes;
-}
-function base64urlFromBytes(bytes) {
-  let str = btoa(String.fromCharCode(...new Uint8Array(bytes)));
-  return str.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-function base64urlFromString(str) {
-  return base64urlFromBytes(new TextEncoder().encode(str));
-}
+const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
+const satori = require('satori').default;
+const { Resvg } = require('@resvg/resvg-js');
 
 // ============================================================
-// AUTH KE GOOGLE SHEETS — pakai Web Crypto API (bukan Node 'crypto')
+// AUTH KE GOOGLE SHEETS (sama pola dengan endpoint lain)
 // ============================================================
-function pemToBytes(pem) {
-  const b64 = pem.replace(/-----BEGIN PRIVATE KEY-----/, '').replace(/-----END PRIVATE KEY-----/, '').replace(/\s/g, '');
-  return base64ToBytes(b64);
+function base64url(input) {
+  return Buffer.from(input).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
 async function getAccessToken() {
   const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-  const privateKeyPem = (process.env.GOOGLE_PRIVATE_KEY || '').replace(/\\n/g, '\n');
-
+  const privateKey = (process.env.GOOGLE_PRIVATE_KEY || '').replace(/\\n/g, '\n');
   const header = { alg: 'RS256', typ: 'JWT' };
   const now = Math.floor(Date.now() / 1000);
   const claimSet = {
@@ -41,15 +23,12 @@ async function getAccessToken() {
     iat: now,
     exp: now + 3600
   };
-  const unsigned = base64urlFromString(JSON.stringify(header)) + '.' + base64urlFromString(JSON.stringify(claimSet));
-
-  const keyBytes = pemToBytes(privateKeyPem);
-  const cryptoKey = await crypto.subtle.importKey(
-    'pkcs8', keyBytes, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['sign']
-  );
-  const signature = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', cryptoKey, new TextEncoder().encode(unsigned));
-  const jwt = unsigned + '.' + base64urlFromBytes(signature);
-
+  const unsigned = base64url(JSON.stringify(header)) + '.' + base64url(JSON.stringify(claimSet));
+  const signer = crypto.createSign('RSA-SHA256');
+  signer.update(unsigned);
+  signer.end();
+  const signature = signer.sign(privateKey).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const jwt = unsigned + '.' + signature;
   const res = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -141,8 +120,19 @@ function nbqNum(rec) {
 }
 
 // ============================================================
-// GENERATE GAMBAR TABEL (@vercel/og)
+// GENERATE GAMBAR TABEL (Satori -> SVG -> PNG)
 // ============================================================
+let FONT_CACHE = null;
+function loadFonts() {
+  if (FONT_CACHE) return FONT_CACHE;
+  FONT_CACHE = [
+    { name: 'PJS', data: fs.readFileSync(path.join(__dirname, 'PJS-Regular.woff')), weight: 400, style: 'normal' },
+    { name: 'PJS', data: fs.readFileSync(path.join(__dirname, 'PJS-SemiBold.woff')), weight: 600, style: 'normal' },
+    { name: 'PJS', data: fs.readFileSync(path.join(__dirname, 'PJS-Bold.woff')), weight: 700, style: 'normal' }
+  ];
+  return FONT_CACHE;
+}
+
 const COLS = [
   { key: 'NO KONTRAK', label: 'No Kontrak', width: 145 },
   { key: 'NAMA KONSUMEN', label: 'Nama Konsumen', width: 165, bold: true },
@@ -200,15 +190,9 @@ async function renderTableImage(title, subtitle, rows) {
     }
   };
 
-  const imgResponse = new ImageResponse(tree, {
-    width: totalWidth,
-    fonts: [
-      { name: 'PJS', data: base64ToBytes(FONT_REGULAR_B64).buffer, weight: 400, style: 'normal' },
-      { name: 'PJS', data: base64ToBytes(FONT_SEMIBOLD_B64).buffer, weight: 600, style: 'normal' },
-      { name: 'PJS', data: base64ToBytes(FONT_BOLD_B64).buffer, weight: 700, style: 'normal' }
-    ]
-  });
-  return new Uint8Array(await imgResponse.arrayBuffer());
+  const svg = await satori(tree, { width: totalWidth, fonts: loadFonts() });
+  const resvg = new Resvg(svg, { fitTo: { mode: 'width', value: totalWidth * 2 } });
+  return resvg.render().asPng();
 }
 
 // ============================================================
@@ -223,17 +207,14 @@ async function sendTelegramMessage(chatId, text) {
   });
 }
 
-async function sendTelegramPhoto(chatId, pngBytes) {
+async function sendTelegramPhoto(chatId, pngBuffer) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const form = new FormData();
   form.append('chat_id', String(chatId));
-  form.append('photo', new Blob([pngBytes], { type: 'image/png' }), 'nbq.png');
+  form.append('photo', new Blob([pngBuffer], { type: 'image/png' }), 'nbq.png');
   await fetch(`https://api.telegram.org/bot${token}/sendPhoto`, { method: 'POST', body: form });
 }
 
-// ============================================================
-// TANGGAL SERIAL SHEETS -> STRING
-// ============================================================
 function serialToDateStr(serial) {
   if (typeof serial !== 'number' || serial < 1000) return '';
   const utcDays = Math.floor(serial - 25569);
@@ -242,24 +223,27 @@ function serialToDateStr(serial) {
 }
 
 // ============================================================
-// HANDLER UTAMA (Edge Function)
+// HANDLER UTAMA
+// PENTING: response cuma dikirim SETELAH semua proses (termasuk kirim ke
+// Telegram) selesai — supaya function-nya nggak dihentikan paksa duluan.
 // ============================================================
-export default async function handler(req) {
+module.exports = async (req, res) => {
   try {
-    if (req.method !== 'POST') return new Response('OK');
-    let update;
-    try { update = await req.json(); } catch (e) { return new Response('OK'); }
+    if (req.method !== 'POST') { res.status(200).json({ ok: true }); return; }
+    let update = req.body;
+    if (typeof update === 'string') { try { update = JSON.parse(update); } catch (e) { res.status(200).json({ ok: true }); return; } }
 
     const msg = update && update.message;
-    if (!msg || !msg.text) return new Response('OK');
+    if (!msg || !msg.text) { res.status(200).json({ ok: true }); return; }
     const chatId = msg.chat.id;
 
     const parsed = parseCommand(msg.text);
-    if (!parsed) return new Response('OK');
+    if (!parsed) { res.status(200).json({ ok: true }); return; }
 
     if (parsed.type === 'invalid') {
       await sendTelegramMessage(chatId, 'Command tidak dikenali. Coba: /nbq rahul, /nbq ulil, /nbq mobilku, /nbq motorku, /nbq nb, /nbq 1-3, /nbq 1-6, /nbq 1-9, /fpd, /spd');
-      return new Response('OK');
+      res.status(200).json({ ok: true });
+      return;
     }
 
     const accessToken = await getAccessToken();
@@ -268,7 +252,7 @@ export default async function handler(req) {
       headers: { Authorization: 'Bearer ' + accessToken }
     });
     const masterJson = await masterRes.json();
-    if (!masterJson.values) { await sendTelegramMessage(chatId, 'Gagal ambil data sheet.'); return new Response('OK'); }
+    if (!masterJson.values) { await sendTelegramMessage(chatId, 'Gagal ambil data sheet.'); res.status(200).json({ ok: true }); return; }
 
     const allRows = parseSheetValues(masterJson.values).filter(r => r['NO KONTRAK']);
     allRows.forEach(r => { r['JATUH TEMPO'] = serialToDateStr(r['JATUH TEMPO']); });
@@ -291,15 +275,16 @@ export default async function handler(req) {
 
     if (rows.length === 0) {
       await sendTelegramMessage(chatId, `${parsed.title} sudah bayar semua ✅`);
-      return new Response('OK');
+      res.status(200).json({ ok: true });
+      return;
     }
 
     const subtitle = `Jatuh Tempo: ${fmtTanggalIndo(start)} – ${fmtTanggalIndo(end)}`;
     const png = await renderTableImage(parsed.title, subtitle, rows);
     await sendTelegramPhoto(chatId, png);
-    return new Response('OK');
+    res.status(200).json({ ok: true });
   } catch (err) {
     console.log('Error telegram-nbq:', err.message);
-    return new Response('OK');
+    try { res.status(200).json({ ok: true }); } catch (e) {}
   }
-}
+};
