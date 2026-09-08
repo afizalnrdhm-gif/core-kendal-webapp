@@ -1,5 +1,9 @@
 {
   "name": "core-kendal-webapp",
   "version": "1.0.0",
-  "private": true
+  "private": true,
+  "dependencies": {
+    "satori": "^0.33.4",
+    "@resvg/resvg-js": "^2.6.2"
+  }
 }
