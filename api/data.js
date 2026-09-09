@@ -141,13 +141,15 @@ module.exports = async (req, res) => {
     const allRecords = parseSheetValues(masterJson.values).filter(r => r['NO KONTRAK']);
     const roleRows = parseSheetValues(roleJson.values || []);
     const roleMap = {};
+    const roleByEmail = {};
     roleRows.forEach(r => {
-      if (!r['NAMA_CO']) return;
-      roleMap[r['NAMA_CO']] = {
+      const cfg = {
         role: r['ROLE'],
         penyelesaian: (r['BUCKET_PENYELESAIAN'] || '').split(',').map(x => x.trim()),
         asalFlow: (r['BUCKET_ASAL_FLOW'] || '').split(',').map(x => x.trim())
       };
+      if (r['NAMA_CO']) roleMap[r['NAMA_CO']] = cfg;
+      if (r['EMAIL']) roleByEmail[r['EMAIL'].toString().trim().toLowerCase()] = cfg;
     });
 
     // KA HARIAN: header ada di baris ke-16 (index 15)
@@ -184,6 +186,17 @@ module.exports = async (req, res) => {
     if (isAdmin) {
       res.status(200).json({
         email, isAdmin: true, records: allRecords, roleInfo: null, escalations: computeEscalations(),
+        generatedAt: new Date().toISOString()
+      });
+      return;
+    }
+
+    // DESKCALL: bukan CO (tidak punya kontrak atas nama sendiri), dikenali via EMAIL di CONFIG_ROLE.
+    // Dapat akses ke seluruh data (kayak admin) tapi menu di frontend dibatasi (lihat index.html).
+    const emailRoleCfg = roleByEmail[email];
+    if (emailRoleCfg && emailRoleCfg.role === 'DESKCALL') {
+      res.status(200).json({
+        email, isAdmin: false, records: allRecords, roleInfo: emailRoleCfg, escalations: [],
         generatedAt: new Date().toISOString()
       });
       return;
