@@ -192,7 +192,7 @@ function hitungBCH(masterList, petaKA, configRows) {
   if (!bchRow) return null;
   const namaCO = bchRow['NAMA_CO'];
 
-  const populasiEver = masterList.filter(m => m['FLEET/NON FLEET'] !== 'FLEET' && m['BUCKET AWAL'] === 'P001_030');
+  const populasiEver = masterList.filter(m => m['BUCKET AWAL'] === 'P001_030');
   const totalAwal = populasiEver.length;
   const flowEverEscaped = populasiEver.filter(m => {
     const ka = petaKA[m['NO KONTRAK']];
@@ -202,7 +202,6 @@ function hitungBCH(masterList, petaKA, configRows) {
 
   let sipokFlow = 0, sipokTotalAsal = 0;
   masterList.forEach(m => {
-    if (m['FLEET/NON FLEET'] === 'FLEET') return;
     if (m['BUCKET AWAL'] !== 'P031_060') return;
     sipokTotalAsal += sipokOf(m); if (m['BUCKET UPDATE'] === 'P061_090') sipokFlow += sipokOf(m);
   });
@@ -210,7 +209,6 @@ function hitungBCH(masterList, petaKA, configRows) {
 
   let totalSipokBucket = 0, totalSipokAll = 0;
   Object.values(petaKA).forEach(ka => {
-    if (ka['FLEET/NON FLEET'] === 'FLEET') return;
     const bucket = ka['BUCKET UPDATE']; const idx = bucketIndex(bucket);
     const sisa = typeof ka['SISA PIUTANG'] === 'number' ? ka['SISA PIUTANG'] : 0;
     if (idx !== -1 && idx <= bucketIndex('P181_210')) { totalSipokAll += sisa; if (bucket === 'P001_030' || bucket === 'P031_060') totalSipokBucket += sisa; }
@@ -228,10 +226,10 @@ function hitungBCH(masterList, petaKA, configRows) {
 // ============================================================
 // INSENTIF PENYELESAIAN MINGGUAN (persis logic bot)
 // ============================================================
-function hitungPenyelesaianPct(masterList, filterFn, bucketAwalSet) {
+function hitungPenyelesaianPct(masterList, filterFn, bucketAwalSet, includeFleet) {
   let sipokFlow = 0, sipokTotal = 0;
   masterList.forEach(m => {
-    if (m['FLEET/NON FLEET'] === 'FLEET') return;
+    if (!includeFleet && m['FLEET/NON FLEET'] === 'FLEET') return;
     if (!filterFn(m)) return;
     if (!bucketAwalSet.includes(m['BUCKET AWAL'])) return;
     sipokTotal += sipokOf(m);
@@ -254,7 +252,8 @@ function hitungPenyelesaianSemua(masterList, configRows) {
     const namaCO = cfg['NAMA_CO'];
     const bucketSet = (cfg['BUCKET_PENYELESAIAN'] || '').split(',').map(s => s.trim());
     const filterFn = role === 'FE' ? (m => m['CO ALL'] === namaCO) : (() => true);
-    const hasil = hitungPenyelesaianPct(masterList, filterFn, bucketSet);
+    const includeFleet = role === 'BCH';
+    const hasil = hitungPenyelesaianPct(masterList, filterFn, bucketSet, includeFleet);
     const tabelFn = role === 'FE' ? insentifPenyelesaianFE : role === 'MR' ? insentifPenyelesaianMR : insentifPenyelesaianBCH;
     const nilai = tabelFn(hasil.pct, minggu);
 
@@ -265,7 +264,7 @@ function hitungPenyelesaianSemua(masterList, configRows) {
     if (batasBerikutnya !== null) { gapPct = batasBerikutnya - hasil.pct + 0.01; gapRupiah = (gapPct / 100) * hasil.sipokTotal; }
 
     const kandidat = masterList.filter(m => {
-      if (m['FLEET/NON FLEET'] === 'FLEET') return false;
+      if (!includeFleet && m['FLEET/NON FLEET'] === 'FLEET') return false;
       if (!bucketSet.includes(m['BUCKET AWAL'])) return false;
       if (!filterFn(m)) return false;
       return bucketIndex(m['BUCKET UPDATE']) > bucketIndex(m['BUCKET AWAL']);
