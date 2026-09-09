@@ -2005,22 +2005,18 @@ function mkCompute(input){
     };
   });
 
-  function angsuranUntuk(nominal, t){
+  return { region, rateRegionClass, insGroup, ltv, maxGross, maxNet, perTenor, isRO, isNCAdminFee };
+}
+
+function mkAngsuranPerTenor(perTenor, nominal){
+  const out = {};
+  MK_TENORS.forEach(t => {
     const info = perTenor[t];
     const ntf = nominal + info.insurance + info.adminFee + MK_LIFE_INSURANCE + MK_ADDITIONAL_ADMIN_FEE;
     const pmt = mkPMT(info.rate/12, t, -ntf);
-    return mkCeilTo(pmt, 1000);
-  }
-
-  const rows = [];
-  for(let nominal = 2000000; nominal <= 54000000; nominal += 1000000){
-    const exceeds = nominal >= maxNet;
-    const angsuran = {};
-    MK_TENORS.forEach(t => { angsuran[t] = exceeds ? null : angsuranUntuk(nominal, t); });
-    rows.push({ nominal, exceeds, angsuran });
-  }
-
-  return { region, rateRegionClass, insGroup, ltv, maxGross, maxNet, perTenor, rows, isRO, isNCAdminFee };
+    out[t] = mkCeilTo(pmt, 1000);
+  });
+  return out;
 }
 
 function mkFmtRupiahShort(n){
@@ -2028,7 +2024,29 @@ function mkFmtRupiahShort(n){
   return 'Rp' + Math.round(n).toLocaleString('id-ID');
 }
 
-let mkState = { lastResult: null };
+let mkState = { lastResult: null, lastLookup: null, typeIdList: null };
+
+function mkLoadTypeIdList(){
+  if(mkState.typeIdList){ mkFillTypeIdDatalist(); return; }
+  fetch('/api/motorku-otr?mode=list-types', { headers: { Authorization: 'Bearer ' + ID_TOKEN } })
+    .then(r => r.json())
+    .then(body => {
+      mkState.typeIdList = body.types || [];
+      mkFillTypeIdDatalist();
+    })
+    .catch(() => { mkState.typeIdList = []; });
+}
+
+function mkFillTypeIdDatalist(){
+  const dl = document.getElementById('mkTypeIdDatalist');
+  if(!dl || !mkState.typeIdList) return;
+  dl.innerHTML = mkState.typeIdList.map(t => `<option value="${t.typeIdSistem}">${t.modelSistem}</option>`).join('');
+}
+
+function mkLookupTypeId(typeId){
+  return fetch('/api/motorku-otr?mode=lookup&typeId=' + encodeURIComponent(typeId), { headers: { Authorization: 'Bearer ' + ID_TOKEN } })
+    .then(r => r.json());
+}
 
 function buildSimulasiLayout(){
   const cabangOptions = mkCabangList().map(c => `<option value="${c}">${c}</option>`).join('');
@@ -2070,18 +2088,20 @@ function buildSimulasiLayout(){
           </select>
         </div>
         <div>
+          <label style="font-size:12px;color:var(--ink-soft);display:block;margin-bottom:4px;">Type ID</label>
+          <input id="mkTypeId" type="text" list="mkTypeIdDatalist" autocomplete="off" placeholder="cth. NF100TD" style="width:100%;padding:9px;border-radius:7px;border:1px solid var(--line);text-transform:uppercase;">
+          <datalist id="mkTypeIdDatalist"></datalist>
+          <div id="mkTypeIdInfo" style="font-size:11.5px;color:var(--ink-soft);margin-top:4px;min-height:15px;"></div>
+        </div>
+        <div>
           <label style="font-size:12px;color:var(--ink-soft);display:block;margin-bottom:4px;">OTR (Rp)</label>
-          <input id="mkOtr" type="number" min="0" step="1000" required placeholder="cth. 11500000" style="width:100%;padding:9px;border-radius:7px;border:1px solid var(--line);">
+          <input id="mkOtr" type="number" min="0" step="1000" required placeholder="otomatis dari Type ID, atau isi manual" style="width:100%;padding:9px;border-radius:7px;border:1px solid var(--line);">
         </div>
         <div>
           <label style="font-size:12px;color:var(--ink-soft);display:block;margin-bottom:4px;">Regional Daerah Plat No</label>
           <select id="mkRegionalPlat" required style="width:100%;padding:9px;border-radius:7px;border:1px solid var(--line);">
             ${MK_REGIONAL_PLAT_OPT.map(o=>`<option value="${o}">${o}</option>`).join('')}
           </select>
-        </div>
-        <div>
-          <label style="font-size:12px;color:var(--ink-soft);display:block;margin-bottom:4px;">Deviasi Rate (%, opsional)</label>
-          <input id="mkDeviasi" type="number" min="0" step="0.1" placeholder="0" style="width:100%;padding:9px;border-radius:7px;border:1px solid var(--line);">
         </div>
       </form>
       <div style="margin-top:14px;">
@@ -2091,11 +2111,52 @@ function buildSimulasiLayout(){
     <div id="mkResultArea"></div>
   `;
 
+  mkLoadTypeIdList();
+
+  const typeIdInput = document.getElementById('mkTypeId');
+  const typeIdInfo = document.getElementById('mkTypeIdInfo');
+  const otrInput = document.getElementById('mkOtr');
+  const tahunSel = document.getElementById('mkTahun');
+
+  function mkApplyOtrFromCache(){
+    if(!mkState.lastLookup) return;
+    const tahun = tahunSel.value;
+    const harga = mkState.lastLookup.priceByYear[tahun];
+    typeIdInfo.innerHTML = `<b>${mkState.lastLookup.modelHarga || mkState.lastLookup.modelSistem}</b>`;
+    if(harga && harga > 0){
+      otrInput.value = harga;
+      typeIdInfo.innerHTML += ` — OTR ${tahun}: <b>${mkFmtRupiahShort(harga)}</b>`;
+    } else {
+      otrInput.value = '';
+      typeIdInfo.innerHTML += ` — <span style="color:#B23B3B;">harga tahun ${tahun} tidak tersedia, isi OTR manual.</span>`;
+    }
+  }
+
+  typeIdInput.addEventListener('change', () => {
+    const typeId = typeIdInput.value.trim();
+    if(!typeId){ mkState.lastLookup = null; typeIdInfo.textContent = ''; return; }
+    typeIdInfo.textContent = 'Mencari…';
+    mkLookupTypeId(typeId).then(data => {
+      if(!data || data.error){
+        mkState.lastLookup = null;
+        typeIdInfo.innerHTML = `<span style="color:#B23B3B;">Type ID tidak ditemukan — isi OTR manual.</span>`;
+        return;
+      }
+      mkState.lastLookup = data;
+      mkApplyOtrFromCache();
+    }).catch(() => {
+      mkState.lastLookup = null;
+      typeIdInfo.innerHTML = `<span style="color:#B23B3B;">Gagal mencari Type ID — isi OTR manual.</span>`;
+    });
+  });
+  tahunSel.addEventListener('change', mkApplyOtrFromCache);
+
   const jkSel = document.getElementById('mkJenisKonsumen');
-  const ratingWrap = document.getElementById('mkRatingWrap');
+  const ratingSel = document.getElementById('mkRating');
   function toggleRating(){
     const isNC = jkSel.value.trim().toUpperCase().startsWith('NEW CUSTOMER');
-    ratingWrap.style.display = isNC ? 'none' : 'block';
+    ratingSel.disabled = isNC;
+    if(isNC) ratingSel.value = '-';
   }
   jkSel.addEventListener('change', toggleRating);
   toggleRating();
@@ -2112,11 +2173,19 @@ function buildSimulasiLayout(){
       tahunKendaraan: parseInt(document.getElementById('mkTahun').value, 10),
       otr: parseFloat(document.getElementById('mkOtr').value) || 0,
       regionalPlatNo: document.getElementById('mkRegionalPlat').value,
-      deviasi: (parseFloat(document.getElementById('mkDeviasi').value) || 0) / 100
+      deviasi: 0
     };
     mkState.lastResult = mkCompute(input);
     renderSimulasiMatrix(mkState.lastResult);
   });
+}
+
+function mkAngsuranRowHtml(label, nominal, angsuran, isMax){
+  return `
+    <tr style="border-bottom:1px solid var(--line);${isMax?'':'background:#F7FAFC;'}">
+      <td class="mono" style="position:sticky;left:0;background:${isMax?'var(--surface)':'#F7FAFC'};padding:8px 10px;text-align:left;font-weight:600;white-space:nowrap;">${label}<br><span style="font-weight:400;color:var(--ink-soft);">${mkFmtRupiahShort(nominal)}</span></td>
+      ${MK_TENORS.map(t => `<td class="mono" style="padding:8px 10px;text-align:right;white-space:nowrap;">${mkFmtRupiahShort(angsuran[t])}</td>`).join('')}
+    </tr>`;
 }
 
 function renderSimulasiMatrix(res){
@@ -2125,34 +2194,48 @@ function renderSimulasiMatrix(res){
     area.innerHTML = `<div class="state-box">Kombinasi data ini tidak ditemukan di tabel LTV (kemungkinan Rating "BAD" atau Tahun Kendaraan di luar 2010–2025 memang tidak dibiayai).</div>`;
     return;
   }
+  const maxAngsuran = mkAngsuranPerTenor(res.perTenor, res.maxNet);
   area.innerHTML = `
     <div class="grand-row" style="margin-bottom:18px;">
       <div class="grand-card"><div class="lbl">Region</div><div class="val" style="font-size:16px;">${res.region||'-'}</div></div>
       <div class="grand-card"><div class="lbl">LTV</div><div class="val">${(res.ltv*100).toFixed(0)}%</div></div>
       <div class="grand-card"><div class="lbl">Maks. Pencairan (Gross)</div><div class="val" style="font-size:15px;">${mkFmtRupiahShort(res.maxGross)}</div></div>
-      <div class="grand-card"><div class="lbl">Maks. Pencairan (Net, tenor 36bln)</div><div class="val" style="font-size:15px;">${mkFmtRupiahShort(res.maxNet)}</div></div>
+      <div class="grand-card"><div class="lbl">Maks. Pencairan (Net)</div><div class="val" style="font-size:15px;">${mkFmtRupiahShort(res.maxNet)}</div></div>
     </div>
-    <div class="panel-title">Tabel Simulasi Angsuran (Pencairan × Tenor)</div>
-    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;background:var(--surface);border:1px solid var(--line);border-radius:10px;">
-      <table style="min-width:720px;width:100%;border-collapse:collapse;font-size:12.5px;">
+    <div class="panel-title">Angsuran per Tenor</div>
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;background:var(--surface);border:1px solid var(--line);border-radius:10px;margin-bottom:14px;">
+      <table style="min-width:640px;width:100%;border-collapse:collapse;font-size:12.5px;">
         <thead>
           <tr style="background:var(--navy);color:#fff;">
-            <th style="position:sticky;left:0;background:var(--navy);padding:8px 10px;text-align:right;white-space:nowrap;z-index:2;">Pencairan</th>
+            <th style="position:sticky;left:0;background:var(--navy);padding:8px 10px;text-align:left;white-space:nowrap;z-index:2;">Pencairan</th>
             ${MK_TENORS.map(t=>`<th style="padding:8px 10px;text-align:right;white-space:nowrap;">${t} bln</th>`).join('')}
           </tr>
         </thead>
-        <tbody>
-          ${res.rows.map(row => `
-            <tr style="${row.exceeds?'opacity:0.35;':''}border-bottom:1px solid var(--line);">
-              <td class="mono" style="position:sticky;left:0;background:var(--surface);padding:6px 10px;text-align:right;font-weight:600;white-space:nowrap;">${mkFmtRupiahShort(row.nominal)}</td>
-              ${MK_TENORS.map(t => `<td class="mono" style="padding:6px 10px;text-align:right;white-space:nowrap;">${row.exceeds ? '—' : mkFmtRupiahShort(row.angsuran[t])}</td>`).join('')}
-            </tr>
-          `).join('')}
+        <tbody id="mkResultRows">
+          ${mkAngsuranRowHtml('Pencairan Maksimal', res.maxNet, maxAngsuran, true)}
         </tbody>
       </table>
     </div>
-    <div class="count-note" style="margin-top:8px;">Baris yang pudar (—) berarti nominal pencairan melebihi batas maksimal (LTV dikurangi asuransi &amp; biaya admin tenor 36 bulan).</div>
+    <div class="controls">
+      <input id="mkManualNominal" type="number" min="0" step="100000" placeholder="Nominal pencairan yang diminta nasabah (Rp)" style="flex:1;min-width:220px;padding:9px;border-radius:7px;border:1px solid var(--line);">
+      <button class="btn primary" id="mkManualBtn">Hitung Manual</button>
+    </div>
+    <div id="mkManualNote" style="margin-top:6px;"></div>
   `;
+
+  document.getElementById('mkManualBtn').addEventListener('click', () => {
+    const nominal = parseFloat(document.getElementById('mkManualNominal').value) || 0;
+    const noteEl = document.getElementById('mkManualNote');
+    if(nominal <= 0){ noteEl.innerHTML = '<span style="color:#B23B3B;">Isi nominal pencairan dulu.</span>'; return; }
+    if(nominal >= res.maxNet){ noteEl.innerHTML = `<span style="color:#B23B3B;">Nominal melebihi batas maksimal pencairan (${mkFmtRupiahShort(res.maxNet)}).</span>`; return; }
+    noteEl.innerHTML = '';
+    const manualAngsuran = mkAngsuranPerTenor(res.perTenor, nominal);
+    const tbody = document.getElementById('mkResultRows');
+    const existingManual = tbody.querySelector('tr[data-manual]');
+    if(existingManual) existingManual.remove();
+    const rowHtml = mkAngsuranRowHtml('Pencairan Manual', nominal, manualAngsuran, false);
+    tbody.insertAdjacentHTML('beforeend', rowHtml.replace('<tr ', '<tr data-manual="1" '));
+  });
 }
 
 // ============================================================
