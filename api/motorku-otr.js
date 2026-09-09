@@ -126,7 +126,8 @@ module.exports = async (req, res) => {
       const priceByYear = {};
       YEAR_COLS.forEach(y => {
         const v = priceRow[y];
-        priceByYear[y] = typeof v === 'number' ? v : (parseFloat(v) || 0);
+        const raw = typeof v === 'number' ? v : (parseFloat(v) || 0);
+        priceByYear[y] = raw * 1000; // sheet OTR_PRICELIST nyimpen harga dalam satuan ribuan
       });
 
       res.status(200).json({
