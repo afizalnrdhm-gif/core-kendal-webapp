@@ -2180,12 +2180,20 @@ function buildSimulasiLayout(){
   });
 }
 
-function mkAngsuranRowHtml(label, nominal, angsuran, isMax){
+function mkAngsuranCardHtml(label, nominal, angsuran, isMax){
   return `
-    <tr style="border-bottom:1px solid var(--line);${isMax?'':'background:#F7FAFC;'}">
-      <td class="mono" style="position:sticky;left:0;background:${isMax?'var(--surface)':'#F7FAFC'};padding:8px 10px;text-align:left;font-weight:600;white-space:nowrap;">${label}<br><span style="font-weight:400;color:var(--ink-soft);">${mkFmtRupiahShort(nominal)}</span></td>
-      ${MK_TENORS.map(t => `<td class="mono" style="padding:8px 10px;text-align:right;white-space:nowrap;">${mkFmtRupiahShort(angsuran[t])}</td>`).join('')}
-    </tr>`;
+    <div style="background:${isMax?'var(--surface)':'#F7FAFC'};border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:12px;">
+      <div style="font-weight:600;font-size:13.5px;margin-bottom:2px;">${label}</div>
+      <div class="mono" style="font-size:12.5px;color:var(--ink-soft);margin-bottom:10px;">${mkFmtRupiahShort(nominal)}</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(84px,1fr));gap:8px;">
+        ${MK_TENORS.map(t => `
+          <div style="background:${isMax?'#F0F4F7':'#fff'};border-radius:7px;padding:7px 8px;text-align:center;">
+            <div style="font-size:10.5px;color:var(--ink-soft);">${t} bln</div>
+            <div class="mono" style="font-size:12.5px;font-weight:600;margin-top:2px;">${mkFmtRupiahShort(angsuran[t])}</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>`;
 }
 
 function renderSimulasiMatrix(res){
@@ -2203,18 +2211,8 @@ function renderSimulasiMatrix(res){
       <div class="grand-card"><div class="lbl">Maks. Pencairan (Net)</div><div class="val" style="font-size:15px;">${mkFmtRupiahShort(res.maxNet)}</div></div>
     </div>
     <div class="panel-title">Angsuran per Tenor</div>
-    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;background:var(--surface);border:1px solid var(--line);border-radius:10px;margin-bottom:14px;">
-      <table style="min-width:640px;width:100%;border-collapse:collapse;font-size:12.5px;">
-        <thead>
-          <tr style="background:var(--navy);color:#fff;">
-            <th style="position:sticky;left:0;background:var(--navy);padding:8px 10px;text-align:left;white-space:nowrap;z-index:2;">Pencairan</th>
-            ${MK_TENORS.map(t=>`<th style="padding:8px 10px;text-align:right;white-space:nowrap;">${t} bln</th>`).join('')}
-          </tr>
-        </thead>
-        <tbody id="mkResultRows">
-          ${mkAngsuranRowHtml('Pencairan Maksimal', res.maxNet, maxAngsuran, true)}
-        </tbody>
-      </table>
+    <div id="mkResultRows">
+      ${mkAngsuranCardHtml('Pencairan Maksimal', res.maxNet, maxAngsuran, true)}
     </div>
     <div class="controls">
       <input id="mkManualNominal" type="number" min="0" step="100000" placeholder="Nominal pencairan yang diminta nasabah (Rp)" style="flex:1;min-width:220px;padding:9px;border-radius:7px;border:1px solid var(--line);">
@@ -2230,11 +2228,11 @@ function renderSimulasiMatrix(res){
     if(nominal >= res.maxNet){ noteEl.innerHTML = `<span style="color:#B23B3B;">Nominal melebihi batas maksimal pencairan (${mkFmtRupiahShort(res.maxNet)}).</span>`; return; }
     noteEl.innerHTML = '';
     const manualAngsuran = mkAngsuranPerTenor(res.perTenor, nominal);
-    const tbody = document.getElementById('mkResultRows');
-    const existingManual = tbody.querySelector('tr[data-manual]');
+    const rowsWrap = document.getElementById('mkResultRows');
+    const existingManual = rowsWrap.querySelector('div[data-manual]');
     if(existingManual) existingManual.remove();
-    const rowHtml = mkAngsuranRowHtml('Pencairan Manual', nominal, manualAngsuran, false);
-    tbody.insertAdjacentHTML('beforeend', rowHtml.replace('<tr ', '<tr data-manual="1" '));
+    const cardHtml = mkAngsuranCardHtml('Pencairan Manual', nominal, manualAngsuran, false);
+    rowsWrap.insertAdjacentHTML('beforeend', cardHtml.replace('<div style=', '<div data-manual="1" style='));
   });
 }
 
