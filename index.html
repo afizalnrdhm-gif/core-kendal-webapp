@@ -466,6 +466,14 @@
           <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 9.3c0-1 1-1.7 3-1.7s3 .7 3 1.7-1.1 1.4-3 1.7-3 .7-3 1.7 1.2 1.8 3 1.8 3-.7 3-1.8"/><line x1="12" y1="6" x2="12" y2="7.1"/><line x1="12" y1="16.9" x2="12" y2="18"/></svg>
           <span>Insentif</span>
         </button>
+        <button class="nav-item nav-hidden" data-view="dekscall" id="navDekscall">
+          <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.34 1.9.63 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.29 1.85.5 2.81.63A2 2 0 0 1 22 16.92z"/></svg>
+          <span>Dekscall</span>
+        </button>
+        <button class="nav-item" data-view="simulasi" id="navSimulasi">
+          <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="7" x2="16" y2="7"/><line x1="8" y1="11" x2="10" y2="11"/><line x1="13" y1="11" x2="15" y2="11"/><line x1="8" y1="15" x2="10" y2="15"/><line x1="13" y1="15" x2="15" y2="15"/></svg>
+          <span>Simulasi Penawaran</span>
+        </button>
       </nav>
       <div class="sidebar-footer">
         <div id="whoBox">Memuat akun…</div>
@@ -526,6 +534,7 @@ let DATA = [];
 let ESCALATIONS = [];
 let ROLE_INFO = null;
 let IS_ADMIN = false;
+let IS_DESKCALL = false;
 let USER_EMAIL = '';
 let ID_TOKEN = null;
 let state = { search:'', co:'ALL', bucket:'ALL', kriteria:'ALL', tipe:'ALL', kecamatan:'ALL', ever:'ALL', janjiList:[], sortKey:'JATUH TEMPO', sortDir:1, tab:'own' };
@@ -640,6 +649,8 @@ document.getElementById('navDashboard').addEventListener('click', () => switchVi
 document.getElementById('navNBQ').addEventListener('click', () => switchView('nbq'));
 document.getElementById('navFEEver').addEventListener('click', () => switchView('feever'));
 document.getElementById('navInsentif').addEventListener('click', () => switchView('insentif'));
+document.getElementById('navDekscall').addEventListener('click', () => switchView('dekscall'));
+document.getElementById('navSimulasi').addEventListener('click', () => switchView('simulasi'));
 document.getElementById('menuToggle').addEventListener('click', () => {
   document.getElementById('sidebar').classList.add('show');
   document.getElementById('sidebarOverlay').classList.add('show');
@@ -679,28 +690,39 @@ function onLoadError(err){
 function onDataLoaded(res){
   DATA = res.records; IS_ADMIN = res.isAdmin; USER_EMAIL = res.email;
   ESCALATIONS = res.escalations || []; ROLE_INFO = res.roleInfo || null;
+  IS_DESKCALL = !!(ROLE_INFO && ROLE_INFO.role === 'DESKCALL');
   state.tab = 'own';
 
-  if(!IS_ADMIN && ROLE_INFO){
+  if(!IS_ADMIN && !IS_DESKCALL && ROLE_INFO){
     const allowedBuckets = getBucketOptions();
     DATA = DATA.filter(r => allowedBuckets.includes(r['BUCKET AWAL']));
   }
 
   document.getElementById('whoBox').innerHTML =
     '<span class="who-email">Masuk sebagai <b>' + (USER_EMAIL || '-') + '</b></span>' +
-    '<span class="badge">' + (IS_ADMIN ? 'ADMIN' : 'CO') + '</span>';
+    '<span class="badge">' + (IS_ADMIN ? 'ADMIN' : (IS_DESKCALL ? 'DESKCALL' : 'CO')) + '</span>';
 
   const isMR = ROLE_INFO && ROLE_INFO.role === 'MR';
   const navRingkasan = document.getElementById('navRingkasan');
   navRingkasan.classList.toggle('nav-hidden', !IS_ADMIN);
   const navNBQ = document.getElementById('navNBQ');
   const navFEEver = document.getElementById('navFEEver');
+  const navInsentif = document.getElementById('navInsentif');
+  const navDekscall = document.getElementById('navDekscall');
   if(isMR){
     navNBQ.classList.add('nav-hidden');
     navFEEver.classList.remove('nav-hidden');
   } else {
     navNBQ.classList.remove('nav-hidden');
     navFEEver.classList.toggle('nav-hidden', !IS_ADMIN);
+  }
+  // DESKCALL: cuma boleh lihat Beban Awal (semua PIC), Dekscall, dan Simulasi Penawaran.
+  navDekscall.classList.toggle('nav-hidden', !IS_DESKCALL);
+  if(IS_DESKCALL){
+    navNBQ.classList.add('nav-hidden');
+    navFEEver.classList.add('nav-hidden');
+    navInsentif.classList.add('nav-hidden');
+    navRingkasan.classList.add('nav-hidden');
   }
 
   if(!hasInitializedApp){
@@ -795,7 +817,7 @@ function buildLayout(){
 
   let html = '';
 
-  if(IS_ADMIN){
+  if(IS_ADMIN || IS_DESKCALL){
     html += `<div class="panel-title">Total Beban Awal (Semua PIC)</div>
       <div class="grand-row" id="grandRow"></div>
       <div class="panel-title">Monitoring Realisasi per Bucket</div>
@@ -981,7 +1003,7 @@ function updateFilterBadge(){
 let VIEW_MODE = 'dashboard';
 let INSENTIF_DATA = null;
 
-const VIEW_TITLES = { ringkasan: 'Dashboard', dashboard: 'Beban Awal', nbq: 'NBQ', feever: 'FE Ever', insentif: 'Insentif' };
+const VIEW_TITLES = { ringkasan: 'Dashboard', dashboard: 'Beban Awal', nbq: 'NBQ', feever: 'FE Ever', insentif: 'Insentif', dekscall: 'Dekscall', simulasi: 'Simulasi Penawaran' };
 
 function triggerFadeIn(){
   const el = document.getElementById('wrap');
@@ -999,10 +1021,19 @@ function switchView(view){
   document.getElementById('navNBQ').classList.toggle('active', view === 'nbq');
   document.getElementById('navFEEver').classList.toggle('active', view === 'feever');
   document.getElementById('navInsentif').classList.toggle('active', view === 'insentif');
+  document.getElementById('navDekscall').classList.toggle('active', view === 'dekscall');
+  document.getElementById('navSimulasi').classList.toggle('active', view === 'simulasi');
   document.getElementById('mobilePageTitle').textContent = VIEW_TITLES[view] || '';
   closeSidebarDrawer();
 
-  if(view === 'ringkasan'){
+  if(view === 'dekscall'){
+    buildDekscallLayout();
+    renderDekscall();
+    triggerFadeIn();
+  } else if(view === 'simulasi'){
+    buildSimulasiLayout();
+    triggerFadeIn();
+  } else if(view === 'ringkasan'){
     if(RINGKASAN_DATA){ renderRingkasanView(); triggerFadeIn(); } else { loadRingkasan(); }
   } else if(view === 'dashboard'){
     buildLayout();
@@ -1206,6 +1237,922 @@ function renderFEEverTable(){
     </tr>`;
   }).join('');
   tbody.querySelectorAll('tr[data-kontrak]').forEach(tr => tr.onclick = () => openPanel(tr.getAttribute('data-kontrak')));
+}
+
+// ============================================================
+// DEKSCALL — khusus role DESKCALL: NOOD yang FLOW & belum realisasi
+// ============================================================
+let dekscallState = { search:'', sortKey:'JATUH TEMPO', sortDir:1 };
+
+function getDekscallBase(){
+  return DATA.filter(r =>
+    r['BUCKET AWAL'] === 'NOOD' &&
+    (r['KRITERIA ACCT']||'').toString().trim().toUpperCase() === 'FLOW' &&
+    r['BUCKET UPDATE'] === 'P001_030'
+  );
+}
+
+function buildDekscallLayout(){
+  const base = getDekscallBase();
+  const stat = { count: base.length, sipok: base.reduce((s,r)=> s + (typeof r['SIPOK']==='number' ? r['SIPOK'] : 0), 0) };
+
+  document.getElementById('wrap').innerHTML = `
+    <div class="panel-title">NOOD Belum Realisasi (Flow ke P001_030)</div>
+    <div class="grand-row" style="margin-bottom:22px;">
+      <div class="grand-card"><div class="lbl">Jumlah Kontrak</div><div class="val" id="dekscallValKontrak">0</div></div>
+      <div class="grand-card"><div class="lbl">Total Sisa Piutang</div><div class="val" id="dekscallValSipok">Rp0</div></div>
+    </div>
+    <div class="controls">
+      <div class="search-box">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4C6272" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="dekscallSearchInput" type="text" placeholder="Cari nama konsumen, no kontrak, atau nopol…">
+      </div>
+      <button class="btn" id="dekscallResetBtn">Reset filter</button>
+      <button class="btn primary" id="dekscallRefreshBtn">↻ Muat ulang</button>
+    </div>
+    <div class="count-note" id="dekscallCountNote"></div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th data-key="CO ALL">CO</th>
+            <th data-key="NO KONTRAK">No Kontrak</th>
+            <th data-key="NAMA KONSUMEN">Nama Konsumen</th>
+            <th data-key="STATUS BAYAR">Status</th>
+            <th data-key="SIPOK" class="num">Sisa Piutang</th>
+            <th data-key="DPD" class="num">DPD</th>
+            <th data-key="JATUH TEMPO">Jatuh Tempo</th>
+          </tr>
+        </thead>
+        <tbody id="dekscallTbody"></tbody>
+      </table>
+    </div>
+  `;
+
+  animateCount(document.getElementById('dekscallValKontrak'), stat.count, false);
+  animateCount(document.getElementById('dekscallValSipok'), stat.sipok, true);
+
+  document.querySelectorAll('#wrap thead th[data-key]').forEach(th => {
+    th.addEventListener('click', () => {
+      const key = th.getAttribute('data-key');
+      if(dekscallState.sortKey === key) dekscallState.sortDir *= -1; else { dekscallState.sortKey = key; dekscallState.sortDir = 1; }
+      renderDekscallTable();
+    });
+  });
+  document.getElementById('dekscallSearchInput').addEventListener('input', e => { dekscallState.search = e.target.value; renderDekscallTable(); });
+  document.getElementById('dekscallResetBtn').addEventListener('click', () => {
+    dekscallState = { search:'', sortKey:'JATUH TEMPO', sortDir:1 };
+    document.getElementById('dekscallSearchInput').value = '';
+    renderDekscallTable();
+  });
+  document.getElementById('dekscallRefreshBtn').addEventListener('click', loadData);
+}
+
+function renderDekscall(){
+  if(getDekscallBase().length === 0){
+    document.getElementById('wrap').innerHTML = '<div class="state-box">Tidak ada kontrak NOOD yang belum realisasi saat ini. 🎉</div>';
+    return;
+  }
+  renderDekscallTable();
+}
+
+function renderDekscallTable(){
+  let rows = getDekscallBase();
+  if(dekscallState.search.trim()){
+    const q = dekscallState.search.trim().toLowerCase();
+    rows = rows.filter(r => (r['NAMA KONSUMEN']||'').toLowerCase().includes(q) || (r['NO KONTRAK']||'').toLowerCase().includes(q) || (r['NOPOL']||'').toLowerCase().includes(q));
+  }
+  if(dekscallState.sortKey){
+    rows = rows.slice().sort((a,b) => {
+      let va=a[dekscallState.sortKey], vb=b[dekscallState.sortKey];
+      if(typeof va==='number' && typeof vb==='number') return (va-vb)*dekscallState.sortDir;
+      va=(va||'').toString().toLowerCase(); vb=(vb||'').toString().toLowerCase();
+      return va.localeCompare(vb)*dekscallState.sortDir;
+    });
+  }
+  const base = getDekscallBase();
+  document.getElementById('dekscallCountNote').innerHTML = `Menampilkan <b>${rows.length}</b> dari <b>${base.length}</b> kontrak`;
+  const tbody = document.getElementById('dekscallTbody');
+  if(rows.length===0){ tbody.innerHTML = '<tr class="empty-row"><td colspan="7">Tidak ada kontrak yang cocok.</td></tr>'; return; }
+  tbody.innerHTML = rows.map(r => {
+    const meta = CO_META[r['CO ALL']] || {short:r['CO ALL']||'-'};
+    return `<tr data-kontrak="${r['NO KONTRAK']}">
+      <td data-label="CO" class="mono">${meta.short}</td>
+      <td data-label="No Kontrak" class="mono">${r['NO KONTRAK']||'-'}</td>
+      <td data-label="Nama">${r['NAMA KONSUMEN']||'-'}</td>
+      <td data-label="Status"><span class="status-pill ${statusClass(r['STATUS BAYAR'])}">${r['STATUS BAYAR']||'-'}</span></td>
+      <td data-label="Sisa Piutang" class="num">${fmtRupiah(r['SIPOK'])}</td>
+      <td data-label="DPD" class="num">${r['DPD'] ?? '-'}</td>
+      <td data-label="Jatuh Tempo" class="mono">${fmtDate(r['JATUH TEMPO'])}</td>
+    </tr>`;
+  }).join('');
+  tbody.querySelectorAll('tr[data-kontrak]').forEach(tr => tr.onclick = () => openPanel(tr.getAttribute('data-kontrak')));
+}
+
+// ============================================================
+// SIMULASI PENAWARAN — Kalkulator MotorKu (semua role)
+// Diporting dari QuickTools_MotorKu_2026_v8_13_0.xlsx sheet "Quick Tools"
+// ============================================================
+const MK_LTV_TABLE = [
+['new customer','NON VESPA & KTM','-','Pribadi/Pasangan dan Anak/Orang Tua',2025,0.85],
+['new customer','NON VESPA & KTM','-','Pribadi/Pasangan dan Anak/Orang Tua',2024,0.85],
+['new customer','NON VESPA & KTM','-','Pribadi/Pasangan dan Anak/Orang Tua',2023,0.85],
+['new customer','NON VESPA & KTM','-','Pribadi/Pasangan dan Anak/Orang Tua',2022,0.85],
+['new customer','NON VESPA & KTM','-','Pribadi/Pasangan dan Anak/Orang Tua',2021,0.85],
+['new customer','NON VESPA & KTM','-','Pribadi/Pasangan dan Anak/Orang Tua',2020,0.85],
+['new customer','NON VESPA & KTM','-','Pribadi/Pasangan dan Anak/Orang Tua',2019,0.75],
+['new customer','NON VESPA & KTM','-','Pribadi/Pasangan dan Anak/Orang Tua',2018,0.75],
+['new customer','NON VESPA & KTM','-','Pribadi/Pasangan dan Anak/Orang Tua',2017,0.75],
+['new customer','NON VESPA & KTM','-','Pribadi/Pasangan dan Anak/Orang Tua',2016,0.75],
+['new customer','NON VESPA & KTM','-','Pribadi/Pasangan dan Anak/Orang Tua',2015,0.75],
+['new customer','NON VESPA & KTM','-','Pribadi/Pasangan dan Anak/Orang Tua',2014,0.75],
+['new customer','NON VESPA & KTM','-','Pribadi/Pasangan dan Anak/Orang Tua',2013,0.75],
+['new customer','NON VESPA & KTM','-','Pribadi/Pasangan dan Anak/Orang Tua',2012,0.75],
+['new customer','NON VESPA & KTM','-','Pribadi/Pasangan dan Anak/Orang Tua',2011,0.75],
+['new customer','NON VESPA & KTM','-','Pribadi/Pasangan dan Anak/Orang Tua',2010,0.75],
+['new customer','NON VESPA & KTM','-','Orang Lain',2025,0.75],
+['new customer','NON VESPA & KTM','-','Orang Lain',2024,0.75],
+['new customer','NON VESPA & KTM','-','Orang Lain',2023,0.75],
+['new customer','NON VESPA & KTM','-','Orang Lain',2022,0.75],
+['new customer','NON VESPA & KTM','-','Orang Lain',2021,0.75],
+['new customer','NON VESPA & KTM','-','Orang Lain',2020,0.75],
+['new customer','NON VESPA & KTM','-','Orang Lain',2019,0.7],
+['new customer','NON VESPA & KTM','-','Orang Lain',2018,0.7],
+['new customer','NON VESPA & KTM','-','Orang Lain',2017,0.7],
+['new customer','NON VESPA & KTM','-','Orang Lain',2016,0.7],
+['new customer','NON VESPA & KTM','-','Orang Lain',2015,0.7],
+['new customer','NON VESPA & KTM','-','Orang Lain',2014,0.7],
+['new customer','NON VESPA & KTM','-','Orang Lain',2013,0.7],
+['new customer','NON VESPA & KTM','-','Orang Lain',2012,0.7],
+['new customer','NON VESPA & KTM','-','Orang Lain',2011,0.7],
+['new customer','NON VESPA & KTM','-','Orang Lain',2010,0.7],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','EXCELLENT','Pribadi/Pasangan dan Anak/Orang Tua',2025,0.85],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','EXCELLENT','Pribadi/Pasangan dan Anak/Orang Tua',2024,0.85],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','EXCELLENT','Pribadi/Pasangan dan Anak/Orang Tua',2023,0.85],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','EXCELLENT','Pribadi/Pasangan dan Anak/Orang Tua',2022,0.85],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','EXCELLENT','Pribadi/Pasangan dan Anak/Orang Tua',2021,0.85],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','EXCELLENT','Pribadi/Pasangan dan Anak/Orang Tua',2020,0.85],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','EXCELLENT','Pribadi/Pasangan dan Anak/Orang Tua',2019,0.75],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','EXCELLENT','Pribadi/Pasangan dan Anak/Orang Tua',2018,0.75],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','EXCELLENT','Pribadi/Pasangan dan Anak/Orang Tua',2017,0.75],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','EXCELLENT','Pribadi/Pasangan dan Anak/Orang Tua',2016,0.75],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','EXCELLENT','Pribadi/Pasangan dan Anak/Orang Tua',2015,0.75],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','EXCELLENT','Pribadi/Pasangan dan Anak/Orang Tua',2014,0.75],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','EXCELLENT','Pribadi/Pasangan dan Anak/Orang Tua',2013,0.75],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','EXCELLENT','Pribadi/Pasangan dan Anak/Orang Tua',2012,0.75],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','EXCELLENT','Pribadi/Pasangan dan Anak/Orang Tua',2011,0.75],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','EXCELLENT','Pribadi/Pasangan dan Anak/Orang Tua',2010,0.75],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','EXCELLENT','Orang Lain',2025,0.75],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','EXCELLENT','Orang Lain',2024,0.75],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','EXCELLENT','Orang Lain',2023,0.75],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','EXCELLENT','Orang Lain',2022,0.75],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','EXCELLENT','Orang Lain',2021,0.75],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','EXCELLENT','Orang Lain',2020,0.75],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','EXCELLENT','Orang Lain',2019,0.7],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','EXCELLENT','Orang Lain',2018,0.7],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','EXCELLENT','Orang Lain',2017,0.7],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','EXCELLENT','Orang Lain',2016,0.7],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','EXCELLENT','Orang Lain',2015,0.7],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','EXCELLENT','Orang Lain',2014,0.7],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','EXCELLENT','Orang Lain',2013,0.7],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','EXCELLENT','Orang Lain',2012,0.7],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','EXCELLENT','Orang Lain',2011,0.7],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','EXCELLENT','Orang Lain',2010,0.7],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','GOOD','Pribadi/Pasangan dan Anak/Orang Tua',2025,0.85],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','GOOD','Pribadi/Pasangan dan Anak/Orang Tua',2024,0.85],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','GOOD','Pribadi/Pasangan dan Anak/Orang Tua',2023,0.85],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','GOOD','Pribadi/Pasangan dan Anak/Orang Tua',2022,0.85],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','GOOD','Pribadi/Pasangan dan Anak/Orang Tua',2021,0.85],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','GOOD','Pribadi/Pasangan dan Anak/Orang Tua',2020,0.85],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','GOOD','Pribadi/Pasangan dan Anak/Orang Tua',2019,0.75],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','GOOD','Pribadi/Pasangan dan Anak/Orang Tua',2018,0.75],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','GOOD','Pribadi/Pasangan dan Anak/Orang Tua',2017,0.75],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','GOOD','Pribadi/Pasangan dan Anak/Orang Tua',2016,0.75],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','GOOD','Pribadi/Pasangan dan Anak/Orang Tua',2015,0.75],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','GOOD','Pribadi/Pasangan dan Anak/Orang Tua',2014,0.75],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','GOOD','Pribadi/Pasangan dan Anak/Orang Tua',2013,0.75],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','GOOD','Pribadi/Pasangan dan Anak/Orang Tua',2012,0.75],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','GOOD','Pribadi/Pasangan dan Anak/Orang Tua',2011,0.75],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','GOOD','Pribadi/Pasangan dan Anak/Orang Tua',2010,0.75],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','GOOD','Orang Lain',2025,0.75],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','GOOD','Orang Lain',2024,0.75],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','GOOD','Orang Lain',2023,0.75],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','GOOD','Orang Lain',2022,0.75],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','GOOD','Orang Lain',2021,0.75],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','GOOD','Orang Lain',2020,0.75],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','GOOD','Orang Lain',2019,0.7],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','GOOD','Orang Lain',2018,0.7],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','GOOD','Orang Lain',2017,0.7],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','GOOD','Orang Lain',2016,0.7],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','GOOD','Orang Lain',2015,0.7],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','GOOD','Orang Lain',2014,0.7],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','GOOD','Orang Lain',2013,0.7],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','GOOD','Orang Lain',2012,0.7],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','GOOD','Orang Lain',2011,0.7],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','GOOD','Orang Lain',2010,0.7],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','NORMAL','Pribadi/Pasangan dan Anak/Orang Tua',2025,0.85],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','NORMAL','Pribadi/Pasangan dan Anak/Orang Tua',2024,0.85],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','NORMAL','Pribadi/Pasangan dan Anak/Orang Tua',2023,0.85],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','NORMAL','Pribadi/Pasangan dan Anak/Orang Tua',2022,0.85],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','NORMAL','Pribadi/Pasangan dan Anak/Orang Tua',2021,0.85],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','NORMAL','Pribadi/Pasangan dan Anak/Orang Tua',2020,0.85],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','NORMAL','Pribadi/Pasangan dan Anak/Orang Tua',2019,0.75],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','NORMAL','Pribadi/Pasangan dan Anak/Orang Tua',2018,0.75],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','NORMAL','Pribadi/Pasangan dan Anak/Orang Tua',2017,0.75],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','NORMAL','Pribadi/Pasangan dan Anak/Orang Tua',2016,0.75],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','NORMAL','Pribadi/Pasangan dan Anak/Orang Tua',2015,0.75],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','NORMAL','Pribadi/Pasangan dan Anak/Orang Tua',2014,0.75],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','NORMAL','Pribadi/Pasangan dan Anak/Orang Tua',2013,0.75],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','NORMAL','Pribadi/Pasangan dan Anak/Orang Tua',2012,0.75],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','NORMAL','Pribadi/Pasangan dan Anak/Orang Tua',2011,0.75],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','NORMAL','Pribadi/Pasangan dan Anak/Orang Tua',2010,0.75],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','NORMAL','Orang Lain',2025,0.75],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','NORMAL','Orang Lain',2024,0.75],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','NORMAL','Orang Lain',2023,0.75],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','NORMAL','Orang Lain',2022,0.75],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','NORMAL','Orang Lain',2021,0.75],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','NORMAL','Orang Lain',2020,0.75],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','NORMAL','Orang Lain',2019,0.7],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','NORMAL','Orang Lain',2018,0.7],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','NORMAL','Orang Lain',2017,0.7],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','NORMAL','Orang Lain',2016,0.7],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','NORMAL','Orang Lain',2015,0.7],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','NORMAL','Orang Lain',2014,0.7],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','NORMAL','Orang Lain',2013,0.7],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','NORMAL','Orang Lain',2012,0.7],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','NORMAL','Orang Lain',2011,0.7],
+['RO LUNAS > 2 TAHUN','NON VESPA & KTM','NORMAL','Orang Lain',2010,0.7],
+['RO AKTIF','NON VESPA & KTM','EXCELLENT','Pribadi/Pasangan dan Anak/Orang Tua',2025,0.95],
+['RO AKTIF','NON VESPA & KTM','EXCELLENT','Pribadi/Pasangan dan Anak/Orang Tua',2024,0.95],
+['RO AKTIF','NON VESPA & KTM','EXCELLENT','Pribadi/Pasangan dan Anak/Orang Tua',2023,0.95],
+['RO AKTIF','NON VESPA & KTM','EXCELLENT','Pribadi/Pasangan dan Anak/Orang Tua',2022,0.95],
+['RO AKTIF','NON VESPA & KTM','EXCELLENT','Pribadi/Pasangan dan Anak/Orang Tua',2021,0.95],
+['RO AKTIF','NON VESPA & KTM','EXCELLENT','Pribadi/Pasangan dan Anak/Orang Tua',2020,0.95],
+['RO AKTIF','NON VESPA & KTM','EXCELLENT','Pribadi/Pasangan dan Anak/Orang Tua',2019,0.95],
+['RO AKTIF','NON VESPA & KTM','EXCELLENT','Pribadi/Pasangan dan Anak/Orang Tua',2018,0.95],
+['RO AKTIF','NON VESPA & KTM','EXCELLENT','Pribadi/Pasangan dan Anak/Orang Tua',2017,0.95],
+['RO AKTIF','NON VESPA & KTM','EXCELLENT','Pribadi/Pasangan dan Anak/Orang Tua',2016,0.95],
+['RO AKTIF','NON VESPA & KTM','EXCELLENT','Pribadi/Pasangan dan Anak/Orang Tua',2015,0.95],
+['RO AKTIF','NON VESPA & KTM','EXCELLENT','Pribadi/Pasangan dan Anak/Orang Tua',2014,0.95],
+['RO AKTIF','NON VESPA & KTM','EXCELLENT','Pribadi/Pasangan dan Anak/Orang Tua',2013,0.95],
+['RO AKTIF','NON VESPA & KTM','EXCELLENT','Pribadi/Pasangan dan Anak/Orang Tua',2012,0.95],
+['RO AKTIF','NON VESPA & KTM','EXCELLENT','Pribadi/Pasangan dan Anak/Orang Tua',2011,0.95],
+['RO AKTIF','NON VESPA & KTM','EXCELLENT','Pribadi/Pasangan dan Anak/Orang Tua',2010,0.95],
+['RO AKTIF','NON VESPA & KTM','EXCELLENT','Orang Lain',2025,0.95],
+['RO AKTIF','NON VESPA & KTM','EXCELLENT','Orang Lain',2024,0.95],
+['RO AKTIF','NON VESPA & KTM','EXCELLENT','Orang Lain',2023,0.95],
+['RO AKTIF','NON VESPA & KTM','EXCELLENT','Orang Lain',2022,0.95],
+['RO AKTIF','NON VESPA & KTM','EXCELLENT','Orang Lain',2021,0.95],
+['RO AKTIF','NON VESPA & KTM','EXCELLENT','Orang Lain',2020,0.95],
+['RO AKTIF','NON VESPA & KTM','EXCELLENT','Orang Lain',2019,0.95],
+['RO AKTIF','NON VESPA & KTM','EXCELLENT','Orang Lain',2018,0.95],
+['RO AKTIF','NON VESPA & KTM','EXCELLENT','Orang Lain',2017,0.95],
+['RO AKTIF','NON VESPA & KTM','EXCELLENT','Orang Lain',2016,0.95],
+['RO AKTIF','NON VESPA & KTM','EXCELLENT','Orang Lain',2015,0.95],
+['RO AKTIF','NON VESPA & KTM','EXCELLENT','Orang Lain',2014,0.95],
+['RO AKTIF','NON VESPA & KTM','EXCELLENT','Orang Lain',2013,0.95],
+['RO AKTIF','NON VESPA & KTM','EXCELLENT','Orang Lain',2012,0.95],
+['RO AKTIF','NON VESPA & KTM','EXCELLENT','Orang Lain',2011,0.95],
+['RO AKTIF','NON VESPA & KTM','EXCELLENT','Orang Lain',2010,0.95],
+['RO AKTIF','NON VESPA & KTM','GOOD','Pribadi/Pasangan dan Anak/Orang Tua',2025,0.9],
+['RO AKTIF','NON VESPA & KTM','GOOD','Pribadi/Pasangan dan Anak/Orang Tua',2024,0.9],
+['RO AKTIF','NON VESPA & KTM','GOOD','Pribadi/Pasangan dan Anak/Orang Tua',2023,0.9],
+['RO AKTIF','NON VESPA & KTM','GOOD','Pribadi/Pasangan dan Anak/Orang Tua',2022,0.9],
+['RO AKTIF','NON VESPA & KTM','GOOD','Pribadi/Pasangan dan Anak/Orang Tua',2021,0.9],
+['RO AKTIF','NON VESPA & KTM','GOOD','Pribadi/Pasangan dan Anak/Orang Tua',2020,0.9],
+['RO AKTIF','NON VESPA & KTM','GOOD','Pribadi/Pasangan dan Anak/Orang Tua',2019,0.9],
+['RO AKTIF','NON VESPA & KTM','GOOD','Pribadi/Pasangan dan Anak/Orang Tua',2018,0.9],
+['RO AKTIF','NON VESPA & KTM','GOOD','Pribadi/Pasangan dan Anak/Orang Tua',2017,0.9],
+['RO AKTIF','NON VESPA & KTM','GOOD','Pribadi/Pasangan dan Anak/Orang Tua',2016,0.9],
+['RO AKTIF','NON VESPA & KTM','GOOD','Pribadi/Pasangan dan Anak/Orang Tua',2015,0.9],
+['RO AKTIF','NON VESPA & KTM','GOOD','Pribadi/Pasangan dan Anak/Orang Tua',2014,0.9],
+['RO AKTIF','NON VESPA & KTM','GOOD','Pribadi/Pasangan dan Anak/Orang Tua',2013,0.9],
+['RO AKTIF','NON VESPA & KTM','GOOD','Pribadi/Pasangan dan Anak/Orang Tua',2012,0.9],
+['RO AKTIF','NON VESPA & KTM','GOOD','Pribadi/Pasangan dan Anak/Orang Tua',2011,0.9],
+['RO AKTIF','NON VESPA & KTM','GOOD','Pribadi/Pasangan dan Anak/Orang Tua',2010,0.9],
+['RO AKTIF','NON VESPA & KTM','GOOD','Orang Lain',2025,0.9],
+['RO AKTIF','NON VESPA & KTM','GOOD','Orang Lain',2024,0.9],
+['RO AKTIF','NON VESPA & KTM','GOOD','Orang Lain',2023,0.9],
+['RO AKTIF','NON VESPA & KTM','GOOD','Orang Lain',2022,0.9],
+['RO AKTIF','NON VESPA & KTM','GOOD','Orang Lain',2021,0.9],
+['RO AKTIF','NON VESPA & KTM','GOOD','Orang Lain',2020,0.9],
+['RO AKTIF','NON VESPA & KTM','GOOD','Orang Lain',2019,0.9],
+['RO AKTIF','NON VESPA & KTM','GOOD','Orang Lain',2018,0.9],
+['RO AKTIF','NON VESPA & KTM','GOOD','Orang Lain',2017,0.9],
+['RO AKTIF','NON VESPA & KTM','GOOD','Orang Lain',2016,0.9],
+['RO AKTIF','NON VESPA & KTM','GOOD','Orang Lain',2015,0.9],
+['RO AKTIF','NON VESPA & KTM','GOOD','Orang Lain',2014,0.9],
+['RO AKTIF','NON VESPA & KTM','GOOD','Orang Lain',2013,0.9],
+['RO AKTIF','NON VESPA & KTM','GOOD','Orang Lain',2012,0.9],
+['RO AKTIF','NON VESPA & KTM','GOOD','Orang Lain',2011,0.9],
+['RO AKTIF','NON VESPA & KTM','GOOD','Orang Lain',2010,0.9],
+['RO AKTIF','NON VESPA & KTM','NORMAL','Pribadi/Pasangan dan Anak/Orang Tua',2025,0.9],
+['RO AKTIF','NON VESPA & KTM','NORMAL','Pribadi/Pasangan dan Anak/Orang Tua',2024,0.9],
+['RO AKTIF','NON VESPA & KTM','NORMAL','Pribadi/Pasangan dan Anak/Orang Tua',2023,0.9],
+['RO AKTIF','NON VESPA & KTM','NORMAL','Pribadi/Pasangan dan Anak/Orang Tua',2022,0.9],
+['RO AKTIF','NON VESPA & KTM','NORMAL','Pribadi/Pasangan dan Anak/Orang Tua',2021,0.9],
+['RO AKTIF','NON VESPA & KTM','NORMAL','Pribadi/Pasangan dan Anak/Orang Tua',2020,0.9],
+['RO AKTIF','NON VESPA & KTM','NORMAL','Pribadi/Pasangan dan Anak/Orang Tua',2019,0.85],
+['RO AKTIF','NON VESPA & KTM','NORMAL','Pribadi/Pasangan dan Anak/Orang Tua',2018,0.85],
+['RO AKTIF','NON VESPA & KTM','NORMAL','Pribadi/Pasangan dan Anak/Orang Tua',2017,0.85],
+['RO AKTIF','NON VESPA & KTM','NORMAL','Pribadi/Pasangan dan Anak/Orang Tua',2016,0.85],
+['RO AKTIF','NON VESPA & KTM','NORMAL','Pribadi/Pasangan dan Anak/Orang Tua',2015,0.85],
+['RO AKTIF','NON VESPA & KTM','NORMAL','Pribadi/Pasangan dan Anak/Orang Tua',2014,0.85],
+['RO AKTIF','NON VESPA & KTM','NORMAL','Pribadi/Pasangan dan Anak/Orang Tua',2013,0.85],
+['RO AKTIF','NON VESPA & KTM','NORMAL','Pribadi/Pasangan dan Anak/Orang Tua',2012,0.85],
+['RO AKTIF','NON VESPA & KTM','NORMAL','Pribadi/Pasangan dan Anak/Orang Tua',2011,0.85],
+['RO AKTIF','NON VESPA & KTM','NORMAL','Pribadi/Pasangan dan Anak/Orang Tua',2010,0.85],
+['RO AKTIF','NON VESPA & KTM','NORMAL','Orang Lain',2025,0.8],
+['RO AKTIF','NON VESPA & KTM','NORMAL','Orang Lain',2024,0.8],
+['RO AKTIF','NON VESPA & KTM','NORMAL','Orang Lain',2023,0.8],
+['RO AKTIF','NON VESPA & KTM','NORMAL','Orang Lain',2022,0.8],
+['RO AKTIF','NON VESPA & KTM','NORMAL','Orang Lain',2021,0.8],
+['RO AKTIF','NON VESPA & KTM','NORMAL','Orang Lain',2020,0.8],
+['RO AKTIF','NON VESPA & KTM','NORMAL','Orang Lain',2019,0.7],
+['RO AKTIF','NON VESPA & KTM','NORMAL','Orang Lain',2018,0.7],
+['RO AKTIF','NON VESPA & KTM','NORMAL','Orang Lain',2017,0.7],
+['RO AKTIF','NON VESPA & KTM','NORMAL','Orang Lain',2016,0.7],
+['RO AKTIF','NON VESPA & KTM','NORMAL','Orang Lain',2015,0.7],
+['RO AKTIF','NON VESPA & KTM','NORMAL','Orang Lain',2014,0.7],
+['RO AKTIF','NON VESPA & KTM','NORMAL','Orang Lain',2013,0.7],
+['RO AKTIF','NON VESPA & KTM','NORMAL','Orang Lain',2012,0.7],
+['RO AKTIF','NON VESPA & KTM','NORMAL','Orang Lain',2011,0.7],
+['RO AKTIF','NON VESPA & KTM','NORMAL','Orang Lain',2010,0.7],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','EXCELLENT','Pribadi/Pasangan dan Anak/Orang Tua',2025,0.95],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','EXCELLENT','Pribadi/Pasangan dan Anak/Orang Tua',2024,0.95],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','EXCELLENT','Pribadi/Pasangan dan Anak/Orang Tua',2023,0.95],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','EXCELLENT','Pribadi/Pasangan dan Anak/Orang Tua',2022,0.95],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','EXCELLENT','Pribadi/Pasangan dan Anak/Orang Tua',2021,0.95],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','EXCELLENT','Pribadi/Pasangan dan Anak/Orang Tua',2020,0.95],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','EXCELLENT','Pribadi/Pasangan dan Anak/Orang Tua',2019,0.95],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','EXCELLENT','Pribadi/Pasangan dan Anak/Orang Tua',2018,0.95],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','EXCELLENT','Pribadi/Pasangan dan Anak/Orang Tua',2017,0.95],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','EXCELLENT','Pribadi/Pasangan dan Anak/Orang Tua',2016,0.95],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','EXCELLENT','Pribadi/Pasangan dan Anak/Orang Tua',2015,0.95],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','EXCELLENT','Pribadi/Pasangan dan Anak/Orang Tua',2014,0.95],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','EXCELLENT','Pribadi/Pasangan dan Anak/Orang Tua',2013,0.95],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','EXCELLENT','Pribadi/Pasangan dan Anak/Orang Tua',2012,0.95],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','EXCELLENT','Pribadi/Pasangan dan Anak/Orang Tua',2011,0.95],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','EXCELLENT','Pribadi/Pasangan dan Anak/Orang Tua',2010,0.95],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','EXCELLENT','Orang Lain',2025,0.95],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','EXCELLENT','Orang Lain',2024,0.95],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','EXCELLENT','Orang Lain',2023,0.95],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','EXCELLENT','Orang Lain',2022,0.95],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','EXCELLENT','Orang Lain',2021,0.95],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','EXCELLENT','Orang Lain',2020,0.95],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','EXCELLENT','Orang Lain',2019,0.95],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','EXCELLENT','Orang Lain',2018,0.95],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','EXCELLENT','Orang Lain',2017,0.95],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','EXCELLENT','Orang Lain',2016,0.95],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','EXCELLENT','Orang Lain',2015,0.95],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','EXCELLENT','Orang Lain',2014,0.95],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','EXCELLENT','Orang Lain',2013,0.95],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','EXCELLENT','Orang Lain',2012,0.95],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','EXCELLENT','Orang Lain',2011,0.95],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','EXCELLENT','Orang Lain',2010,0.95],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','GOOD','Pribadi/Pasangan dan Anak/Orang Tua',2025,0.9],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','GOOD','Pribadi/Pasangan dan Anak/Orang Tua',2024,0.9],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','GOOD','Pribadi/Pasangan dan Anak/Orang Tua',2023,0.9],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','GOOD','Pribadi/Pasangan dan Anak/Orang Tua',2022,0.9],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','GOOD','Pribadi/Pasangan dan Anak/Orang Tua',2021,0.9],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','GOOD','Pribadi/Pasangan dan Anak/Orang Tua',2020,0.9],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','GOOD','Pribadi/Pasangan dan Anak/Orang Tua',2019,0.9],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','GOOD','Pribadi/Pasangan dan Anak/Orang Tua',2018,0.9],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','GOOD','Pribadi/Pasangan dan Anak/Orang Tua',2017,0.9],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','GOOD','Pribadi/Pasangan dan Anak/Orang Tua',2016,0.9],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','GOOD','Pribadi/Pasangan dan Anak/Orang Tua',2015,0.9],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','GOOD','Pribadi/Pasangan dan Anak/Orang Tua',2014,0.9],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','GOOD','Pribadi/Pasangan dan Anak/Orang Tua',2013,0.9],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','GOOD','Pribadi/Pasangan dan Anak/Orang Tua',2012,0.9],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','GOOD','Pribadi/Pasangan dan Anak/Orang Tua',2011,0.9],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','GOOD','Pribadi/Pasangan dan Anak/Orang Tua',2010,0.9],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','GOOD','Orang Lain',2025,0.9],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','GOOD','Orang Lain',2024,0.9],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','GOOD','Orang Lain',2023,0.9],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','GOOD','Orang Lain',2022,0.9],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','GOOD','Orang Lain',2021,0.9],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','GOOD','Orang Lain',2020,0.9],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','GOOD','Orang Lain',2019,0.9],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','GOOD','Orang Lain',2018,0.9],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','GOOD','Orang Lain',2017,0.9],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','GOOD','Orang Lain',2016,0.9],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','GOOD','Orang Lain',2015,0.9],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','GOOD','Orang Lain',2014,0.9],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','GOOD','Orang Lain',2013,0.9],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','GOOD','Orang Lain',2012,0.9],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','GOOD','Orang Lain',2011,0.9],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','GOOD','Orang Lain',2010,0.9],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','NORMAL','Pribadi/Pasangan dan Anak/Orang Tua',2025,0.9],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','NORMAL','Pribadi/Pasangan dan Anak/Orang Tua',2024,0.9],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','NORMAL','Pribadi/Pasangan dan Anak/Orang Tua',2023,0.9],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','NORMAL','Pribadi/Pasangan dan Anak/Orang Tua',2022,0.9],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','NORMAL','Pribadi/Pasangan dan Anak/Orang Tua',2021,0.9],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','NORMAL','Pribadi/Pasangan dan Anak/Orang Tua',2020,0.9],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','NORMAL','Pribadi/Pasangan dan Anak/Orang Tua',2019,0.85],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','NORMAL','Pribadi/Pasangan dan Anak/Orang Tua',2018,0.85],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','NORMAL','Pribadi/Pasangan dan Anak/Orang Tua',2017,0.85],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','NORMAL','Pribadi/Pasangan dan Anak/Orang Tua',2016,0.85],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','NORMAL','Pribadi/Pasangan dan Anak/Orang Tua',2015,0.85],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','NORMAL','Pribadi/Pasangan dan Anak/Orang Tua',2014,0.85],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','NORMAL','Pribadi/Pasangan dan Anak/Orang Tua',2013,0.85],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','NORMAL','Pribadi/Pasangan dan Anak/Orang Tua',2012,0.85],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','NORMAL','Pribadi/Pasangan dan Anak/Orang Tua',2011,0.85],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','NORMAL','Pribadi/Pasangan dan Anak/Orang Tua',2010,0.85],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','NORMAL','Orang Lain',2025,0.8],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','NORMAL','Orang Lain',2024,0.8],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','NORMAL','Orang Lain',2023,0.8],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','NORMAL','Orang Lain',2022,0.8],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','NORMAL','Orang Lain',2021,0.8],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','NORMAL','Orang Lain',2020,0.8],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','NORMAL','Orang Lain',2019,0.7],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','NORMAL','Orang Lain',2018,0.7],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','NORMAL','Orang Lain',2017,0.7],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','NORMAL','Orang Lain',2016,0.7],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','NORMAL','Orang Lain',2015,0.7],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','NORMAL','Orang Lain',2014,0.7],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','NORMAL','Orang Lain',2013,0.7],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','NORMAL','Orang Lain',2012,0.7],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','NORMAL','Orang Lain',2011,0.7],
+['RO LUNAS ≤ 2 TAHUN','NON VESPA & KTM','NORMAL','Orang Lain',2010,0.7]
+];
+const MK_CABANG_REGION = [
+['Banyuwangi 1 Banyuwangi','Jatim 1'],
+['Denpasar','Jatim 1'],
+['Banyuwangi 2 Genteng','Jatim 1'],
+['Gresik','Jatim 1'],
+['Sidoarjo 2 Krian','Jatim 1'],
+['Lamongan','Jatim 1'],
+['Mataram','Jatim 1'],
+['Mojokerto 1 Prajuritkulon','Jatim 1'],
+['Mojokerto 2 Mojosari','Jatim 1'],
+['Pasuruan 1 Panggungrejo','Jatim 1'],
+['Pasuruan 2 Pandaan','Jatim 1'],
+['Rogojampi','Jatim 1'],
+['Surabaya 5 Rungkut','Jatim 1'],
+['Sidoarjo 1 Sidoarjo','Jatim 1'],
+['Surabaya 2 Sukomanunggal','Jatim 1'],
+['Surabaya 3 Wiyung','Jatim 1'],
+['Surabaya 1 Sukolilo','Jatim 1'],
+['Kiossidana Tambaksari - Surabaya Timur','Jatim 1'],
+['Denpasar - Tabanan','Jatim 1'],
+['Sidoarjo 3 Waru','Jatim 1'],
+['Kupang','Jatim 1'],
+['Blitar','Jatim 2'],
+['Kiossidana Srengat - Blitar','Jatim 2'],
+['Bojonegoro','Jatim 2'],
+['Jombang','Jatim 2'],
+['Kediri','Jatim 2'],
+['Malang 2 Kepanjen','Jatim 2'],
+['Madiun','Jatim 2'],
+['Kiossidana Caruban - Madiun','Jatim 2'],
+['Magetan','Jatim 2'],
+['Malang 1 Blimbing','Jatim 2'],
+['Nganjuk','Jatim 2'],
+['Kiossidana Kertosono - Nganjuk','Jatim 2'],
+['Ngawi','Jatim 2'],
+['Ponorogo','Jatim 2'],
+['Tuban','Jatim 2'],
+['Tulungagung','Jatim 2'],
+['Kebumen 1 Kebumen','Jatengsel'],
+['Magelang','Jatengsel'],
+['Wonosobo','Jatengsel'],
+['Klaten','Jatengsel'],
+['Solo','Jatengsel'],
+['Wonogiri','Jatengsel'],
+['Kebumen 2 Gombong','Jatengsel'],
+['Purworejo','Jatengsel'],
+['Yogyakarta','Jatengsel'],
+['Purwokerto','Jatengsel'],
+['Cilacap 2 Sidareja','Jatengsel'],
+['Banyumas 1 Ajibarang','Jatengsel'],
+['Banjarnegara','Jatengsel'],
+['Purbalingga','Jatengsel'],
+['Cilacap 3 Majenang','Jatengsel'],
+['Cilacap 1 Cilacap Utara','Jatengsel'],
+['Gunungkidul Wonosari','Jatengsel'],
+['Semarang 1 Semarang Selatan','Jatengut'],
+['Jepara','Jatengut'],
+['Purwodadi','Jatengut'],
+['Salatiga','Jatengut'],
+['Kudus','Jatengut'],
+['Semarang 2 Ungaran Barat','Jatengut'],
+['Kendal','Jatengut'],
+['Brebes 1 Wanasari','Jatengut'],
+['Tegal 1 Dukuh Turi','Jatengut'],
+['Pemalang 1 Pemalang','Jatengut'],
+['Pemalang 2 Randudongkal','Jatengut'],
+['Pekalongan 1 Wiradesa','Jatengut'],
+['Brebes 2 Bumiayu','Jatengut'],
+['Pekalongan 2 Kajen','Jatengut'],
+['Tegal 2 Slawi','Jatengut'],
+['Balikpapan','Kalimantan'],
+['Samarinda','Kalimantan'],
+['Bontang','Kalimantan'],
+['Paser','Kalimantan'],
+['Berau','Kalimantan'],
+['Tenggarong','Kalimantan'],
+['Kutai Timur','Kalimantan'],
+['Banjarmasin','Kalimantan'],
+['Banjarbaru','Kalimantan'],
+['Pangkalan Bun','Kalimantan'],
+['Tabalong Tanjung','Kalimantan'],
+['Sampit','Kalimantan'],
+['Kuala Kapuas','Kalimantan'],
+['Palangkaraya','Kalimantan'],
+['Jambi','Sumbagsel'],
+['Betung','Sumbagsel'],
+['Musi Banyuasin','Sumbagsel'],
+['Palembang 1 Ilir Timur Satu','Sumbagsel'],
+['Lubuk Linggau','Sumbagsel'],
+['Bengkulu','Sumbagsel'],
+['Tanjung Jabung Barat','Sumbagsel'],
+['Tebo','Sumbagsel'],
+['Tembesi','Sumbagsel'],
+['Palembang 3','Sumbagsel'],
+['Muara Enim','Sumbagsel'],
+['Palembang 2 Bukit Lama','Sumbagsel'],
+['Kayu Agung','Sumbagsel'],
+['Prabumulih','Sumbagsel'],
+['Lampung 1 Tanjung Karang Pusat','Sumbagsel'],
+['Baturaja','Sumbagsel'],
+['Lahat','Sumbagsel'],
+['Tugu Mulyo','Sumbagsel'],
+['Metro','Sumbagsel'],
+['Pangkal Pinang','Sumbagsel'],
+['Lampung 2 Pringsewu','Sumbagsel'],
+['Tangerang 5 Karawaci','Banten'],
+['Tangerang Selatan 3 Pondok Aren','Banten'],
+['Tangerang 7 Cipondoh','Banten'],
+['Tangerang 4 Tigaraksa','Banten'],
+['Tangerang 2 Cisauk','Banten'],
+['Tangerang 3 Rajeg','Banten'],
+['Cikupa','Banten'],
+['Ciledug','Banten'],
+['Tangerang 6 Teluk Naga','Banten'],
+['Balaraja','Banten'],
+['Tangerang 1 Gading Serpong','Banten'],
+['Mauk','Banten'],
+['Tangerang Selatan 2 Pamulang','Banten'],
+['Tangerang Selatan 1 Ciputat Timur','Banten'],
+['Serang','Banten'],
+['Tangerang Selatan 2 Pamulang - Parung','Banten'],
+['Serang - Cilegon','Banten'],
+['Sukabumi','Jabar'],
+['Cianjur','Jabar'],
+['Cimahi','Jabar'],
+['Bandung 4 Ujung Berung','Jabar'],
+['Bandung 1 Regol','Jabar'],
+['Purwakarta','Jabar'],
+['Bandung 3 Setiabudi','Jabar'],
+['Bandung 2 Soreang','Jabar'],
+['Cirebon','Jabar'],
+['Garut','Jabar'],
+['Jatibarang','Jabar'],
+['Tasikmalaya','Jabar'],
+['Majalengka','Jabar'],
+['Kuningan','Jabar'],
+['Sumedang','Jabar'],
+['Cibinong','Jabodebek'],
+['Bogor 1 Bogor Utara','Jabodebek'],
+['Bogor 2 Jonggol','Jabodebek'],
+['Leuwiliang','Jabodebek'],
+['Cileungsi','Jabodebek'],
+['Bekasi 2 Tambun Selatan','Jabodebek'],
+['Bekasi 5 Harapan Indah','Jabodebek'],
+['Bekasi 4 Jatiasih','Jabodebek'],
+['Bekasi 1 Bekasi Barat','Jabodebek'],
+['Bekasi 3 Cikarang Selatan','Jabodebek'],
+['Depok','Jabodebek'],
+['Jakarta Pusat','Jabodebek'],
+['Karawang','Jabodebek'],
+['Jakarta Utara 1 Cilincing','Jabodebek'],
+['Jakarta Timur 2 Cipayung','Jabodebek'],
+['Jakarta Selatan 2 Kebayoran Lama','Jabodebek'],
+['Jakarta Barat 2 Kebon Jeruk','Jabodebek'],
+['Jakarta Barat 1 Cengkareng','Jabodebek'],
+['Jakarta Selatan 1 Pasar Minggu','Jabodebek'],
+['Jakarta Timur 1 Duren Sawit','Jabodebek'],
+['Jakarta Utara 2 Penjaringan','Jabodebek'],
+['Bulukumba','Sulawesi'],
+['Pinrang','Sulawesi'],
+['Pare-Pare','Sulawesi'],
+['Gowa','Sulawesi'],
+['Pangkep','Sulawesi'],
+['Makassar 1 Panakkukang','Sulawesi'],
+['Makassar 2 Biringkanaya','Sulawesi'],
+['Kendari','Sulawesi'],
+['Mamuju','Sulawesi'],
+['Gorontalo','Sulawesi'],
+['Palu','Sulawesi'],
+['Ternate','Sulawesi'],
+['Kotamobagu','Sulawesi'],
+['Bitung','Sulawesi'],
+['Palopo','Sulawesi'],
+['Pohuwato','Sulawesi'],
+['Luwu Timur','Sulawesi'],
+['Manado','Sulawesi'],
+['Lubuk Pakam','Sumbagut'],
+['Binjai','Sumbagut'],
+['Tebing Tinggi','Sumbagut'],
+['Rantau Prapat','Sumbagut'],
+['Langkat 2 Pangkalan Brandan','Sumbagut'],
+['Medan 1 Medan Timur','Sumbagut'],
+['Medan 2 Medan Selayang','Sumbagut'],
+['Langkat 1 Stabat','Sumbagut'],
+['Karo','Sumbagut'],
+['Toba','Sumbagut'],
+['Pematang Siantar','Sumbagut'],
+['Bagan Batu','Sumbagut'],
+['Dumai','Sumbagut'],
+['Duri','Sumbagut'],
+['Pekanbaru 1 Marpoyan Damai','Sumbagut'],
+['Kerinci','Sumbagut'],
+['Batam 2 Batu Aji','Sumbagut'],
+['Padang','Sumbagut'],
+['Air Molek','Sumbagut'],
+['Batam 1 Batam Kota','Sumbagut'],
+['Pekanbaru 2 Tenayan Raya','Sumbagut'],
+['Pangkep','Sulawesi'],
+['Pare-Pare','Sulawesi'],
+['Pinrang','Sulawesi'],
+['Kendari','Sulawesi'],
+['Manado','Sulawesi'],
+['Pohuwato','Sulawesi'],
+['Bitung','Sulawesi'],
+['Ternate','Sulawesi'],
+['Kotamobagu','Sulawesi']
+];
+const MK_TENORS = [11,12,17,18,23,24,35,36];
+const MK_JENIS_KONSUMEN_OPT = ['New Customer','New Customer Premium','RO Aktif','RO Lunas ≤ 2 Tahun','RO Lunas > 2 Tahun'];
+const MK_RATING_OPT = ['-','EXCELLENT','GOOD','NORMAL','BAD'];
+const MK_BPKB_OPT = ['Pribadi/Pasangan dan Anak/Orang Tua','Orang Lain'];
+const MK_REGIONAL_PLAT_OPT = ['BANTEN','JABAR','JABODEBEK','JATENG UTARA','JATENG SELATAN','JATIM 1','JATIM 2','KALIMANTAN','SULAWESI','SUMBAGUT','SUMBAGSEL'];
+
+function mkCabangList(){ return MK_CABANG_REGION.map(r => r[0]).sort(); }
+
+function mkRegionOf(cabang){
+  const f = MK_CABANG_REGION.find(r => r[0] === cabang);
+  return f ? f[1] : null;
+}
+
+// Kelas region untuk RATE (AH7 di Excel): Banten/Jabodebek/Jabar=1, Sumbagut/Sumbagsel/Kalimantan/Sulawesi=3, lainnya(Jateng/Jatim)=2
+function mkRateRegionClass(region){
+  const r = (region||'').toString().toLowerCase();
+  if(['banten','jabodebek','jabar'].includes(r)) return 1;
+  if(['sumbagut','sumbagsel','kalimantan','sulawesi'].includes(r)) return 3;
+  return 2;
+}
+
+// Grup region untuk ASURANSI & ADMIN FEE (AT5 di Excel), berdasarkan Regional Daerah Plat No (bukan Cabang)
+function mkInsGroup(regionalPlatNo){
+  const r = (regionalPlatNo||'').toString().toUpperCase();
+  if(['BANTEN','JABODEBEK','JABAR'].includes(r)) return 1;
+  if(['SUMBAGUT','SUMBAGSEL'].includes(r)) return 2;
+  return 3;
+}
+
+// isRO (AH6 di Excel): persis "New Customer" -> 0 (NC), selain itu (termasuk "New Customer Premium") -> 1 (pakai rate RO)
+// Ini quirk asli dari file Excel-nya — bukan bug yang saya perbaiki, biar hasilnya sama dgn tools lama.
+function mkIsRO(jenisKonsumen){ return (jenisKonsumen||'').trim().toUpperCase() === 'NEW CUSTOMER' ? 0 : 1; }
+
+function mkBaseRate(tenor, isRO, rateRegionClass){
+  const favorable = (rateRegionClass === 1 || rateRegionClass === 2);
+  if(isRO === 0){ // New Customer
+    if(tenor <= 18) return favorable ? 0.43 : 0.44;
+    return favorable ? 0.43 : 0.45;
+  } else { // RO
+    if(tenor <= 18) return 0.40;
+    return favorable ? 0.40 : 0.41;
+  }
+}
+
+function mkFinalRate(tenor, isRO, rateRegionClass, deviasi){
+  const base = mkBaseRate(tenor, isRO, rateRegionClass);
+  return base - (deviasi > 0 ? deviasi : 0);
+}
+
+function mkLookupLTV(jenisKonsumen, rating, bpkb, tahun){
+  const jkMap = {
+    'NEW CUSTOMER':'new customer', 'NEW CUSTOMER PREMIUM':'new customer',
+    'RO AKTIF':'RO AKTIF', 'RO LUNAS ≤ 2 TAHUN':'RO LUNAS ≤ 2 TAHUN', 'RO LUNAS > 2 TAHUN':'RO LUNAS > 2 TAHUN'
+  };
+  const jk = jkMap[(jenisKonsumen||'').trim().toUpperCase()] || null;
+  if(!jk) return 0;
+  const ratingKey = (jk === 'new customer') ? '-' : (rating||'-');
+  const found = MK_LTV_TABLE.find(r => r[0].toUpperCase() === jk.toUpperCase() && r[2] === ratingKey && r[3] === bpkb && r[4] === tahun);
+  return found ? found[5] : 0;
+}
+
+const MK_INS_RATE_PCT = { 1: 0.018, 2: 0.0176, 3: 0.0067 };
+
+function mkInsuranceAmount(tenor, otr, insGroup){
+  const rate = MK_INS_RATE_PCT[insGroup] || 0;
+  if(tenor === 11 || tenor === 12) return otr * rate;
+  if(tenor === 17 || tenor === 18){
+    // Grup 1 (Banten/Jabo/Jabar) & grup 2 (Sumbagut/Sumbagsel) prorata separuh utk tahun ke-2 (tenor ~1.5th).
+    // Grup 3 (Jateng/Jatim/Kalsul & lainnya) pakai rate penuh persis kayak tenor 23/24 — sesuai formula asli Excel.
+    const halfForShortTenor = (insGroup === 1 || insGroup === 2);
+    return (otr*rate) + (otr*0.85)*(halfForShortTenor ? rate/2 : rate);
+  }
+  if(tenor === 23 || tenor === 24) return (otr*rate) + (otr*0.85)*rate;
+  return (otr*rate) + (otr*0.85)*rate + (otr*0.75)*rate; // 35, 36
+}
+
+const MK_ADMIN_FEE_TABLE = {
+  1: { nc: [825000,900000,1000000], ro: [725000,800000,900000] },
+  2: { nc: [825000,900000,1070000], ro: [725000,800000,970000] },
+  3: { nc: [950000,1100000,1425000], ro: [850000,1000000,1325000] }
+};
+
+function mkAdminFee(tenor, insGroup, isNC){
+  const tier = (tenor===11||tenor===12) ? 0 : (tenor===35||tenor===36) ? 2 : 1;
+  const t = MK_ADMIN_FEE_TABLE[insGroup];
+  return (isNC ? t.nc : t.ro)[tier];
+}
+
+function mkPMT(ratePerMonth, nper, pv){
+  if(ratePerMonth === 0) return -pv / nper;
+  const p = pv * ratePerMonth / (1 - Math.pow(1+ratePerMonth, -nper));
+  return -p; // samakan tanda dengan Excel PMT(rate,nper,-ntf) yg hasilnya positif
+}
+
+function mkCeilTo(val, step){ return Math.ceil(val/step)*step; }
+
+const MK_LIFE_INSURANCE = 50000;
+const MK_ADDITIONAL_ADMIN_FEE = 50000;
+
+function mkCompute(input){
+  const region = mkRegionOf(input.cabang);
+  const rateRegionClass = mkRateRegionClass(region);
+  const isRO = mkIsRO(input.jenisKonsumen);
+  const isNCAdminFee = ['NEW CUSTOMER','NEW CUSTOMER PREMIUM'].includes((input.jenisKonsumen||'').trim().toUpperCase());
+  const insGroup = mkInsGroup(input.regionalPlatNo);
+  const ltv = mkLookupLTV(input.jenisKonsumen, input.rating, input.bpkb, input.tahunKendaraan);
+  const otr = input.otr || 0;
+  const deviasi = input.deviasi || 0;
+
+  const maxGross = otr * ltv;
+  const insMax = mkInsuranceAmount(36, otr, insGroup);
+  const adminFeeMax = mkAdminFee(36, insGroup, isNCAdminFee);
+  const maxNet = maxGross - MK_LIFE_INSURANCE - MK_ADDITIONAL_ADMIN_FEE - insMax - adminFeeMax;
+
+  const perTenor = {};
+  MK_TENORS.forEach(t => {
+    perTenor[t] = {
+      rate: mkFinalRate(t, isRO, rateRegionClass, deviasi),
+      insurance: mkInsuranceAmount(t, otr, insGroup),
+      adminFee: mkAdminFee(t, insGroup, isNCAdminFee)
+    };
+  });
+
+  function angsuranUntuk(nominal, t){
+    const info = perTenor[t];
+    const ntf = nominal + info.insurance + info.adminFee + MK_LIFE_INSURANCE + MK_ADDITIONAL_ADMIN_FEE;
+    const pmt = mkPMT(info.rate/12, t, -ntf);
+    return mkCeilTo(pmt, 1000);
+  }
+
+  const rows = [];
+  for(let nominal = 2000000; nominal <= 54000000; nominal += 1000000){
+    const exceeds = nominal >= maxNet;
+    const angsuran = {};
+    MK_TENORS.forEach(t => { angsuran[t] = exceeds ? null : angsuranUntuk(nominal, t); });
+    rows.push({ nominal, exceeds, angsuran });
+  }
+
+  return { region, rateRegionClass, insGroup, ltv, maxGross, maxNet, perTenor, rows, isRO, isNCAdminFee };
+}
+
+function mkFmtRupiahShort(n){
+  if(n === null || n === undefined) return '-';
+  return 'Rp' + Math.round(n).toLocaleString('id-ID');
+}
+
+let mkState = { lastResult: null };
+
+function buildSimulasiLayout(){
+  const cabangOptions = mkCabangList().map(c => `<option value="${c}">${c}</option>`).join('');
+  const tahunOptions = [];
+  for(let y=2026; y>=2010; y--) tahunOptions.push(`<option value="${y}">${y}</option>`);
+
+  document.getElementById('wrap').innerHTML = `
+    <div class="panel-title">Simulasi Penawaran — MotorKu</div>
+    <div class="table-scroll" style="padding:18px 18px 6px;margin-bottom:18px;">
+      <form id="mkForm" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;">
+        <div>
+          <label style="font-size:12px;color:var(--ink-soft);display:block;margin-bottom:4px;">Cabang</label>
+          <select id="mkCabang" required style="width:100%;padding:9px;border-radius:7px;border:1px solid var(--line);">
+            <option value="">Pilih cabang…</option>${cabangOptions}
+          </select>
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--ink-soft);display:block;margin-bottom:4px;">Jenis Konsumen</label>
+          <select id="mkJenisKonsumen" required style="width:100%;padding:9px;border-radius:7px;border:1px solid var(--line);">
+            ${MK_JENIS_KONSUMEN_OPT.map(o=>`<option value="${o}">${o}</option>`).join('')}
+          </select>
+        </div>
+        <div id="mkRatingWrap">
+          <label style="font-size:12px;color:var(--ink-soft);display:block;margin-bottom:4px;">Rating Konsumen</label>
+          <select id="mkRating" style="width:100%;padding:9px;border-radius:7px;border:1px solid var(--line);">
+            ${MK_RATING_OPT.map(o=>`<option value="${o}">${o}</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--ink-soft);display:block;margin-bottom:4px;">Kepemilikan BPKB</label>
+          <select id="mkBpkb" required style="width:100%;padding:9px;border-radius:7px;border:1px solid var(--line);">
+            ${MK_BPKB_OPT.map(o=>`<option value="${o}">${o}</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--ink-soft);display:block;margin-bottom:4px;">Tahun Kendaraan</label>
+          <select id="mkTahun" required style="width:100%;padding:9px;border-radius:7px;border:1px solid var(--line);">
+            ${tahunOptions.join('')}
+          </select>
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--ink-soft);display:block;margin-bottom:4px;">OTR (Rp)</label>
+          <input id="mkOtr" type="number" min="0" step="1000" required placeholder="cth. 11500000" style="width:100%;padding:9px;border-radius:7px;border:1px solid var(--line);">
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--ink-soft);display:block;margin-bottom:4px;">Regional Daerah Plat No</label>
+          <select id="mkRegionalPlat" required style="width:100%;padding:9px;border-radius:7px;border:1px solid var(--line);">
+            ${MK_REGIONAL_PLAT_OPT.map(o=>`<option value="${o}">${o}</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--ink-soft);display:block;margin-bottom:4px;">Deviasi Rate (%, opsional)</label>
+          <input id="mkDeviasi" type="number" min="0" step="0.1" placeholder="0" style="width:100%;padding:9px;border-radius:7px;border:1px solid var(--line);">
+        </div>
+      </form>
+      <div style="margin-top:14px;">
+        <button class="btn primary" id="mkHitungBtn">Hitung Simulasi</button>
+      </div>
+    </div>
+    <div id="mkResultArea"></div>
+  `;
+
+  const jkSel = document.getElementById('mkJenisKonsumen');
+  const ratingWrap = document.getElementById('mkRatingWrap');
+  function toggleRating(){
+    const isNC = jkSel.value.trim().toUpperCase().startsWith('NEW CUSTOMER');
+    ratingWrap.style.display = isNC ? 'none' : 'block';
+  }
+  jkSel.addEventListener('change', toggleRating);
+  toggleRating();
+
+  document.getElementById('mkHitungBtn').addEventListener('click', (e) => {
+    e.preventDefault();
+    const cabang = document.getElementById('mkCabang').value;
+    if(!cabang){ alert('Pilih cabang dulu ya.'); return; }
+    const input = {
+      cabang,
+      jenisKonsumen: document.getElementById('mkJenisKonsumen').value,
+      rating: document.getElementById('mkRating').value,
+      bpkb: document.getElementById('mkBpkb').value,
+      tahunKendaraan: parseInt(document.getElementById('mkTahun').value, 10),
+      otr: parseFloat(document.getElementById('mkOtr').value) || 0,
+      regionalPlatNo: document.getElementById('mkRegionalPlat').value,
+      deviasi: (parseFloat(document.getElementById('mkDeviasi').value) || 0) / 100
+    };
+    mkState.lastResult = mkCompute(input);
+    renderSimulasiMatrix(mkState.lastResult);
+  });
+}
+
+function renderSimulasiMatrix(res){
+  const area = document.getElementById('mkResultArea');
+  if(!res || !res.ltv){
+    area.innerHTML = `<div class="state-box">Kombinasi data ini tidak ditemukan di tabel LTV (kemungkinan Rating "BAD" atau Tahun Kendaraan di luar 2010–2025 memang tidak dibiayai).</div>`;
+    return;
+  }
+  area.innerHTML = `
+    <div class="grand-row" style="margin-bottom:18px;">
+      <div class="grand-card"><div class="lbl">Region</div><div class="val" style="font-size:16px;">${res.region||'-'}</div></div>
+      <div class="grand-card"><div class="lbl">LTV</div><div class="val">${(res.ltv*100).toFixed(0)}%</div></div>
+      <div class="grand-card"><div class="lbl">Maks. Pencairan (Gross)</div><div class="val" style="font-size:15px;">${mkFmtRupiahShort(res.maxGross)}</div></div>
+      <div class="grand-card"><div class="lbl">Maks. Pencairan (Net, tenor 36bln)</div><div class="val" style="font-size:15px;">${mkFmtRupiahShort(res.maxNet)}</div></div>
+    </div>
+    <div class="panel-title">Tabel Simulasi Angsuran (Pencairan × Tenor)</div>
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;background:var(--surface);border:1px solid var(--line);border-radius:10px;">
+      <table style="min-width:720px;width:100%;border-collapse:collapse;font-size:12.5px;">
+        <thead>
+          <tr style="background:var(--navy);color:#fff;">
+            <th style="position:sticky;left:0;background:var(--navy);padding:8px 10px;text-align:right;white-space:nowrap;z-index:2;">Pencairan</th>
+            ${MK_TENORS.map(t=>`<th style="padding:8px 10px;text-align:right;white-space:nowrap;">${t} bln</th>`).join('')}
+          </tr>
+        </thead>
+        <tbody>
+          ${res.rows.map(row => `
+            <tr style="${row.exceeds?'opacity:0.35;':''}border-bottom:1px solid var(--line);">
+              <td class="mono" style="position:sticky;left:0;background:var(--surface);padding:6px 10px;text-align:right;font-weight:600;white-space:nowrap;">${mkFmtRupiahShort(row.nominal)}</td>
+              ${MK_TENORS.map(t => `<td class="mono" style="padding:6px 10px;text-align:right;white-space:nowrap;">${row.exceeds ? '—' : mkFmtRupiahShort(row.angsuran[t])}</td>`).join('')}
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+    <div class="count-note" style="margin-top:8px;">Baris yang pudar (—) berarti nominal pencairan melebihi batas maksimal (LTV dikurangi asuransi &amp; biaya admin tenor 36 bulan).</div>
+  `;
 }
 
 // ============================================================
