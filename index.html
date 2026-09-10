@@ -1610,32 +1610,35 @@ function mkFinalRate(tenor, isRO, rateRegionClass, deviasi){
 }
 
 // LTV berdasarkan usia kendaraan (tahun berjalan - tahun kendaraan), per blok Jenis Konsumen + Rating.
-// Diambil dari sheet "Tools Pengajuan" + DB!BF (bukan Quick Tools, karena Quick Tools terbukti salah untuk
-// kasus Rating WARNING/BAD). Skenario dikunci sesuai arahan marketing: Offering="Motorku 120 Menit"
-// (L19=NON NK, L23=NON KMK, L29=120), Hasil KBIJ="Tidak", Is Pre Approval="Tidak" — kedua field terakhir
-// TIDAK ditampilkan di form karena sudah dikunci.
+// Diambil dari sheet "Tools Pengajuan" + DB!BF. Skenario dikunci: Offering="Motorku 120 Menit"
+// (L19=NON NK, L23=NON KMK, L29=120), Hasil KBIJ="Tidak" — dikunci, TIDAK ditampilkan di form.
+// Is Pre Approval TETAP jadi field terbuka karena mempengaruhi LTV (paFlat = null berarti PA gak ngaruh
+// ke blok itu, tetap pakai brackets usia kendaraan meskipun PA="Ya").
 const MK_LTV_BLOCKS = [
-  { match: (jk) => jk === 'NEW CUSTOMER' || jk === 'RO LUNAS > 2 TAHUN', ratingApplies: false,
+  { match: (jk) => jk === 'NEW CUSTOMER', ratingApplies: false, paFlat: null,
     brackets: [[0,5,0.85],[6,21,0.75],[22,31,0.70]] },
-  { match: (jk) => jk === 'RO AKTIF' || jk === 'RO LUNAS ≤ 2 TAHUN', rating: 'EXCELLENT',
+  { match: (jk) => jk === 'RO LUNAS > 2 TAHUN', ratingApplies: false, paFlat: 0.95,
+    brackets: [[0,5,0.85],[6,21,0.75],[22,31,0.70]] },
+  { match: (jk) => jk === 'RO AKTIF' || jk === 'RO LUNAS ≤ 2 TAHUN', rating: 'EXCELLENT', paFlat: 0.95,
     brackets: [[0,5,0.90],[6,21,0.85],[22,31,0.75]] },
-  { match: (jk) => jk === 'RO AKTIF' || jk === 'RO LUNAS ≤ 2 TAHUN', rating: 'GOOD',
+  { match: (jk) => jk === 'RO AKTIF' || jk === 'RO LUNAS ≤ 2 TAHUN', rating: 'GOOD', paFlat: 0.95,
     brackets: [[0,5,0.90],[6,21,0.85],[22,31,0.75]] },
-  { match: (jk) => jk === 'RO AKTIF' || jk === 'RO LUNAS ≤ 2 TAHUN', rating: 'NORMAL',
+  { match: (jk) => jk === 'RO AKTIF' || jk === 'RO LUNAS ≤ 2 TAHUN', rating: 'NORMAL', paFlat: 0.85,
     brackets: [[0,5,0.90],[6,15,0.85],[16,21,0.80],[22,31,0.70]] },
-  { match: (jk) => jk === 'RO AKTIF' || jk === 'RO LUNAS ≤ 2 TAHUN', rating: 'BAD',
+  { match: (jk) => jk === 'RO AKTIF' || jk === 'RO LUNAS ≤ 2 TAHUN', rating: 'BAD', paFlat: null,
     brackets: [[0,5,0.70],[6,15,0.65],[16,21,0.60],[22,31,0.55]] },
-  { match: (jk) => jk === 'NEW CUSTOMER PREMIUM', ratingApplies: false,
+  { match: (jk) => jk === 'NEW CUSTOMER PREMIUM', ratingApplies: false, paFlat: null,
     brackets: [[0,5,0.90],[6,10,0.85],[11,15,0.80],[16,21,0.85],[22,26,0.80],[27,31,0.75]] }
 ];
 
-function mkLookupLTV(jenisKonsumen, rating, bpkb, tahunKendaraan){
+function mkLookupLTV(jenisKonsumen, rating, bpkb, tahunKendaraan, isPreApproval){
   const jk = (jenisKonsumen||'').trim().toUpperCase();
   const usia = new Date().getFullYear() - tahunKendaraan;
   if(usia < 0) return 0;
   const ratingKey = (rating||'-').trim().toUpperCase();
   const block = MK_LTV_BLOCKS.find(b => b.match(jk) && (b.ratingApplies === false || b.rating === ratingKey));
   if(!block) return 0;
+  if(isPreApproval && block.paFlat !== null) return block.paFlat;
   const bracket = block.brackets.find(([lo,hi]) => usia >= lo && usia <= hi);
   return bracket ? bracket[2] : 0;
 }
@@ -1679,7 +1682,7 @@ function mkCompute(input){
   const isRO = mkIsRO(input.jenisKonsumen);
   const isNCAdminFee = ['NEW CUSTOMER','NEW CUSTOMER PREMIUM'].includes((input.jenisKonsumen||'').trim().toUpperCase());
   const insGroup = mkInsGroup(input.regionalPlatNo);
-  const ltv = mkLookupLTV(input.jenisKonsumen, input.rating, input.bpkb, input.tahunKendaraan);
+  const ltv = mkLookupLTV(input.jenisKonsumen, input.rating, input.bpkb, input.tahunKendaraan, input.isPreApproval);
   const otr = input.otr || 0;
   const deviasi = input.deviasi || 0;
 
@@ -1801,6 +1804,13 @@ function buildSimulasiLayout(){
             ${MK_REGIONAL_PLAT_OPT.map(o=>`<option value="${o}">${o}</option>`).join('')}
           </select>
         </div>
+        <div>
+          <label style="font-size:12px;color:var(--ink-soft);display:block;margin-bottom:4px;">Is Pre Approval?</label>
+          <select id="mkIsPA" style="width:100%;padding:9px;border-radius:7px;border:1px solid var(--line);">
+            <option value="TIDAK">Tidak</option>
+            <option value="YA">Ya</option>
+          </select>
+        </div>
       </form>
       <div style="margin-top:14px;">
         <button class="btn primary" id="mkHitungBtn">Hitung Simulasi</button>
@@ -1872,6 +1882,7 @@ function buildSimulasiLayout(){
       tahunKendaraan: parseInt(document.getElementById('mkTahun').value, 10),
       otr: parseFloat(document.getElementById('mkOtr').value) || 0,
       regionalPlatNo: document.getElementById('mkRegionalPlat').value,
+      isPreApproval: document.getElementById('mkIsPA').value === 'YA',
       deviasi: 0
     };
     mkState.lastResult = mkCompute(input);
