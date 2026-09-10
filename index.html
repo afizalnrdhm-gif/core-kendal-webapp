@@ -1699,9 +1699,9 @@ function mkCompute(input){
     };
   });
 
-  // Referensi ringkas: net terbesar (tenor terpendek yg tersedia) buat kartu ringkasan di atas.
-  const maxNet = Math.max(...MK_TENORS.map(t => perTenor[t].maxNet));
-  const bestTenor = MK_TENORS.find(t => perTenor[t].maxNet === maxNet);
+  // Kartu ringkasan pakai tenor teratas (pertama di daftar MK_TENORS = 36 bulan).
+  const bestTenor = MK_TENORS[0];
+  const maxNet = perTenor[bestTenor].maxNet;
 
   return { region, rateRegionClass, insGroup, ltv, maxGross, maxNet, bestTenor, perTenor, isRO, isNCAdminFee };
 }
