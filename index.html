@@ -2139,14 +2139,15 @@ function buildSimulasiLayout(){
     mkLookupTypeId(typeId).then(data => {
       if(!data || data.error){
         mkState.lastLookup = null;
-        typeIdInfo.innerHTML = `<span style="color:#B23B3B;">Type ID tidak ditemukan — isi OTR manual.</span>`;
+        const msg = (data && data.error) ? data.error : 'Gagal mencari Type ID.';
+        typeIdInfo.innerHTML = `<span style="color:#B23B3B;">${msg} — isi OTR manual.</span>`;
         return;
       }
       mkState.lastLookup = data;
       mkApplyOtrFromCache();
     }).catch(() => {
       mkState.lastLookup = null;
-      typeIdInfo.innerHTML = `<span style="color:#B23B3B;">Gagal mencari Type ID — isi OTR manual.</span>`;
+      typeIdInfo.innerHTML = `<span style="color:#B23B3B;">Gagal menghubungi server — isi OTR manual.</span>`;
     });
   });
   tahunSel.addEventListener('change', mkApplyOtrFromCache);
