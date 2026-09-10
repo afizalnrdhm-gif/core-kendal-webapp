@@ -112,6 +112,18 @@ module.exports = async (req, res) => {
         fetchSheetRange(sheetId, 'OTR_PRICELIST', accessToken)
       ]);
       const mapping = parseSheetGeneric(mappingRaw, 0);
+
+      // Sheet aslinya (Excel) pakai cell gabungan (merge) buat TYPE_ID_HARGA/MODEL_ID_HARGA di banyak baris
+      // sekaligus. Pas di-copy ke Google Sheets, cuma baris pertama tiap grup yang kebawa nilainya, baris
+      // lain jadi kosong. Di sini kita "isi turun" (forward-fill) niru perilaku merge itu, reset tiap ada
+      // baris kosong (pemisah antar grup/model).
+      let lastTypeIdHarga = '', lastModelIdHarga = '';
+      mapping.forEach(r => {
+        if (!r['TYPE_ID_SISTEM']) { lastTypeIdHarga = ''; lastModelIdHarga = ''; return; }
+        if (r['TYPE_ID_HARGA']) { lastTypeIdHarga = r['TYPE_ID_HARGA']; lastModelIdHarga = r['MODEL_ID_HARGA']; }
+        else { r['TYPE_ID_HARGA'] = lastTypeIdHarga; r['MODEL_ID_HARGA'] = lastModelIdHarga; }
+      });
+
       const mapRow = mapping.find(r =>
         (r['TYPE_ID_SISTEM'] || '').toString().trim().toUpperCase() === typeId &&
         (r['VALIDATION'] || '').toString().trim() === '√'
