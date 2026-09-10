@@ -1684,20 +1684,26 @@ function mkCompute(input){
   const deviasi = input.deviasi || 0;
 
   const maxGross = otr * ltv;
-  const insMax = mkInsuranceAmount(36, otr, insGroup);
-  const adminFeeMax = mkAdminFee(36, insGroup, isNCAdminFee);
-  const maxNet = maxGross - MK_LIFE_INSURANCE - MK_ADDITIONAL_ADMIN_FEE - insMax - adminFeeMax;
 
   const perTenor = {};
   MK_TENORS.forEach(t => {
+    const insurance = mkInsuranceAmount(t, otr, insGroup);
+    const adminFee = mkAdminFee(t, insGroup, isNCAdminFee);
+    // Maksimal Pencairan (Net) dihitung PER TENOR — biaya asuransi & admin fee beda tiap tenor,
+    // makin panjang tenor makin mahal, jadi makin kecil net-nya. Sesuai cara Tools Pengajuan (bukan
+    // 1 angka tetap dari tenor terpanjang).
+    const maxNetForTenor = maxGross - MK_LIFE_INSURANCE - MK_ADDITIONAL_ADMIN_FEE - insurance - adminFee;
     perTenor[t] = {
       rate: mkFinalRate(t, isRO, rateRegionClass, deviasi),
-      insurance: mkInsuranceAmount(t, otr, insGroup),
-      adminFee: mkAdminFee(t, insGroup, isNCAdminFee)
+      insurance, adminFee, maxNet: maxNetForTenor
     };
   });
 
-  return { region, rateRegionClass, insGroup, ltv, maxGross, maxNet, perTenor, isRO, isNCAdminFee };
+  // Referensi ringkas: net terbesar (tenor terpendek yg tersedia) buat kartu ringkasan di atas.
+  const maxNet = Math.max(...MK_TENORS.map(t => perTenor[t].maxNet));
+  const bestTenor = MK_TENORS.find(t => perTenor[t].maxNet === maxNet);
+
+  return { region, rateRegionClass, insGroup, ltv, maxGross, maxNet, bestTenor, perTenor, isRO, isNCAdminFee };
 }
 
 function mkAngsuranPerTenor(perTenor, nominal){
@@ -1873,16 +1879,17 @@ function buildSimulasiLayout(){
   });
 }
 
-function mkAngsuranCardHtml(label, nominal, angsuran, isMax){
+function mkAngsuranCardHtml(label, nominal, angsuran, isMax, perTenorMax){
   return `
     <div style="background:${isMax?'var(--surface)':'#F7FAFC'};border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:12px;">
       <div style="font-weight:600;font-size:13.5px;margin-bottom:2px;">${label}</div>
-      <div class="mono" style="font-size:12.5px;color:var(--ink-soft);margin-bottom:10px;">${mkFmtRupiahShort(nominal)}</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(84px,1fr));gap:8px;">
+      ${perTenorMax ? '' : `<div class="mono" style="font-size:12.5px;color:var(--ink-soft);margin-bottom:10px;">${mkFmtRupiahShort(nominal)}</div>`}
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(84px,1fr));gap:8px;${perTenorMax?'margin-top:10px;':''}">
         ${MK_TENORS.map(t => `
           <div style="background:${isMax?'#F0F4F7':'#fff'};border-radius:7px;padding:7px 8px;text-align:center;">
             <div style="font-size:10.5px;color:var(--ink-soft);">${t} bln</div>
-            <div class="mono" style="font-size:12.5px;font-weight:600;margin-top:2px;">${mkFmtRupiahShort(angsuran[t])}</div>
+            ${perTenorMax ? `<div class="mono" style="font-size:10px;color:var(--ink-soft);margin-top:2px;">${mkFmtRupiahShort(perTenorMax[t])}</div>` : ''}
+            <div class="mono" style="font-size:12.5px;font-weight:600;margin-top:1px;">${mkFmtRupiahShort(angsuran[t])}</div>
           </div>
         `).join('')}
       </div>
@@ -1895,17 +1902,23 @@ function renderSimulasiMatrix(res){
     area.innerHTML = `<div class="state-box">Kombinasi data ini tidak ditemukan di tabel LTV (kemungkinan Rating "BAD" atau Tahun Kendaraan di luar 2010–2025 memang tidak dibiayai).</div>`;
     return;
   }
-  const maxAngsuran = mkAngsuranPerTenor(res.perTenor, res.maxNet);
+  const maxAngsuran = {};
+  const perTenorMax = {};
+  MK_TENORS.forEach(t => {
+    perTenorMax[t] = res.perTenor[t].maxNet;
+    maxAngsuran[t] = mkAngsuranPerTenor(res.perTenor, perTenorMax[t])[t];
+  });
   area.innerHTML = `
     <div class="grand-row" style="margin-bottom:18px;">
       <div class="grand-card"><div class="lbl">Region</div><div class="val" style="font-size:16px;">${res.region||'-'}</div></div>
       <div class="grand-card"><div class="lbl">LTV</div><div class="val">${(res.ltv*100).toFixed(0)}%</div></div>
       <div class="grand-card"><div class="lbl">Maks. Pencairan (Gross)</div><div class="val" style="font-size:15px;">${mkFmtRupiahShort(res.maxGross)}</div></div>
-      <div class="grand-card"><div class="lbl">Maks. Pencairan (Net)</div><div class="val" style="font-size:15px;">${mkFmtRupiahShort(res.maxNet)}</div></div>
+      <div class="grand-card"><div class="lbl">Maks. Pencairan (Net, tenor ${res.bestTenor} bln)</div><div class="val" style="font-size:15px;">${mkFmtRupiahShort(res.maxNet)}</div></div>
     </div>
+    <div class="count-note" style="margin-bottom:10px;">Maksimal pencairan berbeda tiap tenor (biaya asuransi &amp; admin fee makin besar untuk tenor lebih panjang). Angka kecil di tiap kotak = nominal maksimal untuk tenor itu.</div>
     <div class="panel-title">Angsuran per Tenor</div>
     <div id="mkResultRows">
-      ${mkAngsuranCardHtml('Pencairan Maksimal', res.maxNet, maxAngsuran, true)}
+      ${mkAngsuranCardHtml('Pencairan Maksimal', null, maxAngsuran, true, perTenorMax)}
     </div>
     <div class="controls">
       <input id="mkManualNominal" type="number" min="0" step="100000" placeholder="Nominal pencairan yang diminta nasabah (Rp)" style="flex:1;min-width:220px;padding:9px;border-radius:7px;border:1px solid var(--line);">
@@ -1918,13 +1931,20 @@ function renderSimulasiMatrix(res){
     const nominal = parseFloat(document.getElementById('mkManualNominal').value) || 0;
     const noteEl = document.getElementById('mkManualNote');
     if(nominal <= 0){ noteEl.innerHTML = '<span style="color:#B23B3B;">Isi nominal pencairan dulu.</span>'; return; }
-    if(nominal >= res.maxNet){ noteEl.innerHTML = `<span style="color:#B23B3B;">Nominal melebihi batas maksimal pencairan (${mkFmtRupiahShort(res.maxNet)}).</span>`; return; }
-    noteEl.innerHTML = '';
+    const overLimitTenors = MK_TENORS.filter(t => nominal >= perTenorMax[t]);
+    if(overLimitTenors.length === MK_TENORS.length){
+      noteEl.innerHTML = `<span style="color:#B23B3B;">Nominal melebihi batas maksimal di semua tenor.</span>`;
+      return;
+    }
+    noteEl.innerHTML = overLimitTenors.length
+      ? `<span style="color:#B23B3B;">Nominal melebihi batas maksimal untuk tenor ${overLimitTenors.join(', ')} bln.</span>`
+      : '';
     const manualAngsuran = mkAngsuranPerTenor(res.perTenor, nominal);
+    MK_TENORS.forEach(t => { if(nominal >= perTenorMax[t]) manualAngsuran[t] = null; });
     const rowsWrap = document.getElementById('mkResultRows');
     const existingManual = rowsWrap.querySelector('div[data-manual]');
     if(existingManual) existingManual.remove();
-    const cardHtml = mkAngsuranCardHtml('Pencairan Manual', nominal, manualAngsuran, false);
+    const cardHtml = mkAngsuranCardHtml('Pencairan Manual', nominal, manualAngsuran, false, null);
     rowsWrap.insertAdjacentHTML('beforeend', cardHtml.replace('<div style=', '<div data-manual="1" style='));
   });
 }
