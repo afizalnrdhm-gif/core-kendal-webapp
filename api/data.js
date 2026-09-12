@@ -149,7 +149,12 @@ module.exports = async (req, res) => {
         asalFlow: (r['BUCKET_ASAL_FLOW'] || '').split(',').map(x => x.trim())
       };
       if (r['NAMA_CO']) roleMap[r['NAMA_CO']] = cfg;
-      if (r['EMAIL']) roleByEmail[r['EMAIL'].toString().trim().toLowerCase()] = cfg;
+      if (r['EMAIL']) {
+        // Normalisasi role (uppercase+trim) khusus di sini, biar deteksi DESKCALL gak sensitif
+        // huruf besar/kecil pas ditulis di sheet — tanpa ubah cfg asli yang dipakai roleMap (MR/FE/BCH).
+        const cfgByEmail = Object.assign({}, cfg, { role: (r['ROLE'] || '').toString().trim().toUpperCase() });
+        roleByEmail[r['EMAIL'].toString().trim().toLowerCase()] = cfgByEmail;
+      }
     });
 
     // KA HARIAN: header ada di baris ke-16 (index 15)
@@ -194,7 +199,7 @@ module.exports = async (req, res) => {
     // DESKCALL: bukan CO (tidak punya kontrak atas nama sendiri), dikenali via EMAIL di CONFIG_ROLE.
     // Dapat akses ke seluruh data (kayak admin) tapi menu di frontend dibatasi (lihat index.html).
     const emailRoleCfg = roleByEmail[email];
-    if (emailRoleCfg && emailRoleCfg.role === 'DESKCALL') {
+    if (emailRoleCfg && (emailRoleCfg.role || '').toString().trim().toUpperCase() === 'DESKCALL') {
       res.status(200).json({
         email, isAdmin: false, records: allRecords, roleInfo: emailRoleCfg, escalations: [],
         generatedAt: new Date().toISOString()
