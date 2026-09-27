@@ -462,6 +462,10 @@
           <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3l4 4-4 4"/><path d="M21 7H9a4 4 0 0 0-4 4v1"/><path d="M7 21l-4-4 4-4"/><path d="M3 17h12a4 4 0 0 0 4-4v-1"/></svg>
           <span>FE Ever</span>
         </button>
+        <button class="nav-item nav-hidden" data-view="tglbayar" id="navTglBayar">
+          <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M9 16l2 2 4-4"/></svg>
+          <span>Tanggal Bayar Bulan Lalu</span>
+        </button>
         <button class="nav-item" data-view="insentif" id="navInsentif">
           <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 9.3c0-1 1-1.7 3-1.7s3 .7 3 1.7-1.1 1.4-3 1.7-3 .7-3 1.7 1.2 1.8 3 1.8 3-.7 3-1.8"/><line x1="12" y1="6" x2="12" y2="7.1"/><line x1="12" y1="16.9" x2="12" y2="18"/></svg>
           <span>Insentif</span>
@@ -605,7 +609,7 @@ function showUpdateBanner(){
     banner.remove();
     if(VIEW_MODE === 'ringkasan') loadRingkasan();
     else if(VIEW_MODE === 'dashboard') loadData();
-    else if(VIEW_MODE === 'nbq' || VIEW_MODE === 'feever') loadData();
+    else if(VIEW_MODE === 'nbq' || VIEW_MODE === 'feever' || VIEW_MODE === 'tglbayar') loadData();
     else if(VIEW_MODE === 'insentif') loadInsentif();
   });
   document.getElementById('updateBannerClose').addEventListener('click', () => {
@@ -648,6 +652,7 @@ document.getElementById('navRingkasan').addEventListener('click', () => switchVi
 document.getElementById('navDashboard').addEventListener('click', () => switchView('dashboard'));
 document.getElementById('navNBQ').addEventListener('click', () => switchView('nbq'));
 document.getElementById('navFEEver').addEventListener('click', () => switchView('feever'));
+document.getElementById('navTglBayar').addEventListener('click', () => switchView('tglbayar'));
 document.getElementById('navInsentif').addEventListener('click', () => switchView('insentif'));
 document.getElementById('navDekscall').addEventListener('click', () => switchView('dekscall'));
 document.getElementById('navSimulasi').addEventListener('click', () => switchView('simulasi'));
@@ -725,6 +730,11 @@ function onDataLoaded(res){
     navRingkasan.classList.add('nav-hidden');
   }
 
+  // Tanggal Bayar Bulan Lalu: FE, MR, Admin, dan DESKCALL boleh lihat (lingkupnya beda-beda per role).
+  const navTglBayar = document.getElementById('navTglBayar');
+  const canSeeTglBayar = IS_ADMIN || IS_DESKCALL || (ROLE_INFO && (ROLE_INFO.role === 'FE' || ROLE_INFO.role === 'MR'));
+  navTglBayar.classList.toggle('nav-hidden', !canSeeTglBayar);
+
   if(!hasInitializedApp){
     hasInitializedApp = true;
     if(IS_ADMIN){
@@ -742,6 +752,7 @@ function onDataLoaded(res){
     if(VIEW_MODE === 'dashboard'){ buildLayout(); render(); }
     else if(VIEW_MODE === 'nbq'){ buildNBQLayout(); renderNBQ(); }
     else if(VIEW_MODE === 'feever'){ buildFEEverLayout(); renderFEEver(); }
+    else if(VIEW_MODE === 'tglbayar'){ buildTglBayarLayout(); renderTglBayarTable(); }
   }
 }
 
@@ -1003,7 +1014,7 @@ function updateFilterBadge(){
 let VIEW_MODE = 'dashboard';
 let INSENTIF_DATA = null;
 
-const VIEW_TITLES = { ringkasan: 'Dashboard', dashboard: 'Beban Awal', nbq: 'NBQ', feever: 'FE Ever', insentif: 'Insentif', dekscall: 'Dekscall', simulasi: 'Simulasi Penawaran' };
+const VIEW_TITLES = { ringkasan: 'Dashboard', dashboard: 'Beban Awal', nbq: 'NBQ', feever: 'FE Ever', tglbayar: 'Tanggal Bayar Bulan Lalu', insentif: 'Insentif', dekscall: 'Dekscall', simulasi: 'Simulasi Penawaran' };
 
 function triggerFadeIn(){
   const el = document.getElementById('wrap');
@@ -1020,6 +1031,7 @@ function switchView(view){
   document.getElementById('navDashboard').classList.toggle('active', view === 'dashboard');
   document.getElementById('navNBQ').classList.toggle('active', view === 'nbq');
   document.getElementById('navFEEver').classList.toggle('active', view === 'feever');
+  document.getElementById('navTglBayar').classList.toggle('active', view === 'tglbayar');
   document.getElementById('navInsentif').classList.toggle('active', view === 'insentif');
   document.getElementById('navDekscall').classList.toggle('active', view === 'dekscall');
   document.getElementById('navSimulasi').classList.toggle('active', view === 'simulasi');
@@ -1046,6 +1058,10 @@ function switchView(view){
   } else if(view === 'feever'){
     buildFEEverLayout();
     renderFEEver();
+    triggerFadeIn();
+  } else if(view === 'tglbayar'){
+    buildTglBayarLayout();
+    renderTglBayarTable();
     triggerFadeIn();
   } else if(view === 'insentif'){
     if(INSENTIF_DATA){ renderInsentifView(); triggerFadeIn(); } else { loadInsentif(); }
@@ -1344,6 +1360,147 @@ function renderDekscallTable(){
       <td data-label="Sisa Piutang" class="num">${fmtRupiah(r['SIPOK'])}</td>
       <td data-label="DPD" class="num">${r['DPD'] ?? '-'}</td>
       <td data-label="Jatuh Tempo" class="mono">${fmtDate(r['JATUH TEMPO'])}</td>
+    </tr>`;
+  }).join('');
+  tbody.querySelectorAll('tr[data-kontrak]').forEach(tr => tr.onclick = () => openPanel(tr.getAttribute('data-kontrak')));
+}
+
+// ============================================================
+// TANGGAL BAYAR BULAN LALU — kontrak NOOD/1-30/31-60 (FLOW) yang
+// tanggal "TANGGAL BAYAR BULAN LALU"-nya jatuh di tanggal yang sama
+// dengan hari ini, buat pantau konsumen yang biasa bayar di tanggal ini.
+// FE: NOOD+1-30 kontrak sendiri, non fleet.
+// MR: 31-60 kontrak sendiri (non fleet) + 1-30 yang "Sudah Ever" (persis populasi FE Ever).
+// Admin/DESKCALL: semua bucket, semua CO, fleet ikut.
+// ============================================================
+let tglBayarState = { search:'', sortKey:'TANGGAL BAYAR BULAN LALU', sortDir:1 };
+const TGLBAYAR_BUCKETS = ['NOOD','P001_030','P031_060'];
+
+function tglBayarIsFlow_(r){
+  return (r['KRITERIA ACCT']||'').toString().trim().toUpperCase() === 'FLOW';
+}
+function tglBayarIsFleet_(r){
+  return (r['FLEET/NON FLEET']||'').toString().trim().toUpperCase() === 'FLEET';
+}
+function tglBayarSameDayAsToday_(dateStr){
+  if(!dateStr || typeof dateStr !== 'string') return false;
+  const parts = dateStr.split('-');
+  if(parts.length !== 3) return false;
+  const day = parseInt(parts[2], 10);
+  return !isNaN(day) && day === new Date().getDate();
+}
+
+function getTglBayarBase(){
+  const cocok = r => tglBayarIsFlow_(r) && tglBayarSameDayAsToday_(r['TANGGAL BAYAR BULAN LALU']);
+
+  if(IS_ADMIN || IS_DESKCALL){
+    // Semua bucket, semua CO, fleet ikut kehitung.
+    return DATA.filter(r => cocok(r) && TGLBAYAR_BUCKETS.includes(r['BUCKET AWAL']));
+  }
+
+  const isMR = ROLE_INFO && ROLE_INFO.role === 'MR';
+  const isFE = ROLE_INFO && ROLE_INFO.role === 'FE';
+
+  if(isMR){
+    const own3160 = DATA.filter(r => cocok(r) && !tglBayarIsFleet_(r) && r['BUCKET AWAL'] === 'P031_060');
+    const everMatched = (ESCALATIONS||[]).filter(r => cocok(r) && !tglBayarIsFleet_(r));
+    return own3160.concat(everMatched);
+  }
+
+  if(isFE){
+    return DATA.filter(r => cocok(r) && !tglBayarIsFleet_(r) && (r['BUCKET AWAL']==='NOOD' || r['BUCKET AWAL']==='P001_030'));
+  }
+
+  return [];
+}
+
+function buildTglBayarLayout(){
+  const base = getTglBayarBase();
+  const stat = { count: base.length, sipok: base.reduce((s,r)=> s + (typeof r['SIPOK']==='number' ? r['SIPOK'] : 0), 0) };
+  const todayDate = new Date().getDate();
+
+  document.getElementById('wrap').innerHTML = `
+    <div class="panel-title">Tanggal Bayar Bulan Lalu — Jatuh di Tanggal ${todayDate} Bulan Ini</div>
+    <div class="grand-row" style="margin-bottom:22px;">
+      <div class="grand-card"><div class="lbl">Jumlah Kontrak</div><div class="val" id="tglBayarValKontrak">0</div></div>
+      <div class="grand-card"><div class="lbl">Total Sisa Piutang</div><div class="val" id="tglBayarValSipok">Rp0</div></div>
+    </div>
+    <div class="controls">
+      <div class="search-box">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4C6272" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="tglBayarSearchInput" type="text" placeholder="Cari nama konsumen, no kontrak, atau nopol…">
+      </div>
+      <button class="btn" id="tglBayarResetBtn">Reset filter</button>
+      <button class="btn primary" id="tglBayarRefreshBtn">↻ Muat ulang</button>
+    </div>
+    <div class="count-note" id="tglBayarCountNote"></div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th data-key="CO ALL">CO</th>
+            <th data-key="NO KONTRAK">No Kontrak</th>
+            <th data-key="NAMA KONSUMEN">Nama Konsumen</th>
+            <th>Bucket</th>
+            <th data-key="STATUS BAYAR">Status</th>
+            <th data-key="SIPOK" class="num">Sisa Piutang</th>
+            <th data-key="DPD" class="num">DPD</th>
+            <th data-key="TANGGAL BAYAR BULAN LALU">Tgl Bayar Bulan Lalu</th>
+          </tr>
+        </thead>
+        <tbody id="tglBayarTbody"></tbody>
+      </table>
+    </div>
+  `;
+
+  animateCount(document.getElementById('tglBayarValKontrak'), stat.count, false);
+  animateCount(document.getElementById('tglBayarValSipok'), stat.sipok, true);
+
+  document.querySelectorAll('#wrap thead th[data-key]').forEach(th => {
+    th.addEventListener('click', () => {
+      const key = th.getAttribute('data-key');
+      if(tglBayarState.sortKey === key) tglBayarState.sortDir *= -1; else { tglBayarState.sortKey = key; tglBayarState.sortDir = 1; }
+      renderTglBayarTable();
+    });
+  });
+  document.getElementById('tglBayarSearchInput').addEventListener('input', e => { tglBayarState.search = e.target.value; renderTglBayarTable(); });
+  document.getElementById('tglBayarResetBtn').addEventListener('click', () => {
+    tglBayarState = { search:'', sortKey:'TANGGAL BAYAR BULAN LALU', sortDir:1 };
+    document.getElementById('tglBayarSearchInput').value = '';
+    renderTglBayarTable();
+  });
+  document.getElementById('tglBayarRefreshBtn').addEventListener('click', loadData);
+}
+
+function renderTglBayarTable(){
+  let rows = getTglBayarBase();
+  const total = rows.length;
+  if(tglBayarState.search.trim()){
+    const q = tglBayarState.search.trim().toLowerCase();
+    rows = rows.filter(r => (r['NAMA KONSUMEN']||'').toLowerCase().includes(q) || (r['NO KONTRAK']||'').toLowerCase().includes(q) || (r['NOPOL']||'').toLowerCase().includes(q));
+  }
+  if(tglBayarState.sortKey){
+    rows = rows.slice().sort((a,b) => {
+      let va=a[tglBayarState.sortKey], vb=b[tglBayarState.sortKey];
+      if(typeof va==='number' && typeof vb==='number') return (va-vb)*tglBayarState.sortDir;
+      va=(va||'').toString().toLowerCase(); vb=(vb||'').toString().toLowerCase();
+      return va.localeCompare(vb)*tglBayarState.sortDir;
+    });
+  }
+  document.getElementById('tglBayarCountNote').innerHTML = `Menampilkan <b>${rows.length}</b> dari <b>${total}</b> kontrak`;
+  const tbody = document.getElementById('tglBayarTbody');
+  if(rows.length===0){ tbody.innerHTML = '<tr class="empty-row"><td colspan="8">Tidak ada kontrak yang cocok.</td></tr>'; return; }
+  tbody.innerHTML = rows.map(r => {
+    const meta = CO_META[r['CO ALL']] || {short:r['CO ALL']||'-'};
+    return `<tr data-kontrak="${r['NO KONTRAK']}">
+      <td data-label="CO" class="mono">${meta.short}</td>
+      <td data-label="No Kontrak" class="mono">${r['NO KONTRAK']||'-'}</td>
+      <td data-label="Nama">${r['NAMA KONSUMEN']||'-'}</td>
+      <td data-label="Bucket"><span class="bpill" style="background:${BUCKET_COLOR[r['BUCKET AWAL']]||'#999'}">${fmtBucket(r['BUCKET AWAL'])}</span></td>
+      <td data-label="Status"><span class="status-pill ${statusClass(r['STATUS BAYAR'])}">${r['STATUS BAYAR']||'-'}</span></td>
+      <td data-label="Sisa Piutang" class="num">${fmtRupiah(r['SIPOK'])}</td>
+      <td data-label="DPD" class="num">${r['DPD'] ?? '-'}</td>
+      <td data-label="Tgl Bayar Bulan Lalu" class="mono">${fmtDate(r['TANGGAL BAYAR BULAN LALU'])}</td>
     </tr>`;
   }).join('');
   tbody.querySelectorAll('tr[data-kontrak]').forEach(tr => tr.onclick = () => openPanel(tr.getAttribute('data-kontrak')));
