@@ -39,14 +39,15 @@ async function getAccessToken() {
   return data.access_token;
 }
 
-function parseSheetValues(values) {
-  if (!values || !values.length) return [];
-  const header = values[0];
+function parseSheetValues(values, headerRowIndex) {
+  headerRowIndex = headerRowIndex || 0;
+  if (!values || values.length <= headerRowIndex) return [];
+  const header = values[headerRowIndex];
   const seen = {}; const keepIdx = [];
   header.forEach((h, i) => { const hh = (h || '').toString().trim(); if (seen[hh]) return; seen[hh] = true; keepIdx.push(i); });
   const finalHeader = keepIdx.map(i => (header[i] || '').toString().trim());
   const rows = [];
-  for (let r = 1; r < values.length; r++) {
+  for (let r = headerRowIndex + 1; r < values.length; r++) {
     const raw = values[r] || [];
     const rec = {};
     keepIdx.forEach((idx, j) => { let v = raw[idx]; if (typeof v === 'string') v = v.trim(); rec[finalHeader[j]] = v === undefined ? '' : v; });
@@ -96,6 +97,7 @@ function parseCommand(text) {
 
   if (cmd === '/fpd') return { type: 'mob', mobList: [1], title: 'FPD (First Payment Default)' };
   if (cmd === '/spd') return { type: 'mob', mobList: [2], title: 'SPD (Second Payment Default)' };
+  if (cmd === '/realisasi') return { type: 'realisasi', title: 'Realisasi Hari Ini' };
   if (cmd !== '/nbq') return null;
 
   if (CO_ALIAS[arg]) return { type: 'co', co: CO_ALIAS[arg], title: 'NBQ — ' + CO_ALIAS[arg] };
@@ -118,6 +120,29 @@ function nbqNum(rec) {
   const m = v.match(/^(\d+)\s*MOB$/i);
   return m ? parseInt(m[1], 10) : null;
 }
+
+// ============================================================
+// LABEL BUCKET (buat tabel /realisasi)
+// ============================================================
+const BUCKET_LABEL = {
+  NOOD: 'NOOD',
+  P001_030: '1-30',
+  P031_060: '31-60',
+  P061_090: '61-90',
+  P091_120: '91-120',
+  P121_150: '121-150',
+  P151_180: '151-180',
+  P181_210: '181-210',
+  P211_240: '211-240'
+};
+function fmtBucketLabel(b) { return BUCKET_LABEL[b] || b || '-'; }
+
+const REALISASI_COLS = [
+  { key: 'NO KONTRAK', label: 'No Kontrak', width: 190 },
+  { key: 'NAMA KONSUMEN', label: 'Nama Konsumen', width: 260, bold: true },
+  { key: 'NAMA CO', label: 'Nama CO', width: 260 },
+  { key: 'BUCKET AWAL', label: 'Bucket Awal', width: 140 }
+];
 
 // ============================================================
 // GENERATE GAMBAR TABEL (Satori -> SVG -> PNG)
@@ -161,19 +186,20 @@ function cellDiv(text, width, opts) {
   };
 }
 
-async function renderTableImage(title, subtitle, rows) {
-  const totalWidth = COLS.reduce((s, c) => s + c.width, 0) + 40;
+async function renderTableImage(title, subtitle, rows, cols) {
+  cols = cols || COLS;
+  const totalWidth = cols.reduce((s, c) => s + c.width, 0) + 40;
 
   const headerRow = {
     type: 'div', props: {
       style: { display: 'flex', background: '#0B3D62', color: '#fff' },
-      children: COLS.map(c => cellDiv(c.label, c.width, { weight: 700, color: '#fff' }))
+      children: cols.map(c => cellDiv(c.label, c.width, { weight: 700, color: '#fff' }))
     }
   };
   const bodyRows = rows.map((r, idx) => ({
     type: 'div', props: {
       style: { display: 'flex', background: idx % 2 === 0 ? '#ffffff' : '#F5F8FA', borderBottom: '1px solid #E2E9EE' },
-      children: COLS.map(c => cellDiv(r[c.key], c.width, { weight: c.bold ? 600 : 400, color: c.danger ? '#B23B2E' : undefined }))
+      children: cols.map(c => cellDiv(r[c.key], c.width, { weight: c.bold ? 600 : 400, color: c.danger ? '#B23B2E' : undefined }))
     }
   }));
 
@@ -241,7 +267,68 @@ module.exports = async (req, res) => {
     if (!parsed) { res.status(200).json({ ok: true }); return; }
 
     if (parsed.type === 'invalid') {
-      await sendTelegramMessage(chatId, 'Command tidak dikenali. Coba: /nbq rahul, /nbq ulil, /nbq mobilku, /nbq motorku, /nbq nb, /nbq 1-3, /nbq 1-6, /nbq 1-9, /fpd, /spd');
+      await sendTelegramMessage(chatId, 'Command tidak dikenali. Coba: /nbq rahul, /nbq ulil, /nbq mobilku, /nbq motorku, /nbq nb, /nbq 1-3, /nbq 1-6, /nbq 1-9, /fpd, /spd, /realisasi');
+      res.status(200).json({ ok: true });
+      return;
+    }
+
+    if (parsed.type === 'realisasi') {
+      const accessToken = await getAccessToken();
+      const sheetId = process.env.GOOGLE_SHEET_ID;
+      const [masterRes, kaRes] = await Promise.all([
+        fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/MASTER?valueRenderOption=UNFORMATTED_VALUE`, {
+          headers: { Authorization: 'Bearer ' + accessToken }
+        }),
+        fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent('KA HARIAN')}?valueRenderOption=UNFORMATTED_VALUE`, {
+          headers: { Authorization: 'Bearer ' + accessToken }
+        })
+      ]);
+      const masterJson = await masterRes.json();
+      const kaJson = await kaRes.json();
+      if (!masterJson.values || !kaJson.values) {
+        await sendTelegramMessage(chatId, 'Gagal ambil data sheet.');
+        res.status(200).json({ ok: true });
+        return;
+      }
+
+      const allRows = parseSheetValues(masterJson.values).filter(r => r['NO KONTRAK']);
+      const bucketAwalMap = {};
+      allRows.forEach(r => {
+        bucketAwalMap[r['NO KONTRAK']] = {
+          bucketAwal: r['BUCKET AWAL'],
+          coAll: r['CO ALL'],
+          namaKonsumen: r['NAMA KONSUMEN'],
+          isFleet: r['FLEET/NON FLEET'] === 'FLEET'
+        };
+      });
+
+      // KA HARIAN: header ada di baris ke-16 (index 15)
+      const kaRows = parseSheetValues(kaJson.values, 15);
+
+      const realisasiRows = kaRows
+        .filter(r => r['NO KONTRAK'] && Number(r['REALISASI']) > 0)
+        .map(r => {
+          const master = bucketAwalMap[r['NO KONTRAK']] || {};
+          return {
+            'NO KONTRAK': r['NO KONTRAK'],
+            'NAMA KONSUMEN': master.namaKonsumen || r['NAMA KONSUMEN'] || '-',
+            'NAMA CO': master.coAll || r['NAMA COLLECTOR'] || '-',
+            'BUCKET AWAL': fmtBucketLabel(master.bucketAwal),
+            _isFleet: !!master.isFleet
+          };
+        })
+        .filter(r => !r._isFleet);
+
+      if (realisasiRows.length === 0) {
+        await sendTelegramMessage(chatId, 'Belum ada realisasi hari ini.');
+        res.status(200).json({ ok: true });
+        return;
+      }
+
+      const { year, month, day } = getWibDateParts();
+      const subtitle = `Update per: ${fmtTanggalIndo(toIsoDate(year, month, day))}`;
+      const png = await renderTableImage(parsed.title, subtitle, realisasiRows, REALISASI_COLS);
+      await sendTelegramPhoto(chatId, png);
       res.status(200).json({ ok: true });
       return;
     }
