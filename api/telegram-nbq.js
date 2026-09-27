@@ -226,11 +226,15 @@ async function renderTableImage(title, subtitle, rows, cols) {
 // ============================================================
 async function sendTelegramMessage(chatId, text) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
-  await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+  const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ chat_id: chatId, text })
   });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok || body.ok === false) {
+    console.log('Telegram sendMessage GAGAL:', res.status, JSON.stringify(body));
+  }
 }
 
 async function sendTelegramPhoto(chatId, pngBuffer) {
@@ -238,7 +242,11 @@ async function sendTelegramPhoto(chatId, pngBuffer) {
   const form = new FormData();
   form.append('chat_id', String(chatId));
   form.append('photo', new Blob([pngBuffer], { type: 'image/png' }), 'nbq.png');
-  await fetch(`https://api.telegram.org/bot${token}/sendPhoto`, { method: 'POST', body: form });
+  const res = await fetch(`https://api.telegram.org/bot${token}/sendPhoto`, { method: 'POST', body: form });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok || body.ok === false) {
+    console.log('Telegram sendPhoto GAGAL:', res.status, JSON.stringify(body));
+  }
 }
 
 function serialToDateStr(serial) {
