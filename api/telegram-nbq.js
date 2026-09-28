@@ -494,28 +494,90 @@ function hitungBCHRapor(masterList, petaKA, configRows) {
   return { namaCO, role: 'BCH', flowEverPct, flowForwardPct, balancePct, totalNilai, kategori, insentif: insentifRaporBCH(kategori), totalAwal, flowEverEscaped };
 }
 
-function formatFEMRBlock(h) {
+function feMrRowFor(h) {
   const balBucket = shortBucket(h.bucketPenyelesaian);
   const asalBucket = shortBucket(h.bucketAsalFlow);
-  return [
-    `👤 ${h.namaCO}`,
-    `Balance ${balBucket}: ${h.balancePct.toFixed(2)}%`,
-    `Flow Ever ${balBucket}: ${h.flowEverPct.toFixed(2)}% (${h.flowEverEscaped}/${h.totalAwal})`,
-    `Flow ${asalBucket}: ${h.flowAsalPct.toFixed(2)}%`,
-    `Nilai Rapor: ${h.totalNilai.toFixed(2)} (${h.kategori})`,
-    `Proyeksi Insentif Rapor: ${fmtRupiah(h.insentif)}`
-  ].join('\n');
+  return {
+    nama: h.namaCO,
+    balance: `${balBucket}: ${fmtPct(h.balancePct)}`,
+    flowEver: `${balBucket}: ${fmtPct(h.flowEverPct)} (${h.flowEverEscaped}/${h.totalAwal})`,
+    flowAsal: `${asalBucket}: ${fmtPct(h.flowAsalPct)}`,
+    nilai: h.totalNilai.toFixed(2),
+    kategori: h.kategori,
+    insentif: fmtRupiah(h.insentif)
+  };
 }
 
-function formatBCHBlock(h) {
-  return [
-    `👤 ${h.namaCO}`,
-    `Balance 1-60: ${h.balancePct.toFixed(2)}%`,
-    `Flow Ever 1-30: ${h.flowEverPct.toFixed(2)}% (${h.flowEverEscaped}/${h.totalAwal})`,
-    `Flow Forward 31-60: ${h.flowForwardPct.toFixed(2)}%`,
-    `Nilai Rapor: ${h.totalNilai.toFixed(2)} (${h.kategori})`,
-    `Proyeksi Insentif Rapor: ${fmtRupiah(h.insentif)}`
-  ].join('\n');
+function bchRowFor(h) {
+  return {
+    nama: h.namaCO,
+    balance: `1-60: ${fmtPct(h.balancePct)}`,
+    flowEver: `1-30: ${fmtPct(h.flowEverPct)} (${h.flowEverEscaped}/${h.totalAwal})`,
+    flowAsal: `Fwd 31-60: ${fmtPct(h.flowForwardPct)}`,
+    nilai: h.totalNilai.toFixed(2),
+    kategori: h.kategori,
+    insentif: fmtRupiah(h.insentif)
+  };
+}
+
+// ============================================================
+// GAMBAR RAPOR — tabel per section (FE / MR / BCH) dalam 1 gambar
+// ============================================================
+const RAPOR_COLS = [
+  { key: 'nama', label: 'Nama CO', width: 220, bold: true },
+  { key: 'balance', label: 'Balance', width: 140 },
+  { key: 'flowEver', label: 'Flow Ever', width: 200 },
+  { key: 'flowAsal', label: 'Flow', width: 150 },
+  { key: 'nilai', label: 'Nilai Rapor', width: 100 },
+  { key: 'kategori', label: 'Kategori', width: 180 },
+  { key: 'insentif', label: 'Proyeksi Insentif', width: 160 }
+];
+
+function makeRaporHeaderRow() {
+  return {
+    type: 'div', props: {
+      style: { display: 'flex', background: '#0B3D62', color: '#fff' },
+      children: RAPOR_COLS.map(c => cellDiv(c.label, c.width, { weight: 700, color: '#fff' }))
+    }
+  };
+}
+
+async function renderRaporImage(title, subtitle, sections) {
+  const totalWidth = RAPOR_COLS.reduce((s, c) => s + c.width, 0) + 40;
+
+  function buildSectionBlock(section) {
+    const bodyRows = section.rows.map((r, idx) => ({
+      type: 'div', props: {
+        style: { display: 'flex', background: idx % 2 === 0 ? '#ffffff' : '#F5F8FA', borderBottom: '1px solid #E2E9EE' },
+        children: RAPOR_COLS.map(c => cellDiv(r[c.key], c.width, { weight: c.key === 'nama' ? 600 : 400 }))
+      }
+    }));
+    return {
+      type: 'div',
+      props: {
+        style: { display: 'flex', flexDirection: 'column', marginTop: 18 },
+        children: [
+          { type: 'div', props: { style: { fontSize: 14, fontWeight: 700, color: '#0B3D62', marginBottom: 8 }, children: section.heading } },
+          { type: 'div', props: { style: { display: 'flex', flexDirection: 'column', border: '1px solid #E2E9EE', borderRadius: 8, overflow: 'hidden' }, children: [makeRaporHeaderRow(), ...bodyRows] } }
+        ]
+      }
+    };
+  }
+
+  const tree = {
+    type: 'div',
+    props: {
+      style: { display: 'flex', flexDirection: 'column', width: totalWidth, background: '#fff', padding: 22, fontFamily: 'PJS' },
+      children: [
+        { type: 'div', props: { style: { fontSize: 21, fontWeight: 700, color: '#0B3D62' }, children: title } },
+        { type: 'div', props: { style: { fontSize: 12.5, color: '#66798A', marginTop: 4 }, children: subtitle } },
+        ...sections.map(buildSectionBlock)
+      ]
+    }
+  };
+
+  const svg = await satori(tree, { width: totalWidth, fonts: loadFonts() });
+  return sharp(Buffer.from(svg)).png().toBuffer();
 }
 
 // ============================================================
@@ -674,15 +736,23 @@ module.exports = async (req, res) => {
       const hasilMR = hitungMRRapor(masterList, petaKA, configRows);
       const hasilBCH = hitungBCHRapor(masterList, petaKA, configRows);
 
-      const { year, month, day } = getWibDateParts();
-      const tanggal = fmtTanggalIndo(toIsoDate(year, month, day));
-      const sections = [`📊 PERFORMANCE RAPOR — ${tanggal}`];
-      if (hasilFE.length) sections.push('— FRONT END (FE) —\n\n' + hasilFE.map(formatFEMRBlock).join('\n\n'));
-      if (hasilMR.length) sections.push('— MID RANGE (MR) —\n\n' + hasilMR.map(formatFEMRBlock).join('\n\n'));
-      if (parsed.scope === 'all' && hasilBCH) sections.push('— BRANCH COLLECTION HEAD (BCH) —\n\n' + formatBCHBlock(hasilBCH));
+      const sections = [];
+      if (hasilFE.length) sections.push({ heading: 'FRONT END (FE)', rows: hasilFE.map(feMrRowFor) });
+      if (hasilMR.length) sections.push({ heading: 'MID RANGE (MR)', rows: hasilMR.map(feMrRowFor) });
+      if (parsed.scope === 'all' && hasilBCH) sections.push({ heading: 'BRANCH COLLECTION HEAD (BCH)', rows: [bchRowFor(hasilBCH)] });
 
-      const text = sections.join('\n\n');
-      await sendTelegramMessage(chatId, text);
+      if (sections.length === 0) {
+        await sendTelegramMessage(chatId, 'Data rapor belum tersedia.');
+        res.status(200).json({ ok: true });
+        return;
+      }
+
+      const title = parsed.scope === 'all' ? 'Performance Rapor — Semua (FE, MR, BCH)' : 'Performance Rapor — CO (FE & MR)';
+      const { year, month, day } = getWibDateParts();
+      const subtitle = `Update per: ${fmtTanggalIndo(toIsoDate(year, month, day))}`;
+
+      const png = await renderRaporImage(title, subtitle, sections);
+      await sendTelegramPhoto(chatId, png);
       res.status(200).json({ ok: true });
       return;
     }
