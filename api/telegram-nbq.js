@@ -494,9 +494,10 @@ function hitungBCHRapor(masterList, petaKA, configRows) {
   return { namaCO, role: 'BCH', flowEverPct, flowForwardPct, balancePct, totalNilai, kategori, insentif: insentifRaporBCH(kategori), totalAwal, flowEverEscaped };
 }
 
-function feMrRowFor(h) {
+function feMrRowFor(h, w) {
   const balBucket = shortBucket(h.bucketPenyelesaian);
   const asalBucket = shortBucket(h.bucketAsalFlow);
+  w = w || { pct: 0, nilai: 0, minggu: getMingguSekarang() };
   return {
     nama: h.namaCO,
     balance: `${balBucket}: ${fmtPct(h.balancePct)}`,
@@ -504,11 +505,15 @@ function feMrRowFor(h) {
     flowAsal: `${asalBucket}: ${fmtPct(h.flowAsalPct)}`,
     nilai: h.totalNilai.toFixed(2),
     kategori: h.kategori,
-    insentif: fmtRupiah(h.insentif)
+    insentifRapor: fmtRupiah(h.insentif),
+    penyelesaian: `${fmtPct(w.pct)} (Mgg ${w.minggu})`,
+    insentifWeekly: fmtRupiah(w.nilai),
+    totalInsentif: fmtRupiah(h.insentif + w.nilai)
   };
 }
 
-function bchRowFor(h) {
+function bchRowFor(h, w) {
+  w = w || { pct: 0, nilai: 0, minggu: getMingguSekarang() };
   return {
     nama: h.namaCO,
     balance: `1-60: ${fmtPct(h.balancePct)}`,
@@ -516,21 +521,66 @@ function bchRowFor(h) {
     flowAsal: `Fwd 31-60: ${fmtPct(h.flowForwardPct)}`,
     nilai: h.totalNilai.toFixed(2),
     kategori: h.kategori,
-    insentif: fmtRupiah(h.insentif)
+    insentifRapor: fmtRupiah(h.insentif),
+    penyelesaian: `${fmtPct(w.pct)} (Mgg ${w.minggu})`,
+    insentifWeekly: fmtRupiah(w.nilai),
+    totalInsentif: fmtRupiah(h.insentif + w.nilai)
   };
+}
+
+// ============================================================
+// INSENTIF PENYELESAIAN MINGGUAN — replikasi persis formula di api/insentif.js
+// ============================================================
+function getMingguSekarang(){
+  const hari = new Date().getDate();
+  if(hari<=7) return 1; if(hari<=14) return 2; if(hari<=21) return 3; return 4;
+}
+function insentifPenyelesaianFE(p,mg){ const t={1:[[40,750000],[35,500000]],2:[[60,750000],[55,500000]],3:[[75,500000],[70,250000]],4:[[95,500000],[90,250000]]}[mg]; for(const [b,n] of t){ if(p>b) return n; } return 0; }
+function insentifPenyelesaianMR(p,mg){ const t={1:[[30,750000],[25,500000]],2:[[50,750000],[45,500000]],3:[[65,500000],[60,250000]],4:[[75,500000],[70,250000]]}[mg]; for(const [b,n] of t){ if(p>b) return n; } return 0; }
+function insentifPenyelesaianBCH(p,mg){ const t={1:[[32,1000000],[27,500000]],2:[[52,1000000],[47,500000]],3:[[68,500000],[63,250000]],4:[[83,500000],[78,250000]]}[mg]; for(const [b,n] of t){ if(p>b) return n; } return 0; }
+
+function hitungPenyelesaianPct(masterList, filterFn, bucketAwalSet, includeFleet) {
+  let sipokFlow = 0, sipokTotal = 0;
+  masterList.forEach(m => {
+    if (!includeFleet && m['FLEET/NON FLEET'] === 'FLEET') return;
+    if (!filterFn(m)) return;
+    if (!bucketAwalSet.includes(m['BUCKET AWAL'])) return;
+    sipokTotal += raporSipokOf(m);
+    if (raporBucketIndex(m['BUCKET UPDATE']) > raporBucketIndex(m['BUCKET AWAL'])) sipokFlow += raporSipokOf(m);
+  });
+  const flowPct = sipokTotal > 0 ? (sipokFlow / sipokTotal) * 100 : 0;
+  return { pct: 100 - flowPct, sipokTotal };
+}
+
+function hitungPenyelesaianSemua(masterList, configRows) {
+  const minggu = getMingguSekarang();
+  return configRows.map(cfg => {
+    const role = cfg['ROLE'];
+    const namaCO = cfg['NAMA_CO'];
+    const bucketSet = (cfg['BUCKET_PENYELESAIAN'] || '').split(',').map(s => s.trim());
+    const filterFn = role === 'FE' ? (m => m['CO ALL'] === namaCO) : (() => true);
+    const includeFleet = role === 'BCH';
+    const hasil = hitungPenyelesaianPct(masterList, filterFn, bucketSet, includeFleet);
+    const tabelFn = role === 'FE' ? insentifPenyelesaianFE : role === 'MR' ? insentifPenyelesaianMR : insentifPenyelesaianBCH;
+    const nilai = tabelFn(hasil.pct, minggu);
+    return { role, namaCO, minggu, pct: hasil.pct, sipokTotal: hasil.sipokTotal, nilai };
+  });
 }
 
 // ============================================================
 // GAMBAR RAPOR — tabel per section (FE / MR / BCH) dalam 1 gambar
 // ============================================================
 const RAPOR_COLS = [
-  { key: 'nama', label: 'Nama CO', width: 220, bold: true },
-  { key: 'balance', label: 'Balance', width: 140 },
-  { key: 'flowEver', label: 'Flow Ever', width: 200 },
-  { key: 'flowAsal', label: 'Flow', width: 150 },
-  { key: 'nilai', label: 'Nilai Rapor', width: 100 },
-  { key: 'kategori', label: 'Kategori', width: 180 },
-  { key: 'insentif', label: 'Proyeksi Insentif', width: 160 }
+  { key: 'nama', label: 'Nama CO', width: 200, bold: true },
+  { key: 'balance', label: 'Balance', width: 120 },
+  { key: 'flowEver', label: 'Flow Ever', width: 170 },
+  { key: 'flowAsal', label: 'Flow', width: 130 },
+  { key: 'nilai', label: 'Nilai Rapor', width: 90 },
+  { key: 'kategori', label: 'Kategori', width: 155 },
+  { key: 'insentifRapor', label: 'Insentif Rapor', width: 135 },
+  { key: 'penyelesaian', label: 'Penyelesaian Weekly', width: 165 },
+  { key: 'insentifWeekly', label: 'Insentif Weekly', width: 140 },
+  { key: 'totalInsentif', label: 'Total Insentif', width: 145 }
 ];
 
 function makeRaporHeaderRow() {
@@ -735,11 +785,14 @@ module.exports = async (req, res) => {
       const hasilFE = hitungFERapor(masterList, petaKA, configRows);
       const hasilMR = hitungMRRapor(masterList, petaKA, configRows);
       const hasilBCH = hitungBCHRapor(masterList, petaKA, configRows);
+      const hasilPenyelesaian = hitungPenyelesaianSemua(masterList, configRows);
+      const weeklyMap = {};
+      hasilPenyelesaian.forEach(w => { weeklyMap[w.namaCO] = w; });
 
       const sections = [];
-      if (hasilFE.length) sections.push({ heading: 'FRONT END (FE)', rows: hasilFE.map(feMrRowFor) });
-      if (hasilMR.length) sections.push({ heading: 'MID RANGE (MR)', rows: hasilMR.map(feMrRowFor) });
-      if (parsed.scope === 'all' && hasilBCH) sections.push({ heading: 'BRANCH COLLECTION HEAD (BCH)', rows: [bchRowFor(hasilBCH)] });
+      if (hasilFE.length) sections.push({ heading: 'FRONT END (FE)', rows: hasilFE.map(h => feMrRowFor(h, weeklyMap[h.namaCO])) });
+      if (hasilMR.length) sections.push({ heading: 'MID RANGE (MR)', rows: hasilMR.map(h => feMrRowFor(h, weeklyMap[h.namaCO])) });
+      if (parsed.scope === 'all' && hasilBCH) sections.push({ heading: 'BRANCH COLLECTION HEAD (BCH)', rows: [bchRowFor(hasilBCH, weeklyMap[hasilBCH.namaCO])] });
 
       if (sections.length === 0) {
         await sendTelegramMessage(chatId, 'Data rapor belum tersedia.');
