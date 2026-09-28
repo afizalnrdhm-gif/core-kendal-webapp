@@ -85,6 +85,13 @@ function fmtTanggalIndo(isoStr) {
   const bulan = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
   return `${d} ${bulan[m - 1]} ${y}`;
 }
+function fmtRupiah(n) {
+  n = Math.round(n || 0);
+  return 'Rp' + n.toLocaleString('id-ID');
+}
+function fmtPct(n) {
+  return (n || 0).toFixed(2) + '%';
+}
 
 // ============================================================
 // PARSING COMMAND
@@ -98,6 +105,21 @@ function parseCommand(text) {
   if (cmd === '/fpd') return { type: 'mob', mobList: [1], title: 'FPD (First Payment Default)' };
   if (cmd === '/spd') return { type: 'mob', mobList: [2], title: 'SPD (Second Payment Default)' };
   if (cmd === '/realisasi') return { type: 'realisasi', title: 'Realisasi Hari Ini' };
+
+  if (cmd === '/dashboard') {
+    const rest = parts.slice(1).join(' ').toLowerCase();
+    if (/\bnon\b|nonfleet/.test(rest)) return { type: 'dashboard', includeFleet: false, title: 'Dashboard — Data Aktual (Non-Fleet)' };
+    if (/\ball\b/.test(rest)) return { type: 'dashboard', includeFleet: true, title: 'Dashboard — Data Aktual (Semua + Fleet)' };
+    return { type: 'invalid' };
+  }
+
+  if (cmd === '/perform') {
+    const rest = parts.slice(1).join(' ').toLowerCase();
+    if (rest === 'all') return { type: 'perform', scope: 'all' };
+    if (rest === 'co') return { type: 'perform', scope: 'co' };
+    return { type: 'invalid' };
+  }
+
   if (cmd !== '/nbq') return null;
 
   if (CO_ALIAS[arg]) return { type: 'co', co: CO_ALIAS[arg], title: 'NBQ — ' + CO_ALIAS[arg] };
@@ -144,6 +166,13 @@ const REALISASI_COLS = [
   { key: 'BUCKET AWAL', label: 'Bucket Awal', width: 140 }
 ];
 
+const DASHBOARD_COLS = [
+  { key: 'label', label: 'Metrik', width: 230, bold: true },
+  { key: 'countFmt', label: 'Jumlah Akun', width: 150 },
+  { key: 'amountFmt', label: 'Amount', width: 220 },
+  { key: 'pctFmt', label: 'Percentage', width: 140 }
+];
+
 // ============================================================
 // GENERATE GAMBAR TABEL (Satori -> SVG -> PNG)
 // ============================================================
@@ -186,7 +215,7 @@ function cellDiv(text, width, opts) {
   };
 }
 
-async function renderTableImage(title, subtitle, rows, cols) {
+async function renderTableImage(title, subtitle, rows, cols, footerText) {
   cols = cols || COLS;
   const totalWidth = cols.reduce((s, c) => s + c.width, 0) + 40;
 
@@ -211,7 +240,7 @@ async function renderTableImage(title, subtitle, rows, cols) {
         { type: 'div', props: { style: { fontSize: 21, fontWeight: 700, color: '#0B3D62' }, children: title } },
         { type: 'div', props: { style: { fontSize: 12.5, color: '#66798A', marginTop: 4, marginBottom: 16 }, children: subtitle } },
         { type: 'div', props: { style: { display: 'flex', flexDirection: 'column', border: '1px solid #E2E9EE', borderRadius: 8, overflow: 'hidden' }, children: [headerRow, ...bodyRows] } },
-        { type: 'div', props: { style: { fontSize: 10.5, color: '#9AA7B0', marginTop: 12 }, children: `Total: ${rows.length} kontrak` } }
+        { type: 'div', props: { style: { fontSize: 10.5, color: '#9AA7B0', marginTop: 12 }, children: footerText || `Total: ${rows.length} kontrak` } }
       ]
     }
   };
@@ -257,6 +286,239 @@ function serialToDateStr(serial) {
 }
 
 // ============================================================
+// DASHBOARD — data aktual real-time (replikasi logic api/dashboard.js)
+// ============================================================
+const DASH_BUCKET_ORDER = ['NOOD','P001_030','P031_060','P061_090','P091_120','P121_150','P151_180','P181_210'];
+function dashSipokOf(m) { return typeof m['SIPOK'] === 'number' ? m['SIPOK'] : 0; }
+function dashSisaOf(k) { return typeof k['SISA PIUTANG'] === 'number' ? k['SISA PIUTANG'] : 0; }
+
+function computeDashboardMetrics(masterRows, kaRows, includeFleet) {
+  const passFleet = (row) => includeFleet || row['FLEET/NON FLEET'] !== 'FLEET';
+
+  const bucketAmounts = {}; const bucketCounts = {};
+  DASH_BUCKET_ORDER.forEach(b => { bucketAmounts[b] = 0; bucketCounts[b] = 0; });
+  kaRows.forEach(ka => {
+    if (!passFleet(ka)) return;
+    const b = ka['BUCKET UPDATE'];
+    if (DASH_BUCKET_ORDER.indexOf(b) > -1) { bucketAmounts[b] += dashSisaOf(ka); bucketCounts[b] += 1; }
+  });
+  const enr = DASH_BUCKET_ORDER.reduce((s, b) => s + bucketAmounts[b], 0);
+
+  function balanceRow(label, b) {
+    return { label, count: bucketCounts[b], amount: bucketAmounts[b], pct: enr > 0 ? (bucketAmounts[b] / enr) * 100 : 0 };
+  }
+
+  function cumulativeFrom(startIdx) {
+    const amount = DASH_BUCKET_ORDER.slice(startIdx).reduce((s, b) => s + bucketAmounts[b], 0);
+    const count = DASH_BUCKET_ORDER.slice(startIdx).reduce((s, b) => s + bucketCounts[b], 0);
+    return { amount, count };
+  }
+  const delq30 = cumulativeFrom(2); // mulai dari P031_060 (30+)
+  const delqRow = { label: 'Delq 30+', count: delq30.count, amount: delq30.amount, pct: enr > 0 ? (delq30.amount / enr) * 100 : 0 };
+
+  function flowStat(asal, target) {
+    let totalAsal = 0, amt = 0, countAmt = 0;
+    masterRows.forEach(m => {
+      if (!passFleet(m)) return;
+      if (m['BUCKET AWAL'] !== asal) return;
+      const sipok = dashSipokOf(m);
+      totalAsal += sipok;
+      if (m['BUCKET UPDATE'] === target) { amt += sipok; countAmt += 1; }
+    });
+    return { amount: amt, count: countAmt, pct: totalAsal > 0 ? (amt / totalAsal) * 100 : 0 };
+  }
+
+  return [
+    balanceRow('Balance NOOD', 'NOOD'),
+    balanceRow('Balance 1-30', 'P001_030'),
+    balanceRow('Balance 31-60', 'P031_060'),
+    delqRow,
+    { label: 'Flow NOOD', ...flowStat('NOOD', 'P001_030') },
+    { label: 'Flow 1-30', ...flowStat('P001_030', 'P031_060') },
+    { label: 'Flow 31-60', ...flowStat('P031_060', 'P061_090') },
+    { label: 'Btc 1-30', ...flowStat('P001_030', 'NOOD') },
+    { label: 'Btc 31-60', ...flowStat('P031_060', 'NOOD') },
+    { label: 'Rollback 31-60 -> 1-30', ...flowStat('P031_060', 'P001_030') }
+  ];
+}
+
+// ============================================================
+// PERFORMANCE / RAPOR — replikasi persis formula di api/insentif.js
+// ============================================================
+const RAPOR_BUCKET_ORDER = ['NOOD','P001_030','P031_060','P061_090','P091_120','P121_150','P151_180','P181_210','P211_240','P241_270'];
+function raporBucketIndex(b) { return RAPOR_BUCKET_ORDER.indexOf(String(b || '').trim()); }
+function raporSipokOf(m) { return typeof m['SIPOK'] === 'number' ? m['SIPOK'] : 0; }
+
+const RAPOR_BUCKET_SHORT = {
+  NOOD: 'NoOD',
+  P001_030: '1-30',
+  P031_060: '31-60',
+  P061_090: '61-90',
+  P091_120: '91-120',
+  P121_150: '121-150',
+  P151_180: '151-180',
+  P181_210: '181-210',
+  P211_240: '211-240',
+  P241_270: '241-270'
+};
+function shortBucket(b) { return RAPOR_BUCKET_SHORT[b] || b || '-'; }
+
+function tieringFlowEver1_30(p){ if(p>60)return 0.3; if(p>55)return 0.6; if(p>50)return 0.9; if(p>45)return 1.2; return 1.5; }
+function tieringBalance1_30(p){ if(p>10)return 0.3; if(p>9.5)return 0.6; if(p>9)return 0.9; if(p>8.5)return 1.2; return 1.5; }
+function tieringFlowNoOD(p){ if(p>4.2)return 0.4; if(p>3.7)return 0.8; if(p>3.2)return 1.2; if(p>2.7)return 1.6; return 2.0; }
+function tieringFlowEver31_60(p){ if(p>70)return 0.3; if(p>65)return 0.6; if(p>60)return 0.9; if(p>55)return 1.2; return 1.5; }
+function tieringBalance31_60(p){ if(p>2.4)return 0.3; if(p>2.2)return 0.6; if(p>2.0)return 0.9; if(p>1.8)return 1.2; return 1.5; }
+function tieringFlow01_30(p){ if(p>9.6)return 0.4; if(p>8.6)return 0.8; if(p>7.6)return 1.2; if(p>6.6)return 1.6; return 2.0; }
+function tieringFlowEver1_30_BCH(p){ if(p>60)return 0.4; if(p>55)return 0.8; if(p>50)return 1.2; if(p>45)return 1.6; return 2.0; }
+function tieringFlowForward31_60_BCH(p){ if(p>33)return 0.4; if(p>31)return 0.8; if(p>29)return 1.2; if(p>27)return 1.6; return 2.0; }
+function tieringBalance1_60_BCH(p){ if(p>12)return 0.2; if(p>11)return 0.4; if(p>10)return 0.6; if(p>9)return 0.8; return 1.0; }
+
+function kategoriRapor(n){ if(n<1.5)return 'UNACCEPTABLE'; if(n<3.0)return 'NEED IMPROVEMENT'; if(n<4.0)return 'ON TARGET'; if(n<4.5)return 'EXCEED TARGET'; return 'EXCEPTIONAL'; }
+function insentifRapor(k){ return k==='EXCEPTIONAL'?1000000:k==='EXCEED TARGET'?800000:k==='ON TARGET'?650000:0; }
+function insentifRaporBCH(k){ return k==='EXCEPTIONAL'?1200000:k==='EXCEED TARGET'?900000:k==='ON TARGET'?500000:0; }
+
+function hitungFERapor(masterList, petaKA, configRows) {
+  return configRows.filter(r => r['ROLE'] === 'FE').map(cfg => {
+    const namaCO = cfg['NAMA_CO'];
+    const bucketPenyelesaian = cfg['BUCKET_PENYELESAIAN'];
+    const bucketAsalFlow = cfg['BUCKET_ASAL_FLOW'];
+    const bucketBalanceList = (cfg['BUCKET_BALANCE'] || '').split(',').map(s => s.trim());
+
+    const kontrakCO = masterList.filter(m => m['CO ALL'] === namaCO && m['FLEET/NON FLEET'] !== 'FLEET');
+    const kontrakAwalTarget = kontrakCO.filter(m => m['BUCKET AWAL'] === bucketPenyelesaian);
+    const totalAwal = kontrakAwalTarget.length;
+    const flowEverEscaped = kontrakAwalTarget.filter(m => {
+      const ka = petaKA[m['NO KONTRAK']];
+      return ka && raporBucketIndex(ka['FLOW EVER']) > raporBucketIndex(bucketPenyelesaian);
+    }).length;
+    const flowEverPct = totalAwal > 0 ? (flowEverEscaped / totalAwal) * 100 : 0;
+
+    const kontrakNOOD = kontrakCO.filter(m => m['BUCKET AWAL'] === bucketAsalFlow);
+    let sipokFlowNoOD = 0, sipokTotalNOOD = 0;
+    kontrakNOOD.forEach(m => { sipokTotalNOOD += raporSipokOf(m); if (m['BUCKET UPDATE'] === bucketPenyelesaian) sipokFlowNoOD += raporSipokOf(m); });
+    const flowNoODPct = sipokTotalNOOD > 0 ? (sipokFlowNoOD / sipokTotalNOOD) * 100 : 0;
+
+    let totalSipokBucket = 0, totalSipokAll = 0;
+    Object.values(petaKA).forEach(ka => {
+      if (ka['NAMA COLLECTOR'] !== namaCO || ka['FLEET/NON FLEET'] === 'FLEET') return;
+      const bucket = ka['BUCKET UPDATE']; const idx = raporBucketIndex(bucket);
+      const sisa = typeof ka['SISA PIUTANG'] === 'number' ? ka['SISA PIUTANG'] : 0;
+      if (idx !== -1 && idx <= raporBucketIndex('P181_210')) { totalSipokAll += sisa; if (bucketBalanceList.includes(bucket)) totalSipokBucket += sisa; }
+    });
+    const balancePct = totalSipokAll > 0 ? (totalSipokBucket / totalSipokAll) * 100 : 0;
+
+    const nilaiBalance = tieringBalance1_30(balancePct);
+    const nilaiFlowEver = tieringFlowEver1_30(flowEverPct);
+    const nilaiFlowNoOD = tieringFlowNoOD(flowNoODPct);
+    const totalNilai = nilaiBalance + nilaiFlowEver + nilaiFlowNoOD;
+    const kategori = kategoriRapor(totalNilai);
+    return { namaCO, role: 'FE', balancePct, flowEverPct, flowAsalPct: flowNoODPct, totalNilai, kategori, insentif: insentifRapor(kategori), totalAwal, flowEverEscaped, bucketPenyelesaian, bucketAsalFlow };
+  });
+}
+
+function hitungMRRapor(masterList, petaKA, configRows) {
+  return configRows.filter(r => r['ROLE'] === 'MR').map(cfg => {
+    const namaCO = cfg['NAMA_CO'];
+    const bucketPenyelesaian = cfg['BUCKET_PENYELESAIAN'];
+    const bucketAsalFlow = cfg['BUCKET_ASAL_FLOW'];
+    const bucketBalanceList = (cfg['BUCKET_BALANCE'] || '').split(',').map(s => s.trim());
+
+    const kontrakCO = masterList.filter(m => m['CO ALL'] === namaCO && m['FLEET/NON FLEET'] !== 'FLEET');
+    const kontrakAwalTarget = kontrakCO.filter(m => m['BUCKET AWAL'] === bucketPenyelesaian);
+    const totalAwal = kontrakAwalTarget.length;
+    const flowEverEscaped = kontrakAwalTarget.filter(m => {
+      const ka = petaKA[m['NO KONTRAK']];
+      return ka && raporBucketIndex(ka['FLOW EVER']) > raporBucketIndex(bucketPenyelesaian);
+    }).length;
+    const flowEverPct = totalAwal > 0 ? (flowEverEscaped / totalAwal) * 100 : 0;
+
+    let sipokFlow = 0, sipokTotalAsal = 0;
+    masterList.forEach(m => {
+      if (m['FLEET/NON FLEET'] === 'FLEET') return;
+      if (m['BUCKET AWAL'] !== bucketAsalFlow) return;
+      sipokTotalAsal += raporSipokOf(m); if (m['BUCKET UPDATE'] === bucketPenyelesaian) sipokFlow += raporSipokOf(m);
+    });
+    const flowPct = sipokTotalAsal > 0 ? (sipokFlow / sipokTotalAsal) * 100 : 0;
+
+    let totalSipokBucket = 0, totalSipokAll = 0;
+    Object.values(petaKA).forEach(ka => {
+      if (ka['FLEET/NON FLEET'] === 'FLEET') return;
+      const bucket = ka['BUCKET UPDATE']; const idx = raporBucketIndex(bucket);
+      const sisa = typeof ka['SISA PIUTANG'] === 'number' ? ka['SISA PIUTANG'] : 0;
+      if (idx !== -1 && idx <= raporBucketIndex('P181_210')) { totalSipokAll += sisa; if (bucketBalanceList.includes(bucket)) totalSipokBucket += sisa; }
+    });
+    const balancePct = totalSipokAll > 0 ? (totalSipokBucket / totalSipokAll) * 100 : 0;
+
+    const nilaiBalance = tieringBalance31_60(balancePct);
+    const nilaiFlowEver = tieringFlowEver31_60(flowEverPct);
+    const nilaiFlow = tieringFlow01_30(flowPct);
+    const totalNilai = nilaiBalance + nilaiFlowEver + nilaiFlow;
+    const kategori = kategoriRapor(totalNilai);
+    return { namaCO, role: 'MR', balancePct, flowEverPct, flowAsalPct: flowPct, totalNilai, kategori, insentif: insentifRapor(kategori), totalAwal, flowEverEscaped, bucketPenyelesaian, bucketAsalFlow };
+  });
+}
+
+function hitungBCHRapor(masterList, petaKA, configRows) {
+  const bchRow = configRows.find(r => r['ROLE'] === 'BCH');
+  if (!bchRow) return null;
+  const namaCO = bchRow['NAMA_CO'];
+
+  const populasiEver = masterList.filter(m => m['BUCKET AWAL'] === 'P001_030');
+  const totalAwal = populasiEver.length;
+  const flowEverEscaped = populasiEver.filter(m => {
+    const ka = petaKA[m['NO KONTRAK']];
+    return ka && raporBucketIndex(ka['FLOW EVER']) > raporBucketIndex('P001_030');
+  }).length;
+  const flowEverPct = totalAwal > 0 ? (flowEverEscaped / totalAwal) * 100 : 0;
+
+  let sipokFlow = 0, sipokTotalAsal = 0;
+  masterList.forEach(m => {
+    if (m['BUCKET AWAL'] !== 'P031_060') return;
+    sipokTotalAsal += raporSipokOf(m); if (m['BUCKET UPDATE'] === 'P061_090') sipokFlow += raporSipokOf(m);
+  });
+  const flowForwardPct = sipokTotalAsal > 0 ? (sipokFlow / sipokTotalAsal) * 100 : 0;
+
+  let totalSipokBucket = 0, totalSipokAll = 0;
+  Object.values(petaKA).forEach(ka => {
+    const bucket = ka['BUCKET UPDATE']; const idx = raporBucketIndex(bucket);
+    const sisa = typeof ka['SISA PIUTANG'] === 'number' ? ka['SISA PIUTANG'] : 0;
+    if (idx !== -1 && idx <= raporBucketIndex('P181_210')) { totalSipokAll += sisa; if (bucket === 'P001_030' || bucket === 'P031_060') totalSipokBucket += sisa; }
+  });
+  const balancePct = totalSipokAll > 0 ? (totalSipokBucket / totalSipokAll) * 100 : 0;
+
+  const nilaiFlowEver = tieringFlowEver1_30_BCH(flowEverPct);
+  const nilaiFlowForward = tieringFlowForward31_60_BCH(flowForwardPct);
+  const nilaiBalance = tieringBalance1_60_BCH(balancePct);
+  const totalNilai = nilaiFlowEver + nilaiFlowForward + nilaiBalance;
+  const kategori = kategoriRapor(totalNilai);
+  return { namaCO, role: 'BCH', flowEverPct, flowForwardPct, balancePct, totalNilai, kategori, insentif: insentifRaporBCH(kategori), totalAwal, flowEverEscaped };
+}
+
+function formatFEMRBlock(h) {
+  const balBucket = shortBucket(h.bucketPenyelesaian);
+  const asalBucket = shortBucket(h.bucketAsalFlow);
+  return [
+    `👤 ${h.namaCO}`,
+    `Balance ${balBucket}: ${h.balancePct.toFixed(2)}%`,
+    `Flow Ever ${balBucket}: ${h.flowEverPct.toFixed(2)}% (${h.flowEverEscaped}/${h.totalAwal})`,
+    `Flow ${asalBucket}: ${h.flowAsalPct.toFixed(2)}%`,
+    `Nilai Rapor: ${h.totalNilai.toFixed(2)} (${h.kategori})`,
+    `Proyeksi Insentif Rapor: ${fmtRupiah(h.insentif)}`
+  ].join('\n');
+}
+
+function formatBCHBlock(h) {
+  return [
+    `👤 ${h.namaCO}`,
+    `Balance 1-60: ${h.balancePct.toFixed(2)}%`,
+    `Flow Ever 1-30: ${h.flowEverPct.toFixed(2)}% (${h.flowEverEscaped}/${h.totalAwal})`,
+    `Flow Forward 31-60: ${h.flowForwardPct.toFixed(2)}%`,
+    `Nilai Rapor: ${h.totalNilai.toFixed(2)} (${h.kategori})`,
+    `Proyeksi Insentif Rapor: ${fmtRupiah(h.insentif)}`
+  ].join('\n');
+}
+
+// ============================================================
 // HANDLER UTAMA
 // PENTING: response cuma dikirim SETELAH semua proses (termasuk kirim ke
 // Telegram) selesai — supaya function-nya nggak dihentikan paksa duluan.
@@ -275,7 +537,7 @@ module.exports = async (req, res) => {
     if (!parsed) { res.status(200).json({ ok: true }); return; }
 
     if (parsed.type === 'invalid') {
-      await sendTelegramMessage(chatId, 'Command tidak dikenali. Coba: /nbq rahul, /nbq ulil, /nbq mobilku, /nbq motorku, /nbq nb, /nbq 1-3, /nbq 1-6, /nbq 1-9, /fpd, /spd, /realisasi');
+      await sendTelegramMessage(chatId, 'Command tidak dikenali. Coba: /nbq rahul, /nbq ulil, /nbq mobilku, /nbq motorku, /nbq nb, /nbq 1-3, /nbq 1-6, /nbq 1-9, /fpd, /spd, /realisasi, /dashboard all, /dashboard nonfleet, /perform all, /perform co');
       res.status(200).json({ ok: true });
       return;
     }
@@ -337,6 +599,90 @@ module.exports = async (req, res) => {
       const subtitle = `Update per: ${fmtTanggalIndo(toIsoDate(year, month, day))}`;
       const png = await renderTableImage(parsed.title, subtitle, realisasiRows, REALISASI_COLS);
       await sendTelegramPhoto(chatId, png);
+      res.status(200).json({ ok: true });
+      return;
+    }
+
+    if (parsed.type === 'dashboard') {
+      const accessToken = await getAccessToken();
+      const sheetId = process.env.GOOGLE_SHEET_ID;
+      const [masterRes, kaRes] = await Promise.all([
+        fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/MASTER?valueRenderOption=UNFORMATTED_VALUE`, {
+          headers: { Authorization: 'Bearer ' + accessToken }
+        }),
+        fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent('KA HARIAN')}?valueRenderOption=UNFORMATTED_VALUE`, {
+          headers: { Authorization: 'Bearer ' + accessToken }
+        })
+      ]);
+      const masterJson = await masterRes.json();
+      const kaJson = await kaRes.json();
+      if (!masterJson.values || !kaJson.values) {
+        await sendTelegramMessage(chatId, 'Gagal ambil data sheet.');
+        res.status(200).json({ ok: true });
+        return;
+      }
+
+      const masterRows = parseSheetValues(masterJson.values).filter(r => r['NO KONTRAK']);
+      const kaRowsDash = parseSheetValues(kaJson.values, 15).filter(r => r['NO KONTRAK']);
+
+      const metrics = computeDashboardMetrics(masterRows, kaRowsDash, parsed.includeFleet);
+      const rows = metrics.map(m => ({
+        label: m.label,
+        countFmt: String(m.count),
+        amountFmt: fmtRupiah(m.amount),
+        pctFmt: fmtPct(m.pct)
+      }));
+
+      const { year, month, day } = getWibDateParts();
+      const subtitle = `Update per: ${fmtTanggalIndo(toIsoDate(year, month, day))}`;
+      const png = await renderTableImage(parsed.title, subtitle, rows, DASHBOARD_COLS, 'Data aktual real-time dari sheet');
+      await sendTelegramPhoto(chatId, png);
+      res.status(200).json({ ok: true });
+      return;
+    }
+
+    if (parsed.type === 'perform') {
+      const accessToken = await getAccessToken();
+      const sheetId = process.env.GOOGLE_SHEET_ID;
+      const [masterRes, kaRes, roleRes] = await Promise.all([
+        fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/MASTER?valueRenderOption=UNFORMATTED_VALUE`, {
+          headers: { Authorization: 'Bearer ' + accessToken }
+        }),
+        fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent('KA HARIAN')}?valueRenderOption=UNFORMATTED_VALUE`, {
+          headers: { Authorization: 'Bearer ' + accessToken }
+        }),
+        fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/CONFIG_ROLE?valueRenderOption=UNFORMATTED_VALUE`, {
+          headers: { Authorization: 'Bearer ' + accessToken }
+        })
+      ]);
+      const masterJson = await masterRes.json();
+      const kaJson = await kaRes.json();
+      const roleJson = await roleRes.json();
+      if (!masterJson.values || !kaJson.values || !roleJson.values) {
+        await sendTelegramMessage(chatId, 'Gagal ambil data sheet.');
+        res.status(200).json({ ok: true });
+        return;
+      }
+
+      const masterList = parseSheetValues(masterJson.values).filter(r => r['NO KONTRAK']);
+      const kaRowsRapor = parseSheetValues(kaJson.values, 15);
+      const petaKA = {};
+      kaRowsRapor.forEach(r => { if (r['NO KONTRAK']) petaKA[r['NO KONTRAK']] = r; });
+      const configRows = parseSheetValues(roleJson.values);
+
+      const hasilFE = hitungFERapor(masterList, petaKA, configRows);
+      const hasilMR = hitungMRRapor(masterList, petaKA, configRows);
+      const hasilBCH = hitungBCHRapor(masterList, petaKA, configRows);
+
+      const { year, month, day } = getWibDateParts();
+      const tanggal = fmtTanggalIndo(toIsoDate(year, month, day));
+      const sections = [`📊 PERFORMANCE RAPOR — ${tanggal}`];
+      if (hasilFE.length) sections.push('— FRONT END (FE) —\n\n' + hasilFE.map(formatFEMRBlock).join('\n\n'));
+      if (hasilMR.length) sections.push('— MID RANGE (MR) —\n\n' + hasilMR.map(formatFEMRBlock).join('\n\n'));
+      if (parsed.scope === 'all' && hasilBCH) sections.push('— BRANCH COLLECTION HEAD (BCH) —\n\n' + formatBCHBlock(hasilBCH));
+
+      const text = sections.join('\n\n');
+      await sendTelegramMessage(chatId, text);
       res.status(200).json({ ok: true });
       return;
     }
