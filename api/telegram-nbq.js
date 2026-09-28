@@ -202,6 +202,27 @@ const COLS = [
 
 function cellDiv(text, width, opts) {
   opts = opts || {};
+  if (Array.isArray(text)) {
+    // Cell multi-baris (dipakai tabel Insentif Weekly: baris 1 = persen, baris 2 = rupiah)
+    return {
+      type: 'div',
+      props: {
+        style: { width, padding: '9px 7px', display: 'flex', flexDirection: 'column', overflow: 'hidden' },
+        children: text.map((line, i) => ({
+          type: 'div',
+          props: {
+            style: {
+              fontSize: i === 0 ? 12.5 : 11,
+              fontWeight: i === 0 ? (opts.weight || 400) : 400,
+              color: i === 0 ? (opts.color || '#1A2530') : '#66798A',
+              whiteSpace: 'nowrap'
+            },
+            children: line === '' || line == null ? '-' : String(line)
+          }
+        }))
+      }
+    };
+  }
   return {
     type: 'div',
     props: {
@@ -494,37 +515,27 @@ function hitungBCHRapor(masterList, petaKA, configRows) {
   return { namaCO, role: 'BCH', flowEverPct, flowForwardPct, balancePct, totalNilai, kategori, insentif: insentifRaporBCH(kategori), totalAwal, flowEverEscaped };
 }
 
-function feMrRowFor(h, w) {
+function feMrRowFor(h) {
   const balBucket = shortBucket(h.bucketPenyelesaian);
   const asalBucket = shortBucket(h.bucketAsalFlow);
-  w = w || { pct: 0, nilai: 0, minggu: getMingguSekarang() };
   return {
     nama: h.namaCO,
     balance: `${balBucket}: ${fmtPct(h.balancePct)}`,
     flowEver: `${balBucket}: ${fmtPct(h.flowEverPct)} (${h.flowEverEscaped}/${h.totalAwal})`,
     flowAsal: `${asalBucket}: ${fmtPct(h.flowAsalPct)}`,
     nilai: h.totalNilai.toFixed(2),
-    kategori: h.kategori,
-    insentifRapor: fmtRupiah(h.insentif),
-    penyelesaian: `${fmtPct(w.pct)} (Mgg ${w.minggu})`,
-    insentifWeekly: fmtRupiah(w.nilai),
-    totalInsentif: fmtRupiah(h.insentif + w.nilai)
+    kategori: h.kategori
   };
 }
 
-function bchRowFor(h, w) {
-  w = w || { pct: 0, nilai: 0, minggu: getMingguSekarang() };
+function bchRowFor(h) {
   return {
     nama: h.namaCO,
     balance: `1-60: ${fmtPct(h.balancePct)}`,
     flowEver: `1-30: ${fmtPct(h.flowEverPct)} (${h.flowEverEscaped}/${h.totalAwal})`,
     flowAsal: `Fwd 31-60: ${fmtPct(h.flowForwardPct)}`,
     nilai: h.totalNilai.toFixed(2),
-    kategori: h.kategori,
-    insentifRapor: fmtRupiah(h.insentif),
-    penyelesaian: `${fmtPct(w.pct)} (Mgg ${w.minggu})`,
-    insentifWeekly: fmtRupiah(w.nilai),
-    totalInsentif: fmtRupiah(h.insentif + w.nilai)
+    kategori: h.kategori
   };
 }
 
@@ -576,11 +587,7 @@ const RAPOR_COLS = [
   { key: 'flowEver', label: 'Flow Ever', width: 170 },
   { key: 'flowAsal', label: 'Flow', width: 130 },
   { key: 'nilai', label: 'Nilai Rapor', width: 90 },
-  { key: 'kategori', label: 'Kategori', width: 155 },
-  { key: 'insentifRapor', label: 'Insentif Rapor', width: 135 },
-  { key: 'penyelesaian', label: 'Penyelesaian Weekly', width: 165 },
-  { key: 'insentifWeekly', label: 'Insentif Weekly', width: 140 },
-  { key: 'totalInsentif', label: 'Total Insentif', width: 145 }
+  { key: 'kategori', label: 'Kategori', width: 155 }
 ];
 
 function makeRaporHeaderRow() {
@@ -592,8 +599,75 @@ function makeRaporHeaderRow() {
   };
 }
 
-async function renderRaporImage(title, subtitle, sections) {
-  const totalWidth = RAPOR_COLS.reduce((s, c) => s + c.width, 0) + 40;
+// ============================================================
+// TABEL INSENTIF WEEKLY (W1-W4) — dari log historis sheet LOG_MINGGUAN
+// ============================================================
+const WEEKLY_COLS = [
+  { key: 'nama', label: 'Nama CO', width: 200, bold: true },
+  { key: 'role', label: 'Role', width: 75 },
+  { key: 'insentifRapor', label: 'Insentif Rapor', width: 145 },
+  { key: 'w1', label: 'W1', width: 150 },
+  { key: 'w2', label: 'W2', width: 150 },
+  { key: 'w3', label: 'W3', width: 150 },
+  { key: 'w4', label: 'W4', width: 150 },
+  { key: 'total', label: 'Total Insentif', width: 165 }
+];
+
+function weeklyRowFor(namaCO, role, logByWeek, insentifRapor) {
+  logByWeek = logByWeek || {};
+  insentifRapor = insentifRapor || 0;
+  function cellFor(w) {
+    const d = logByWeek[w];
+    if (!d) return ['Belum ada data', ''];
+    return [fmtPct(d.pct), fmtRupiah(d.nilai)];
+  }
+  const totalWeekly = [1, 2, 3, 4].reduce((s, w) => s + (logByWeek[w] ? logByWeek[w].nilai : 0), 0);
+  const total = insentifRapor + totalWeekly;
+  return {
+    nama: namaCO,
+    role,
+    insentifRapor: fmtRupiah(insentifRapor),
+    w1: cellFor(1),
+    w2: cellFor(2),
+    w3: cellFor(3),
+    w4: cellFor(4),
+    total: fmtRupiah(total)
+  };
+}
+
+function makeWeeklyHeaderRow() {
+  return {
+    type: 'div', props: {
+      style: { display: 'flex', background: '#0B3D62', color: '#fff' },
+      children: WEEKLY_COLS.map(c => cellDiv(c.label, c.width, { weight: 700, color: '#fff' }))
+    }
+  };
+}
+
+function buildWeeklyTableBlock(heading, rows) {
+  const bodyRows = rows.map((r, idx) => ({
+    type: 'div', props: {
+      style: { display: 'flex', background: idx % 2 === 0 ? '#ffffff' : '#F5F8FA', borderBottom: '1px solid #E2E9EE' },
+      children: WEEKLY_COLS.map(c => cellDiv(r[c.key], c.width, { weight: c.key === 'nama' ? 600 : 400 }))
+    }
+  }));
+  return {
+    type: 'div',
+    props: {
+      style: { display: 'flex', flexDirection: 'column', marginTop: 26 },
+      children: [
+        { type: 'div', props: { style: { fontSize: 14, fontWeight: 700, color: '#0B3D62', marginBottom: 8 }, children: heading } },
+        { type: 'div', props: { style: { display: 'flex', flexDirection: 'column', border: '1px solid #E2E9EE', borderRadius: 8, overflow: 'hidden' }, children: [makeWeeklyHeaderRow(), ...bodyRows] } }
+      ]
+    }
+  };
+}
+
+async function renderRaporImage(title, subtitle, sections, weeklySection) {
+  const totalWidth = Math.max(
+    RAPOR_COLS.reduce((s, c) => s + c.width, 0),
+    weeklySection ? WEEKLY_COLS.reduce((s, c) => s + c.width, 0) : 0
+  ) + 40;
 
   function buildSectionBlock(section) {
     const bodyRows = section.rows.map((r, idx) => ({
@@ -614,15 +688,18 @@ async function renderRaporImage(title, subtitle, sections) {
     };
   }
 
+  const children = [
+    { type: 'div', props: { style: { fontSize: 21, fontWeight: 700, color: '#0B3D62' }, children: title } },
+    { type: 'div', props: { style: { fontSize: 12.5, color: '#66798A', marginTop: 4 }, children: subtitle } },
+    ...sections.map(buildSectionBlock)
+  ];
+  if (weeklySection) children.push(buildWeeklyTableBlock(weeklySection.heading, weeklySection.rows));
+
   const tree = {
     type: 'div',
     props: {
       style: { display: 'flex', flexDirection: 'column', width: totalWidth, background: '#fff', padding: 22, fontFamily: 'PJS' },
-      children: [
-        { type: 'div', props: { style: { fontSize: 21, fontWeight: 700, color: '#0B3D62' }, children: title } },
-        { type: 'div', props: { style: { fontSize: 12.5, color: '#66798A', marginTop: 4 }, children: subtitle } },
-        ...sections.map(buildSectionBlock)
-      ]
+      children
     }
   };
 
@@ -756,7 +833,7 @@ module.exports = async (req, res) => {
     if (parsed.type === 'perform') {
       const accessToken = await getAccessToken();
       const sheetId = process.env.GOOGLE_SHEET_ID;
-      const [masterRes, kaRes, roleRes] = await Promise.all([
+      const [masterRes, kaRes, roleRes, logRes] = await Promise.all([
         fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/MASTER?valueRenderOption=UNFORMATTED_VALUE`, {
           headers: { Authorization: 'Bearer ' + accessToken }
         }),
@@ -765,11 +842,15 @@ module.exports = async (req, res) => {
         }),
         fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/CONFIG_ROLE?valueRenderOption=UNFORMATTED_VALUE`, {
           headers: { Authorization: 'Bearer ' + accessToken }
+        }),
+        fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent('LOG_MINGGUAN')}?valueRenderOption=UNFORMATTED_VALUE`, {
+          headers: { Authorization: 'Bearer ' + accessToken }
         })
       ]);
       const masterJson = await masterRes.json();
       const kaJson = await kaRes.json();
       const roleJson = await roleRes.json();
+      const logJson = await logRes.json(); // LOG_MINGGUAN opsional — kalau belum dibuat, tetap lanjut tanpa data W1-W4
       if (!masterJson.values || !kaJson.values || !roleJson.values) {
         await sendTelegramMessage(chatId, 'Gagal ambil data sheet.');
         res.status(200).json({ ok: true });
@@ -785,14 +866,11 @@ module.exports = async (req, res) => {
       const hasilFE = hitungFERapor(masterList, petaKA, configRows);
       const hasilMR = hitungMRRapor(masterList, petaKA, configRows);
       const hasilBCH = hitungBCHRapor(masterList, petaKA, configRows);
-      const hasilPenyelesaian = hitungPenyelesaianSemua(masterList, configRows);
-      const weeklyMap = {};
-      hasilPenyelesaian.forEach(w => { weeklyMap[w.namaCO] = w; });
 
       const sections = [];
-      if (hasilFE.length) sections.push({ heading: 'FRONT END (FE)', rows: hasilFE.map(h => feMrRowFor(h, weeklyMap[h.namaCO])) });
-      if (hasilMR.length) sections.push({ heading: 'MID RANGE (MR)', rows: hasilMR.map(h => feMrRowFor(h, weeklyMap[h.namaCO])) });
-      if (parsed.scope === 'all' && hasilBCH) sections.push({ heading: 'BRANCH COLLECTION HEAD (BCH)', rows: [bchRowFor(hasilBCH, weeklyMap[hasilBCH.namaCO])] });
+      if (hasilFE.length) sections.push({ heading: 'FRONT END (FE)', rows: hasilFE.map(h => feMrRowFor(h)) });
+      if (hasilMR.length) sections.push({ heading: 'MID RANGE (MR)', rows: hasilMR.map(h => feMrRowFor(h)) });
+      if (parsed.scope === 'all' && hasilBCH) sections.push({ heading: 'BRANCH COLLECTION HEAD (BCH)', rows: [bchRowFor(hasilBCH)] });
 
       if (sections.length === 0) {
         await sendTelegramMessage(chatId, 'Data rapor belum tersedia.');
@@ -800,11 +878,37 @@ module.exports = async (req, res) => {
         return;
       }
 
+      // Insentif Rapor per CO — digabung ke tabel Insentif Weekly biar bisa ditotal jadi satu
+      const raporInsentifMap = {};
+      hasilFE.forEach(h => { raporInsentifMap[h.namaCO] = h.insentif; });
+      hasilMR.forEach(h => { raporInsentifMap[h.namaCO] = h.insentif; });
+      if (parsed.scope === 'all' && hasilBCH) raporInsentifMap[hasilBCH.namaCO] = hasilBCH.insentif;
+
+      // Rekap historis W1-W4 dari sheet LOG_MINGGUAN (diisi otomatis tiap hari oleh cron log-snapshot)
+      const now = new Date();
+      const curTahun = now.getFullYear();
+      const curBulan = now.getMonth() + 1;
+      const logRows = logJson.values ? parseSheetValues(logJson.values) : [];
+      const logMap = {};
+      logRows.forEach(r => {
+        if (Number(r['TAHUN']) !== curTahun || Number(r['BULAN']) !== curBulan) return;
+        const namaCO = r['NAMA_CO'];
+        const mgg = Number(r['MINGGU']);
+        if (!namaCO || !mgg) return;
+        if (!logMap[namaCO]) logMap[namaCO] = {};
+        logMap[namaCO][mgg] = { pct: Number(r['PCT']) || 0, nilai: Number(r['NILAI']) || 0 };
+      });
+      const configRowsWeekly = configRows.filter(cfg => cfg['ROLE'] === 'FE' || cfg['ROLE'] === 'MR' || (parsed.scope === 'all' && cfg['ROLE'] === 'BCH'));
+      const weeklySection = {
+        heading: 'Insentif Weekly (W1 - W4)',
+        rows: configRowsWeekly.map(cfg => weeklyRowFor(cfg['NAMA_CO'], cfg['ROLE'], logMap[cfg['NAMA_CO']], raporInsentifMap[cfg['NAMA_CO']]))
+      };
+
       const title = parsed.scope === 'all' ? 'Performance Rapor — Semua (FE, MR, BCH)' : 'Performance Rapor — CO (FE & MR)';
       const { year, month, day } = getWibDateParts();
       const subtitle = `Update per: ${fmtTanggalIndo(toIsoDate(year, month, day))}`;
 
-      const png = await renderRaporImage(title, subtitle, sections);
+      const png = await renderRaporImage(title, subtitle, sections, weeklySection);
       await sendTelegramPhoto(chatId, png);
       res.status(200).json({ ok: true });
       return;
