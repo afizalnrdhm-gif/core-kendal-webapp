@@ -585,25 +585,40 @@ function fmtDate(s){ if(!s) return '-'; const d = new Date(s); if(isNaN(d)) retu
 function statusClass(s){ if(!s) return ''; const u=s.toUpperCase(); if(u.includes('LUNAS')) return 'status-lunas'; if(u.includes('SUDAH')) return 'status-sudah'; return 'status-belum'; }
 
 // ---------- LOGIN (Google Identity Services) ----------
+function hideSplashScreen_(){
+  const splash = document.getElementById('splashScreen');
+  if (splash) {
+    splash.style.opacity = '0';
+    setTimeout(() => splash.remove(), 400);
+  }
+}
+
 window.onload = function () {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js');
   }
-  google.accounts.id.initialize({
-    client_id: GOOGLE_CLIENT_ID,
-    callback: handleCredentialResponse,
-    auto_select: true
-  });
-  google.accounts.id.renderButton(document.getElementById('gsiButton'), { theme:'outline', size:'large', text:'signin_with', shape:'pill' });
-  google.accounts.id.prompt();
 
-  setTimeout(function () {
-    const splash = document.getElementById('splashScreen');
-    if (splash) {
-      splash.style.opacity = '0';
-      setTimeout(() => splash.remove(), 400);
+  // Splash HARUS selalu ilang, apapun yang terjadi sama proses login di bawah ini —
+  // kalau skrip Google Identity Services (accounts.google.com/gsi/client) gagal/lambat
+  // kemuat (koneksi jelek, diblok jaringan/extension, dll), jangan sampai user nyangkut
+  // ngeliatin logo doang tanpa pesan apa-apa.
+  setTimeout(hideSplashScreen_, 250);
+
+  try {
+    if (typeof google === 'undefined' || !google.accounts || !google.accounts.id) {
+      throw new Error('Skrip Google Sign-In gagal dimuat. Cek koneksi internet kamu, lalu refresh halaman ini.');
     }
-  }, 250);
+    google.accounts.id.initialize({
+      client_id: GOOGLE_CLIENT_ID,
+      callback: handleCredentialResponse,
+      auto_select: true
+    });
+    google.accounts.id.renderButton(document.getElementById('gsiButton'), { theme:'outline', size:'large', text:'signin_with', shape:'pill' });
+    google.accounts.id.prompt();
+  } catch (err) {
+    const errBox = document.getElementById('loginError');
+    if (errBox) errBox.textContent = err.message || 'Gagal memuat Google Sign-In. Cek koneksi internet kamu, lalu refresh halaman ini.';
+  }
 };
 
 let LAST_KNOWN_MODIFIED = null;
@@ -1742,16 +1757,4 @@ function renderTglBayarTable(){
       <td data-label="No Kontrak" class="mono">${r['NO KONTRAK']||'-'}</td>
       <td data-label="Nama">${r['NAMA KONSUMEN']||'-'}</td>
       <td data-label="Bucket"><span class="bpill" style="background:${BUCKET_COLOR[r['BUCKET AWAL']]||'#999'}">${fmtBucket(r['BUCKET AWAL'])}</span></td>
-      <td data-label="Status"><span class="status-pill ${statusClass(r['STATUS BAYAR'])}">${r['STATUS BAYAR']||'-'}</span></td>
-      <td data-label="Sisa Piutang" class="num">${fmtRupiah(r['SIPOK'])}</td>
-      <td data-label="DPD" class="num">${r['DPD'] ?? '-'}</td>
-      <td data-label="Tgl Bayar Bulan Lalu" class="mono">${fmtDate(r['TANGGAL BAYAR BULAN LALU'])}</td>
-    </tr>`;
-  }).join('');
-  tbody.querySelectorAll('tr[data-kontrak]').forEach(tr => tr.onclick = () => openPanel(tr.getAttribute('data-kontrak')));
-}
-
-// ============================================================
-// SIMULASI PENAWARAN — Kalkulator MotorKu (semua role)
-// Diporting dari QuickTools_MotorKu_2026_v8_13_0.xlsx sheet "Quick Tools"
-// =====================================================
+ 
