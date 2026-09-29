@@ -230,25 +230,29 @@ function bucketAwalRelevan(role, cfg) {
   return [];
 }
 
-function isBelumBayar(m) {
-  const u = (m['STATUS BAYAR'] || '').toString().trim().toUpperCase();
-  if (!u) return true;
-  return !(u.includes('LUNAS') || u.includes('SUDAH'));
+// MASTER punya kolom KRITERIA ACCT yang udah otomatis mengkategorikan tiap kontrak:
+// STAY (belum pindah bucket), FLOW (pindah ke bucket lebih buruk), ROLLBACK (membaik/mundur
+// ke bucket lebih baik), BTC (baru aja lunas total), LUNAS (sudah lunas/closed).
+// Kontrak yang udah BTC/LUNAS gak usah ditawarkan lagi buat disimulasikan — mereka udah
+// "resolved", gak ada gunanya. STAY/FLOW/ROLLBACK masih relevan karena masih di buku piutang.
+function masihRelevanDisimulasikan(m) {
+  const k = (m['KRITERIA ACCT'] || '').toString().trim().toUpperCase();
+  if (!k) return true; // kosong -> tetap tampilkan drpd nyembunyiin yang harusnya kelihatan
+  return k !== 'BTC' && k !== 'LUNAS';
 }
 
 // ============================================================
 // Daftar kontrak yang RELEVAN buat disimulasikan untuk satu CO:
 // kontrak yang Bucket Awal-nya termasuk populasi parameter rapor role ini
-// (persis bucket yang dipakai hitungFE/MR/BCH) DAN statusnya masih BELUM BAYAR
-// periode ini. Kontrak yang sudah lunas/sudah bayar TIDAK ditawarkan lagi —
-// gak ada gunanya disimulasikan karena udah beres duluan.
-// Ini termasuk kontrak yang "stay" (belum sempat pindah bucket sama sekali),
-// karena tetap ikut mempengaruhi Balance/Flow Ever meski belum bergerak.
+// (persis bucket yang dipakai hitungFE/MR/BCH) DAN KRITERIA ACCT-nya masih
+// STAY/FLOW/ROLLBACK (belum BTC/LUNAS). Ini termasuk kontrak "stay" (belum
+// sempat pindah bucket sama sekali), karena tetap ikut mempengaruhi
+// Balance/Flow Ever meski belum bergerak.
 // ============================================================
 function daftarKontrakRelevan(namaCO, role, masterList, petaKA, cfg) {
   const bucketSet = bucketAwalRelevan(role, cfg);
   const poolDasar = role === 'BCH' ? masterList : masterList.filter(m => m['CO ALL'] === namaCO && m['FLEET/NON FLEET'] !== 'FLEET');
-  const pool = poolDasar.filter(m => bucketSet.includes(m['BUCKET AWAL']) && isBelumBayar(m));
+  const pool = poolDasar.filter(m => bucketSet.includes(m['BUCKET AWAL']) && masihRelevanDisimulasikan(m));
   const list = [];
   pool.forEach(m => {
     const noKontrak = m['NO KONTRAK'];
@@ -267,7 +271,7 @@ function daftarKontrakRelevan(namaCO, role, masterList, petaKA, cfg) {
       bucketUpdateKA,
       flowEver,
       sisaPiutang,
-      statusBayar: m['STATUS BAYAR'] || null,
+      kriteriaAcct: m['KRITERIA ACCT'] || null,
       coAll: m['CO ALL']
     });
   });
