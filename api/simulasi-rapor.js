@@ -219,8 +219,8 @@ function hitungSatu(role, masterList, petaKA, cfg) {
 // jadi gak usah ditawarkan buat disimulasikan.
 function bucketAwalRelevan(role, cfg) {
   if (role === 'FE' || role === 'MR') {
-    // FE: BUCKET_ASAL_FLOW=NOOD, BUCKET_PENYELESAIAN=P001_030 -> populasi Flow NOOD & Flow Ever/Balance
-    // MR: BUCKET_ASAL_FLOW=P001_030, BUCKET_PENYELESAIAN=P031_060 -> populasi Flow 1-30 & Flow Ever/Balance
+    // FE: BUCKET_ASAL_FLOW=NOOD, BUCKET_PENYELESAIAN=P001_030 -> populasi Flow NOOD & Flow Ever
+    // MR: BUCKET_ASAL_FLOW=P001_030, BUCKET_PENYELESAIAN=P031_060 -> populasi Flow 1-30 & Flow Ever
     return [cfg['BUCKET_ASAL_FLOW'], cfg['BUCKET_PENYELESAIAN']].filter(Boolean);
   }
   if (role === 'BCH') {
@@ -228,6 +228,19 @@ function bucketAwalRelevan(role, cfg) {
     return ['P001_030', 'P031_060'];
   }
   return [];
+}
+
+// PENTING: populasi rumus Balance itu BEDA basisnya dari Flow Ever/Flow NOOD di atas —
+// Balance dihitung dari BUCKET UPDATE (posisi SEKARANG di KA HARIAN), bukan dari BUCKET AWAL.
+// Artinya kontrak apapun asalnya (mau dari bucket manapun dia mulai bulan ini), kalau SEKARANG
+// lagi duduk di bucket balance ini, dia ikut jadi pembilang Balance. Makanya daftar simulasi
+// juga harus nyakup kontrak-kontrak begini (bukan cuma yang match bucketAwalRelevan), soalnya
+// tanpa ini, kontrak besar yang "kebetulan" bukan bucket-awal NOOD/1-30 (misal rollback dari
+// 61-90 balik ke 1-30) gak akan pernah bisa dipilih buat disimulasikan padahal dia ngefek gede
+// ke Balance.
+function bucketBalanceRelevan(role, cfg) {
+  if (role === 'BCH') return ['P001_030', 'P031_060'];
+  return (cfg['BUCKET_BALANCE'] || '').split(',').map(s => s.trim()).filter(Boolean);
 }
 
 // MASTER punya kolom KRITERIA ACCT yang udah otomatis mengkategorikan tiap kontrak:
@@ -249,25 +262,36 @@ function masihRelevanDisimulasikan(m) {
 }
 
 // ============================================================
-// Daftar kontrak yang RELEVAN buat disimulasikan untuk satu CO:
-// kontrak yang Bucket Awal-nya termasuk populasi parameter rapor role ini
-// (persis bucket yang dipakai hitungFE/MR/BCH) DAN KRITERIA ACCT-nya masih
-// STAY/FLOW/ROLLBACK (belum BTC/LUNAS). Ini termasuk kontrak "stay" (belum
-// sempat pindah bucket sama sekali), karena tetap ikut mempengaruhi
-// Balance/Flow Ever meski belum bergerak.
+// Daftar kontrak yang RELEVAN buat disimulasikan untuk satu CO. Kontrak masuk daftar kalau
+// KRITERIA ACCT-nya masih STAY/FLOW/ROLLBACK (belum BTC/LUNAS, lihat masihRelevanDisimulasikan)
+// DAN salah satu dari dua ini kena:
+//   (a) Bucket Awal-nya termasuk populasi Flow Ever/Flow NOOD role ini (bucketAwalRelevan) —
+//       ini kontrak yang relevan buat "Proyeksi Stay" (bisa ngentiin flow-nya).
+//   (b) Posisi SEKARANG-nya (BUCKET UPDATE di KA HARIAN) lagi duduk di bucket Balance
+//       (bucketBalanceRelevan) — ini kontrak yang relevan buat "Proyeksi BTC/Lunas" (keluar
+//       dari hitungan Balance), APAPUN bucket awalnya.
+// Union dari (a) dan (b) ini penting: tanpa (b), kontrak yang gak match bucket-awal tapi
+// SEKARANG nyangkut di Balance gak akan pernah muncul buat disimulasikan.
 // ============================================================
 function daftarKontrakRelevan(namaCO, role, masterList, petaKA, cfg) {
-  const bucketSet = bucketAwalRelevan(role, cfg);
+  const bucketAwalSet = bucketAwalRelevan(role, cfg);
+  const balanceSet = bucketBalanceRelevan(role, cfg);
   const poolDasar = role === 'BCH' ? masterList : masterList.filter(m => m['CO ALL'] === namaCO && m['FLEET/NON FLEET'] !== 'FLEET');
-  const pool = poolDasar.filter(m => bucketSet.includes(m['BUCKET AWAL']) && masihRelevanDisimulasikan(m));
   const list = [];
-  pool.forEach(m => {
+  poolDasar.forEach(m => {
+    if (!masihRelevanDisimulasikan(m)) return;
     const noKontrak = m['NO KONTRAK'];
     if (!noKontrak) return;
-    const bucketAwal = m['BUCKET AWAL'];
+    const bucketAwal = (m['BUCKET AWAL'] || '').toString().trim();
     const ka = petaKA[noKontrak];
     const bucketUpdateMaster = m['BUCKET UPDATE'];
     const bucketUpdateKA = ka ? ka['BUCKET UPDATE'] : null;
+    const bucketSekarang = (bucketUpdateKA || bucketUpdateMaster || '').toString().trim();
+
+    const relevanAwal = bucketAwalSet.includes(bucketAwal);
+    const diBalanceSekarang = balanceSet.includes(bucketSekarang);
+    if (!relevanAwal && !diBalanceSekarang) return;
+
     const flowEver = ka ? ka['FLOW EVER'] : null;
     const sisaPiutang = ka && typeof ka['SISA PIUTANG'] === 'number' ? ka['SISA PIUTANG'] : sipokOf(m);
     list.push({
@@ -279,7 +303,8 @@ function daftarKontrakRelevan(namaCO, role, masterList, petaKA, cfg) {
       flowEver,
       sisaPiutang,
       kriteriaAcct: m['KRITERIA ACCT'] || null,
-      coAll: m['CO ALL']
+      coAll: m['CO ALL'],
+      diBalanceSekarang
     });
   });
   list.sort((a, b) => b.sisaPiutang - a.sisaPiutang);
