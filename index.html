@@ -389,6 +389,7 @@
   .sim-kontrak-info{flex:1;min-width:180px;}
   .sim-proyeksi-group{display:flex;gap:6px;flex-shrink:0;margin-left:auto;}
   .sim-proyeksi-btn{font-size:11.5px;font-weight:600;padding:6px 11px;border-radius:8px;border:1px solid var(--line);background:var(--surface-alt);color:var(--ink-soft);cursor:pointer;white-space:nowrap;transition:all .12s;}
+  .sim-proyeksi-target{font-size:10px;font-weight:500;opacity:.65;margin-left:2px;}
   .sim-proyeksi-btn:hover{border-color:var(--navy);color:var(--navy);}
   .sim-proyeksi-stay.active{background:#FBEBD6;border-color:#B8621B;color:#B8621B;}
   .sim-proyeksi-btc.active{background:#E2E9F2;border-color:var(--navy);color:var(--navy);}
@@ -1315,9 +1316,9 @@ function renderSimulasiRapor(){
     Tiap kontrak punya sampai 3 tombol proyeksi, pilih salah satu kalau ada potensi berubah — biarkan kosong kalau kontraknya
     diperkirakan tetap seperti data live sekarang:<br>
     • <b>Proyeksi Stay</b> — kontrak <u>flow</u> tapi ada potensi bayar (walau cuma sebagian), sehingga proyeksinya berhenti flow dan
-    <b>tetap masuk hitungan Balance</b> di bucket itu (piutangnya belum lunas, cuma berhenti nyicil ke bucket berikutnya).<br>
-    • <b>Proyeksi BTC</b> (Back To Current) — kontrak berhasil ngejar balik ke kondisi lancar, jadi bucket-nya balik ke <b>NOOD</b>
-    (bucket pertama/paling sehat) — piutangnya <u>belum lunas</u>, masih tetap kehitung di buku, cuma posisinya balik ke awal.<br>
+    balik ke <b>Bucket Awal</b>-nya sendiri (piutangnya belum lunas, cuma berhenti nyicil ke bucket berikutnya, gak sampai ngejar ke NOOD).<br>
+    • <b>Proyeksi BTC</b> (Back To Current) — kontrak berhasil ngejar SEMUA tunggakannya balik ke kondisi lancar, jadi bucket-nya balik ke <b>NOOD</b>
+    (bucket pertama/paling sehat) — piutangnya <u>belum lunas</u>, masih tetap kehitung di buku, cuma posisinya balik ke paling awal. <i>(Kalau Bucket Awal kontraknya emang udah NOOD, Stay dan BTC hasilnya sama aja — gak ada bedanya buat kontrak itu.)</i><br>
     • <b>Proyeksi Lunas</b> — kontrak beneran <u>lunas total</u>, sehingga kontrak itu keluar sepenuhnya dari buku piutang yang
     dipantau (keluar dari Balance, Flow Ever, maupun Flow NOOD/1-30/Forward sekaligus).<br>
     Lalu lihat apakah nilai Rapor Harian ${d.isAdmin ? '<b>'+d.namaCO+'</b>' : 'kamu'} jadi ON TARGET atau tidak.
@@ -1408,8 +1409,8 @@ function renderSimKontrakList_(){
       </div>
       <div class="sim-kontrak-sipok">${fmtRupiah(k.sisaPiutang)}</div>
       <div class="sim-proyeksi-group">
-        ${showStayBtn ? `<button type="button" class="sim-proyeksi-btn sim-proyeksi-stay ${current==='stay'?'active':''}" data-nokontrak="${k.noKontrak}" data-val="stay">${current==='stay'?'✓ ':''}Proyeksi Stay</button>` : ''}
-        ${showBtcBtn ? `<button type="button" class="sim-proyeksi-btn sim-proyeksi-btc ${current==='btc'?'active':''}" data-nokontrak="${k.noKontrak}" data-val="btc">${current==='btc'?'✓ ':''}Proyeksi BTC</button>` : ''}
+        ${showStayBtn ? `<button type="button" class="sim-proyeksi-btn sim-proyeksi-stay ${current==='stay'?'active':''}" data-nokontrak="${k.noKontrak}" data-val="stay">${current==='stay'?'✓ ':''}Proyeksi Stay <span class="sim-proyeksi-target">→ ${fmtBucket(k.bucketAwal)}</span></button>` : ''}
+        ${showBtcBtn ? `<button type="button" class="sim-proyeksi-btn sim-proyeksi-btc ${current==='btc'?'active':''}" data-nokontrak="${k.noKontrak}" data-val="btc">${current==='btc'?'✓ ':''}Proyeksi BTC <span class="sim-proyeksi-target">→ NOOD</span></button>` : ''}
         <button type="button" class="sim-proyeksi-btn sim-proyeksi-lunas ${current==='lunas'?'active':''}" data-nokontrak="${k.noKontrak}" data-val="lunas">${current==='lunas'?'✓ ':''}Proyeksi Lunas</button>
       </div>
     </div>`;
