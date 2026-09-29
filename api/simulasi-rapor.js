@@ -314,30 +314,28 @@ function daftarKontrakRelevan(namaCO, role, masterList, petaKA, cfg) {
 // Tiap kontrak bisa diproyeksikan salah satu dari 3 skenario (default = gak diapa-apain,
 // dianggap kondisi live sekarang apa adanya):
 //
-//  'stay'  -> kontrak cuma bayar sebagian: berhenti flow di bucket target, TAPI piutangnya
+//  'stay'  -> kontrak bayar SEBAGIAN, cukup buat gak lanjut flow tapi belum ngejar balik ke
+//             NOOD: BUCKET UPDATE-nya balik/berhenti persis di BUCKET AWAL kontrak itu sendiri
+//             (bukan ke bucket target role/cfg). Contoh: bucket awal 1-30, konsumen bayar 1x,
+//             bucket update yang tadinya mau lanjut ke 31-60 balik lagi jadi 1-30. Piutangnya
 //             belum lunas jadi TETAP ada di buku (gak dikeluarkan). BUCKET UPDATE (di MASTER
-//             & KA HARIAN) dan FLOW EVER dipaksa = bucket target, biar konsisten dihitung
-//             "nyampe/berhenti di situ" oleh Flow NOOD/Flow/Flow Ever/Balance — bukan lanjut
-//             flow ke bucket berikutnya kayak proyeksi defaultnya.
-//             Bucket target:
-//               * FE/MR -> BUCKET_PENYELESAIAN (bucket acuan Flow/Flow Ever/Balance role itu)
-//               * BCH   -> BUCKET AWAL kontrak itu sendiri (BCH punya 2 populasi terpisah:
-//                 awal P001_030 buat Flow Ever, awal P031_060 buat Flow Forward — masing2
-//                 "stay" ya di bucket awalnya sendiri, bukan campur ke bucket lain)
+//             & KA HARIAN) dan FLOW EVER dipaksa = BUCKET AWAL kontrak itu, berlaku sama buat
+//             semua role (FE/MR/BCH) — bukan bucket acuan role (BUCKET_PENYELESAIAN).
 //
-//  'btc'   -> Back To Current: kontrak berhasil ngejar balik ke kondisi lancar/current.
-//             NOOD adalah bucket pertama/paling sehat, jadi bucket apapun sekarang, kalau
-//             BTC dia PASTI balik ke NOOD. Piutangnya BELUM lunas (masih ada SISA PIUTANG,
-//             tetap kehitung di buku) — cuma bucket-nya (MASTER & KA HARIAN) dan FLOW EVER
-//             dipaksa balik ke 'NOOD'.
+//  'btc'   -> Back To Current: kontrak ngejar SEMUA tunggakan sampai bucket update-nya balik
+//             ke NOOD, dari bucket berapapun sekarang (beda dari 'stay' yang cuma balik ke
+//             bucket awal sendiri — BTC lompat lebih jauh, lunasin semua keterlambatan).
+//             Piutangnya BELUM lunas (masih ada SISA PIUTANG, tetap kehitung di buku) — cuma
+//             bucket-nya (MASTER & KA HARIAN) dan FLOW EVER dipaksa balik ke 'NOOD'.
+//             Catatan: kalau BUCKET AWAL kontraknya emang udah NOOD, 'stay' dan 'btc' hasilnya
+//             sama-sama NOOD (gak ada bedanya buat kontrak itu secara angka).
 //
 //  'lunas' -> kontrak beneran lunas total. Dikeluarkan SEPENUHNYA dari masterList & KA HARIAN,
 //             seolah keluar dari buku piutang yang dipantau. Otomatis ngefek bener buat semua
 //             kasus: baik yang lagi flow (ilang dari pembilang+penyebut Flow NOOD/Flow Ever)
 //             maupun yang masih stay di bucket balance (ilang dari Balance).
 function bucketTargetSTAY(role, cfg, bucketAwal) {
-  if (role === 'BCH') return bucketAwal;
-  return cfg['BUCKET_PENYELESAIAN'];
+  return bucketAwal;
 }
 
 function terapkanSimulasi(masterList, petaKA, proyeksi, role, cfg) {
