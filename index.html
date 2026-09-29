@@ -1154,11 +1154,7 @@ function renderInsentifView(){
     }
     html += `<div class="ins-section"><h2>Insentif Penyelesaian — Minggu ${d.minggu}</h2><div class="ins-row">${d.penyelesaian.map(p=>penyelesaianCard(p)).join('')}</div></div>`;
     if(d.totalInsentif && d.totalInsentif.length){
-      html += `<div class="ins-section"><h2>Total Insentif Bulan Ini</h2>`;
-      if(d.debugLog){
-        html += `<div style="font-size:11px;color:var(--ink-soft);background:var(--surface-alt);border:1px dashed var(--line);border-radius:8px;padding:8px 10px;margin-bottom:10px;font-family:var(--mono);white-space:pre-wrap;">DEBUG (sementara): ${JSON.stringify(d.debugLog)}</div>`;
-      }
-      html += `<div class="ins-row">${d.totalInsentif.map(t=>totalInsentifCard(t)).join('')}</div></div>`;
+      html += `<div class="ins-section"><h2>Total Insentif Bulan Ini</h2><div class="ins-row">${d.totalInsentif.map(t=>totalInsentifCard(t)).join('')}</div></div>`;
     }
   } else {
     if(d.achievement){
