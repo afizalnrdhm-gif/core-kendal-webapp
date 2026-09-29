@@ -232,13 +232,20 @@ function bucketAwalRelevan(role, cfg) {
 
 // MASTER punya kolom KRITERIA ACCT yang udah otomatis mengkategorikan tiap kontrak:
 // STAY (belum pindah bucket), FLOW (pindah ke bucket lebih buruk), ROLLBACK (membaik/mundur
-// ke bucket lebih baik), BTC (baru aja lunas total), LUNAS (sudah lunas/closed).
+// ke bucket lebih baik), BTC (baru aja Back To Current / balik ke NOOD), LUNAS (sudah lunas/closed).
 // Kontrak yang udah BTC/LUNAS gak usah ditawarkan lagi buat disimulasikan — mereka udah
 // "resolved", gak ada gunanya. STAY/FLOW/ROLLBACK masih relevan karena masih di buku piutang.
+//
+// Pengecualian: kontrak yang Bucket Awal-nya NOOD DAN Kriteria Acct-nya masih STAY (belum
+// pernah gerak sama sekali dari bucket pertama) SENGAJA gak ditawarkan. Ini kondisi normal
+// buat mayoritas kontrak, kalau ikut ditampilkan daftarnya jadi membanjiri (ratusan kontrak)
+// dan gak ada yang actionable buat disimulasikan dari situ.
 function masihRelevanDisimulasikan(m) {
   const k = (m['KRITERIA ACCT'] || '').toString().trim().toUpperCase();
   if (!k) return true; // kosong -> tetap tampilkan drpd nyembunyiin yang harusnya kelihatan
-  return k !== 'BTC' && k !== 'LUNAS';
+  if (k === 'BTC' || k === 'LUNAS') return false;
+  if (k === 'STAY' && (m['BUCKET AWAL'] || '').toString().trim() === 'NOOD') return false;
+  return true;
 }
 
 // ============================================================
@@ -279,54 +286,69 @@ function daftarKontrakRelevan(namaCO, role, masterList, petaKA, cfg) {
   return list;
 }
 
-// Tiap kontrak bisa diproyeksikan salah satu dari 2 skenario (default = gak diapa-apain,
+// Tiap kontrak bisa diproyeksikan salah satu dari 3 skenario (default = gak diapa-apain,
 // dianggap kondisi live sekarang apa adanya):
 //
-//  'btc'  -> kontrak berhasil lunas/BTC total. Dikeluarkan SEPENUHNYA dari masterList &
-//            KA HARIAN, seolah keluar dari buku piutang yang dipantau. Otomatis ngefek
-//            bener buat semua kasus: baik yang lagi flow (ilang dari pembilang+penyebut
-//            Flow NOOD/Flow Ever) maupun yang masih stay di bucket balance (ilang dari Balance).
+//  'stay'  -> kontrak cuma bayar sebagian: berhenti flow di bucket target, TAPI piutangnya
+//             belum lunas jadi TETAP ada di buku (gak dikeluarkan). BUCKET UPDATE (di MASTER
+//             & KA HARIAN) dan FLOW EVER dipaksa = bucket target, biar konsisten dihitung
+//             "nyampe/berhenti di situ" oleh Flow NOOD/Flow/Flow Ever/Balance — bukan lanjut
+//             flow ke bucket berikutnya kayak proyeksi defaultnya.
+//             Bucket target:
+//               * FE/MR -> BUCKET_PENYELESAIAN (bucket acuan Flow/Flow Ever/Balance role itu)
+//               * BCH   -> BUCKET AWAL kontrak itu sendiri (BCH punya 2 populasi terpisah:
+//                 awal P001_030 buat Flow Ever, awal P031_060 buat Flow Forward — masing2
+//                 "stay" ya di bucket awalnya sendiri, bukan campur ke bucket lain)
 //
-//  'stay' -> kontrak cuma bayar sebagian: berhenti flow di bucket target, TAPI piutangnya
-//            belum lunas jadi TETAP ada di buku (gak dikeluarkan). BUCKET UPDATE (di MASTER
-//            & KA HARIAN) dan FLOW EVER dipaksa = bucket target, biar konsisten dihitung
-//            "nyampe/berhenti di situ" oleh Flow NOOD/Flow/Flow Ever/Balance — bukan lanjut
-//            flow ke bucket berikutnya kayak proyeksi defaultnya.
-//            Bucket target:
-//              * FE/MR -> BUCKET_PENYELESAIAN (bucket acuan Flow/Flow Ever/Balance role itu)
-//              * BCH   -> BUCKET AWAL kontrak itu sendiri (BCH punya 2 populasi terpisah:
-//                awal P001_030 buat Flow Ever, awal P031_060 buat Flow Forward — masing2
-//                "stay" ya di bucket awalnya sendiri, bukan campur ke bucket lain)
+//  'btc'   -> Back To Current: kontrak berhasil ngejar balik ke kondisi lancar/current.
+//             NOOD adalah bucket pertama/paling sehat, jadi bucket apapun sekarang, kalau
+//             BTC dia PASTI balik ke NOOD. Piutangnya BELUM lunas (masih ada SISA PIUTANG,
+//             tetap kehitung di buku) — cuma bucket-nya (MASTER & KA HARIAN) dan FLOW EVER
+//             dipaksa balik ke 'NOOD'.
+//
+//  'lunas' -> kontrak beneran lunas total. Dikeluarkan SEPENUHNYA dari masterList & KA HARIAN,
+//             seolah keluar dari buku piutang yang dipantau. Otomatis ngefek bener buat semua
+//             kasus: baik yang lagi flow (ilang dari pembilang+penyebut Flow NOOD/Flow Ever)
+//             maupun yang masih stay di bucket balance (ilang dari Balance).
 function bucketTargetSTAY(role, cfg, bucketAwal) {
   if (role === 'BCH') return bucketAwal;
   return cfg['BUCKET_PENYELESAIAN'];
 }
 
 function terapkanSimulasi(masterList, petaKA, proyeksi, role, cfg) {
-  const btcSet = new Set();
+  const lunasSet = new Set();
   const stayMap = {};
+  const btcMap = {};
   Object.keys(proyeksi || {}).forEach(k => {
     const v = proyeksi[k];
-    if (v === 'btc') btcSet.add(k);
+    if (v === 'lunas') lunasSet.add(k);
     else if (v === 'stay') stayMap[k] = true;
+    else if (v === 'btc') btcMap[k] = true;
   });
 
   const masterList2 = masterList
-    .filter(m => !btcSet.has(m['NO KONTRAK']))
+    .filter(m => !lunasSet.has(m['NO KONTRAK']))
     .map(m => {
       const noKontrak = m['NO KONTRAK'];
-      if (!stayMap[noKontrak]) return m;
-      const target = bucketTargetSTAY(role, cfg, m['BUCKET AWAL']);
-      return Object.assign({}, m, { 'BUCKET UPDATE': target });
+      if (stayMap[noKontrak]) {
+        const target = bucketTargetSTAY(role, cfg, m['BUCKET AWAL']);
+        return Object.assign({}, m, { 'BUCKET UPDATE': target });
+      }
+      if (btcMap[noKontrak]) {
+        return Object.assign({}, m, { 'BUCKET UPDATE': 'NOOD' });
+      }
+      return m;
     });
 
   const petaKA2 = {};
   Object.keys(petaKA).forEach(noKontrak => {
-    if (btcSet.has(noKontrak)) return;
+    if (lunasSet.has(noKontrak)) return;
     if (stayMap[noKontrak]) {
       const m = masterList.find(x => x['NO KONTRAK'] === noKontrak);
       const target = bucketTargetSTAY(role, cfg, m ? m['BUCKET AWAL'] : null);
       petaKA2[noKontrak] = Object.assign({}, petaKA[noKontrak], { 'BUCKET UPDATE': target, 'FLOW EVER': target });
+    } else if (btcMap[noKontrak]) {
+      petaKA2[noKontrak] = Object.assign({}, petaKA[noKontrak], { 'BUCKET UPDATE': 'NOOD', 'FLOW EVER': 'NOOD' });
     } else {
       petaKA2[noKontrak] = petaKA[noKontrak];
     }
@@ -385,7 +407,7 @@ module.exports = async (req, res) => {
       const body = req.body || {};
       const proyeksi = (body.proyeksi && typeof body.proyeksi === 'object' && !Array.isArray(body.proyeksi)) ? body.proyeksi : {};
       const proyeksiValid = {};
-      Object.keys(proyeksi).forEach(k => { if (proyeksi[k] === 'stay' || proyeksi[k] === 'btc') proyeksiValid[k] = proyeksi[k]; });
+      Object.keys(proyeksi).forEach(k => { if (proyeksi[k] === 'stay' || proyeksi[k] === 'btc' || proyeksi[k] === 'lunas') proyeksiValid[k] = proyeksi[k]; });
 
       const original = hitungSatu(role, masterList, petaKA, cfg);
       const { masterList2, petaKA2 } = terapkanSimulasi(masterList, petaKA, proyeksiValid, role, cfg);
