@@ -214,13 +214,30 @@ function hitungSatu(role, masterList, petaKA, cfg) {
   return null;
 }
 
+// Bucket Awal yang benar-benar dipakai di rumus rapor tiap role — di luar bucket ini,
+// pergerakan kontrak gak kebaca sama sekali oleh 3 parameter rapor (flow ever/flow/balance),
+// jadi gak usah ditawarkan buat disimulasikan.
+function bucketAwalRelevan(role, cfg) {
+  if (role === 'FE' || role === 'MR') {
+    return [cfg['BUCKET_ASAL_FLOW'], cfg['BUCKET_PENYELESAIAN']].filter(Boolean);
+  }
+  if (role === 'BCH') {
+    // persis basis hitungBCHSatu: populasi Flow Ever dari P001_030, populasi Flow Forward dari P031_060
+    return ['P001_030', 'P031_060'];
+  }
+  return [];
+}
+
 // ============================================================
 // Daftar kontrak yang RELEVAN buat disimulasikan untuk satu CO
-// (kontrak yang statusnya sekarang sudah "bergerak" dari Bucket Awal —
-// yang belum bergerak sama sekali gak akan ngubah hasil apa pun kalau di-toggle)
+// (kontrak yang Bucket Awal-nya termasuk parameter rapor role ini, DAN statusnya
+// sekarang sudah "bergerak" dari Bucket Awal — yang belum bergerak sama sekali
+// gak akan ngubah hasil apa pun kalau di-toggle)
 // ============================================================
-function daftarKontrakRelevan(namaCO, role, masterList, petaKA) {
-  const pool = role === 'BCH' ? masterList : masterList.filter(m => m['CO ALL'] === namaCO && m['FLEET/NON FLEET'] !== 'FLEET');
+function daftarKontrakRelevan(namaCO, role, masterList, petaKA, cfg) {
+  const bucketSet = bucketAwalRelevan(role, cfg);
+  const poolDasar = role === 'BCH' ? masterList : masterList.filter(m => m['CO ALL'] === namaCO && m['FLEET/NON FLEET'] !== 'FLEET');
+  const pool = poolDasar.filter(m => bucketSet.includes(m['BUCKET AWAL']));
   const list = [];
   pool.forEach(m => {
     const noKontrak = m['NO KONTRAK'];
@@ -338,7 +355,7 @@ module.exports = async (req, res) => {
 
     // GET: kirim status asli + daftar kontrak yang bisa disimulasikan
     const original = hitungSatu(role, masterList, petaKA, cfg);
-    const kontrakList = daftarKontrakRelevan(namaCO, role, masterList, petaKA);
+    const kontrakList = daftarKontrakRelevan(namaCO, role, masterList, petaKA, cfg);
 
     res.status(200).json({ namaCO, role, isAdmin, coList, original, kontrakList });
   } catch (err) {
