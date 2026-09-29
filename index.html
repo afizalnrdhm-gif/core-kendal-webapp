@@ -391,7 +391,8 @@
   .sim-proyeksi-btn{font-size:11.5px;font-weight:600;padding:6px 11px;border-radius:8px;border:1px solid var(--line);background:var(--surface-alt);color:var(--ink-soft);cursor:pointer;white-space:nowrap;transition:all .12s;}
   .sim-proyeksi-btn:hover{border-color:var(--navy);color:var(--navy);}
   .sim-proyeksi-stay.active{background:#FBEBD6;border-color:#B8621B;color:#B8621B;}
-  .sim-proyeksi-btc.active{background:#E1EFE6;border-color:var(--good);color:var(--good);}
+  .sim-proyeksi-btc.active{background:#E2E9F2;border-color:var(--navy);color:var(--navy);}
+  .sim-proyeksi-lunas.active{background:#E1EFE6;border-color:var(--good);color:var(--good);}
   .sim-kontrak-name{font-weight:600;font-size:13px;}
   .sim-kontrak-kontrak{font-family:var(--mono);font-weight:400;font-size:11px;color:var(--ink-soft);margin-left:6px;}
   .sim-kriteria-badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;text-transform:uppercase;letter-spacing:0.3px;margin-left:6px;vertical-align:middle;}
@@ -1305,13 +1306,16 @@ function renderSimulasiRapor(){
 
   html += `<div class="sim-intro">
     Daftar di bawah nampilin kontrak dengan Kriteria Acct <b>STAY / FLOW / ROLLBACK</b> di bucket yang jadi parameter rapor
-    ${d.isAdmin ? d.namaCO : 'kamu'} (kontrak yang Kriteria Acct-nya udah <b>BTC / LUNAS</b> otomatis gak ditampilkan lagi, karena udah beres duluan).
-    Tiap kontrak punya 2 tombol proyeksi, pilih salah satu kalau ada potensi berubah — biarkan <b>"Kondisi Sekarang"</b> kalau
-    kontraknya diperkirakan tetap seperti data live sekarang:<br>
-    • <b>Proyeksi Stay</b> — dipakai kalau kontrak <u>flow</u> tapi ada potensi bayar (walau cuma sebagian), sehingga proyeksinya
-    berhenti flow dan <b>tetap masuk hitungan Balance</b> di bucket itu (piutangnya belum lunas, cuma berhenti nyicil ke bucket berikutnya).<br>
-    • <b>Proyeksi BTC/Lunas</b> — dipakai kalau kontrak diperkirakan <u>lunas total</u> (baik yang lagi stay maupun flow), sehingga
-    kontrak itu keluar sepenuhnya dari buku piutang yang dipantau (keluar dari Balance, Flow Ever, maupun Flow NOOD/1-30/Forward sekaligus).<br>
+    ${d.isAdmin ? d.namaCO : 'kamu'} (kontrak yang Kriteria Acct-nya udah <b>BTC / LUNAS</b> gak ditampilkan lagi karena udah beres duluan,
+    begitu juga kontrak bucket <b>NOOD yang masih STAY</b> — itu kondisi normal mayoritas kontrak jadi sengaja gak ditawarkan biar daftarnya gak kebanjiran).
+    Tiap kontrak punya sampai 3 tombol proyeksi, pilih salah satu kalau ada potensi berubah — biarkan kosong kalau kontraknya
+    diperkirakan tetap seperti data live sekarang:<br>
+    • <b>Proyeksi Stay</b> — kontrak <u>flow</u> tapi ada potensi bayar (walau cuma sebagian), sehingga proyeksinya berhenti flow dan
+    <b>tetap masuk hitungan Balance</b> di bucket itu (piutangnya belum lunas, cuma berhenti nyicil ke bucket berikutnya).<br>
+    • <b>Proyeksi BTC</b> (Back To Current) — kontrak berhasil ngejar balik ke kondisi lancar, jadi bucket-nya balik ke <b>NOOD</b>
+    (bucket pertama/paling sehat) — piutangnya <u>belum lunas</u>, masih tetap kehitung di buku, cuma posisinya balik ke awal.<br>
+    • <b>Proyeksi Lunas</b> — kontrak beneran <u>lunas total</u>, sehingga kontrak itu keluar sepenuhnya dari buku piutang yang
+    dipantau (keluar dari Balance, Flow Ever, maupun Flow NOOD/1-30/Forward sekaligus).<br>
     Lalu lihat apakah nilai Rapor Harian ${d.isAdmin ? '<b>'+d.namaCO+'</b>' : 'kamu'} jadi ON TARGET atau tidak.
   </div>`;
 
@@ -1326,23 +1330,8 @@ function renderSimulasiRapor(){
 
   html += `<div class="ins-section"><h2>Rapor Saat Ini (Live)</h2><div class="ins-row">${simResultCard_('Kondisi Sekarang', d.original, false)}</div></div>`;
 
-  html += `<div class="panel-title">Pilih proyeksi tiap kontrak (Stay / BTC-Lunas)</div>`;
-  if(!d.kontrakList || !d.kontrakList.length){
-    html += `<div class="state-box">Gak ada kontrak dengan Kriteria Acct STAY/FLOW/ROLLBACK di bucket parameter rapor saat ini, jadi belum ada yang bisa disimulasikan. 🎉</div>`;
-  } else {
-    html += `
-    <div class="controls">
-      <div class="search-box">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4C6272" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input id="simSearchInput" type="text" placeholder="Cari nama konsumen atau no kontrak…" value="${simulasiRaporState.search}">
-      </div>
-      <button class="btn" id="simClearBtn">Bersihkan pilihan</button>
-      <button class="btn primary" id="simRunBtn">🔄 Jalankan Simulasi</button>
-    </div>
-    <div class="count-note">${simulasiRaporState.proyeksi.size} kontrak diproyeksikan berubah dari ${d.kontrakList.length} yang berpengaruh</div>
-    <div class="sim-kontrak-list" id="simKontrakList"></div>`;
-  }
-
+  // Hasil Simulasi sengaja ditaruh DI ATAS daftar kontrak (bukan di bawah) — biar begitu simulasi
+  // dijalankan, hasilnya langsung kelihatan tanpa harus scroll ngelewatin ratusan kontrak dulu.
   if(SIMULASI_RAPOR_RESULT){
     const r = SIMULASI_RAPOR_RESULT;
     const badge = r.tercapaiSimulasi
@@ -1358,6 +1347,23 @@ function renderSimulasiRapor(){
         Selisih insentif rapor: <b>${r.delta.insentif>=0?'+':''}${fmtRupiah(r.delta.insentif)}</b>
       </div>
     </div>`;
+  }
+
+  html += `<div class="panel-title">Pilih proyeksi tiap kontrak (Stay / BTC / Lunas)</div>`;
+  if(!d.kontrakList || !d.kontrakList.length){
+    html += `<div class="state-box">Gak ada kontrak yang relevan buat disimulasikan saat ini. 🎉</div>`;
+  } else {
+    html += `
+    <div class="controls">
+      <div class="search-box">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4C6272" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="simSearchInput" type="text" placeholder="Cari nama konsumen atau no kontrak…" value="${simulasiRaporState.search}">
+      </div>
+      <button class="btn" id="simClearBtn">Bersihkan pilihan</button>
+      <button class="btn primary" id="simRunBtn">🔄 Jalankan Simulasi</button>
+    </div>
+    <div class="count-note">${simulasiRaporState.proyeksi.size} kontrak diproyeksikan berubah dari ${d.kontrakList.length} yang berpengaruh</div>
+    <div class="sim-kontrak-list" id="simKontrakList"></div>`;
   }
 
   document.getElementById('wrap').innerHTML = html;
@@ -1379,19 +1385,24 @@ function renderSimKontrakList_(){
   const rows = getSimulasiKontrakFiltered_();
   box.innerHTML = rows.map(k => {
     const current = simulasiRaporState.proyeksi.get(k.noKontrak) || '';
+    const bucketSekarang = k.bucketUpdateKA || k.bucketUpdateMaster;
     // kontrak yang KRITERIA ACCT-nya udah STAY: tombol "Proyeksi Stay" gak relevan lagi
-    // (dia emang udah berhenti flow, gak ada bedanya sama kondisi sekarang) — cukup tawarin BTC/Lunas.
+    // (dia emang udah berhenti flow, gak ada bedanya sama kondisi sekarang).
     const showStayBtn = k.kriteriaAcct !== 'STAY';
+    // kontrak yang posisinya SEKARANG udah di NOOD: tombol "Proyeksi BTC" (Back To Current, balik ke NOOD)
+    // gak relevan — dia emang udah di NOOD, gak ada bedanya sama kondisi sekarang.
+    const showBtcBtn = bucketSekarang !== 'NOOD';
     return `
     <div class="sim-kontrak-item">
       <div class="sim-kontrak-info">
         <div class="sim-kontrak-name">${k.namaKonsumen||'-'} <span class="sim-kontrak-kontrak">${k.noKontrak}</span>${k.kriteriaAcct ? ' <span class="sim-kriteria-badge sim-kriteria-'+k.kriteriaAcct+'">'+k.kriteriaAcct+'</span>' : ''}</div>
-        <div class="sim-kontrak-meta">Bucket Awal ${fmtBucket(k.bucketAwal)} → Sekarang ${fmtBucket(k.bucketUpdateKA||k.bucketUpdateMaster)}${k.flowEver && k.flowEver!==k.bucketUpdateKA ? ' · Flow Ever '+fmtBucket(k.flowEver) : ''}</div>
+        <div class="sim-kontrak-meta">Bucket Awal ${fmtBucket(k.bucketAwal)} → Sekarang ${fmtBucket(bucketSekarang)}${k.flowEver && k.flowEver!==k.bucketUpdateKA ? ' · Flow Ever '+fmtBucket(k.flowEver) : ''}</div>
       </div>
       <div class="sim-kontrak-sipok">${fmtRupiah(k.sisaPiutang)}</div>
       <div class="sim-proyeksi-group">
         ${showStayBtn ? `<button type="button" class="sim-proyeksi-btn sim-proyeksi-stay ${current==='stay'?'active':''}" data-nokontrak="${k.noKontrak}" data-val="stay">${current==='stay'?'✓ ':''}Proyeksi Stay</button>` : ''}
-        <button type="button" class="sim-proyeksi-btn sim-proyeksi-btc ${current==='btc'?'active':''}" data-nokontrak="${k.noKontrak}" data-val="btc">${current==='btc'?'✓ ':''}Proyeksi BTC/Lunas</button>
+        ${showBtcBtn ? `<button type="button" class="sim-proyeksi-btn sim-proyeksi-btc ${current==='btc'?'active':''}" data-nokontrak="${k.noKontrak}" data-val="btc">${current==='btc'?'✓ ':''}Proyeksi BTC</button>` : ''}
+        <button type="button" class="sim-proyeksi-btn sim-proyeksi-lunas ${current==='lunas'?'active':''}" data-nokontrak="${k.noKontrak}" data-val="lunas">${current==='lunas'?'✓ ':''}Proyeksi Lunas</button>
       </div>
     </div>`;
   }).join('');
