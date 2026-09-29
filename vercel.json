@@ -3,5 +3,11 @@
     "api/telegram-nbq.js": {
       "includeFiles": "node_modules/**"
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/log-snapshot",
+      "schedule": "50 16 * * *"
+    }
+  ]
 }
