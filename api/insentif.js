@@ -296,6 +296,13 @@ module.exports = async (req, res) => {
       fetchSheetRange(sheetId, 'CONFIG_ROLE', accessToken)
     ]);
 
+    // LOG_MINGGUAN opsional — kalau belum ada/gagal dibaca, lanjut tanpa data historis W1-W4
+    let logRows = [];
+    try {
+      const logRaw = await fetchSheetRange(sheetId, 'LOG_MINGGUAN', accessToken);
+      logRows = parseSheetGeneric(logRaw, 0);
+    } catch (e) { logRows = []; }
+
     const masterList = parseSheetGeneric(masterRaw, 0).filter(m => m['NO KONTRAK']);
     const kaRows = parseSheetGeneric(kaRaw, 15); // header KA HARIAN ada di baris ke-16
     const petaKA = {};
@@ -308,15 +315,28 @@ module.exports = async (req, res) => {
     const hasilPenyelesaian = hitungPenyelesaianSemua(masterList, configRows);
     const minggu = getMingguSekarang();
 
-    // Total Insentif per CO = Insentif Rapor (achievement harian) + Insentif Penyelesaian Mingguan
+    // Total Insentif per CO = Insentif Rapor (achievement harian) + akumulasi Insentif Penyelesaian dari W1 s.d. minggu berjalan
     // Hanya untuk CO yang punya target rapor (FE/MR/BCH via CONFIG_ROLE) — role lain (misal DESKCALL) tidak ada target, jadi dilewati.
+    const now = new Date();
+    const curTahun = now.getFullYear();
+    const curBulan = now.getMonth() + 1;
+    const weeklyTotalMap = {}; // namaCO -> jumlah NILAI dari semua minggu (W1-W4) yang sudah tercatat di LOG_MINGGUAN bulan ini
+    logRows.forEach(r => {
+      if (Number(r['TAHUN']) !== curTahun || Number(r['BULAN']) !== curBulan) return;
+      const namaCO = r['NAMA_CO'];
+      if (!namaCO) return;
+      weeklyTotalMap[namaCO] = (weeklyTotalMap[namaCO] || 0) + (Number(r['NILAI']) || 0);
+    });
+
     const raporMap = {};
     [...hasilFE, ...hasilMR, hasilBCH].filter(Boolean).forEach(h => { raporMap[h.namaCO] = h.insentif; });
     const totalInsentif = hasilPenyelesaian
       .filter(p => Object.prototype.hasOwnProperty.call(raporMap, p.namaCO))
       .map(p => {
         const insentifRapor = raporMap[p.namaCO] || 0;
-        return { namaCO: p.namaCO, role: p.role, minggu: p.minggu, insentifRapor, insentifWeekly: p.nilai, total: insentifRapor + p.nilai };
+        // Kalau sudah ada histori di LOG_MINGGUAN bulan ini, pakai akumulasinya. Kalau belum sama sekali, fallback ke nilai minggu berjalan (live).
+        const insentifWeekly = Object.prototype.hasOwnProperty.call(weeklyTotalMap, p.namaCO) ? weeklyTotalMap[p.namaCO] : p.nilai;
+        return { namaCO: p.namaCO, role: p.role, minggu: p.minggu, insentifRapor, insentifWeekly, total: insentifRapor + insentifWeekly };
       });
 
     const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(x => x.trim().toLowerCase());
