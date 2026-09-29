@@ -23,7 +23,7 @@
     --sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
   }
   *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased;overflow-x:hidden;max-width:100vw;}
 
   /* ---------- Login screen ---------- */
   .login-wrap{
@@ -384,12 +384,12 @@
   .sim-intro{background:var(--surface-alt);border:1px solid var(--line);border-radius:10px;padding:12px 16px;font-size:12.5px;color:var(--ink-soft);margin-bottom:18px;line-height:1.5;}
   .sim-co-select{margin-bottom:18px;}
   .sim-kontrak-list{display:flex;flex-direction:column;gap:8px;margin-top:10px;}
-  .sim-kontrak-item{display:flex;flex-wrap:wrap;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 14px;}
+  .sim-kontrak-item{display:flex;flex-wrap:wrap;align-items:flex-start;gap:6px 12px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 14px;max-width:100%;overflow:hidden;}
   .sim-kontrak-item:hover{border-color:var(--navy);}
-  .sim-kontrak-info{flex:1;min-width:180px;}
-  .sim-proyeksi-group{display:flex;gap:6px;flex-shrink:0;margin-left:auto;}
-  .sim-proyeksi-btn{font-size:11.5px;font-weight:600;padding:6px 11px;border-radius:8px;border:1px solid var(--line);background:var(--surface-alt);color:var(--ink-soft);cursor:pointer;white-space:nowrap;transition:all .12s;}
-  .sim-proyeksi-target{font-size:10px;font-weight:500;opacity:.65;margin-left:2px;}
+  .sim-kontrak-info{flex:1;min-width:0;}
+  .sim-proyeksi-group{display:flex;flex-wrap:wrap;gap:6px;width:100%;margin-top:4px;}
+  .sim-proyeksi-btn{display:inline-flex;align-items:center;gap:3px;font-size:11.5px;font-weight:600;padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:var(--surface-alt);color:var(--ink-soft);cursor:pointer;white-space:nowrap;transition:all .12s;max-width:100%;}
+  .sim-proyeksi-target{font-size:10px;font-weight:500;opacity:.65;}
   .sim-proyeksi-btn:hover{border-color:var(--navy);color:var(--navy);}
   .sim-proyeksi-stay.active{background:#FBEBD6;border-color:#B8621B;color:#B8621B;}
   .sim-proyeksi-btc.active{background:#E2E9F2;border-color:var(--navy);color:var(--navy);}
