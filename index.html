@@ -1203,8 +1203,8 @@ function renderInsentifView(){
 }
 
 // ============================================================
-// SIMULASI RAPOR — "kalau kontrak2 ini dianggap belum terselesaikan
-// (balik ke Bucket Awal), apakah nilai rapor harian tetap ON TARGET?"
+// SIMULASI RAPOR — "kalau kontrak2 yang masih belum bayar ini dianggap berhasil
+// ketagih & lunas/BTC (keluar dari buku piutang), apakah nilai rapor harian jadi ON TARGET?"
 // Semua orang bisa simulasi data diri sendiri; admin bisa pilih CO siapa saja.
 // ============================================================
 let SIMULASI_RAPOR_DATA = null;
@@ -1280,10 +1280,12 @@ function renderSimulasiRapor(){
   let html = `<div class="view-toggle-note" onclick="switchView('dashboard')">← Kembali ke Dashboard</div>`;
 
   html += `<div class="sim-intro">
-    Pilih kontrak yang mau dianggap <b>belum terselesaikan</b> (balik ke kondisi Bucket Awal bulan ini),
-    lalu lihat apakah nilai Rapor Harian ${d.isAdmin ? '<b>'+d.namaCO+'</b>' : 'kamu'} masih ON TARGET atau tidak.
-    Karena Balance, Flow Ever, dan Flow (No OD / 1-30 / Forward) dihitung dari status kontrak yang sama,
-    satu kontrak di-toggle otomatis mempengaruhi ketiganya sekaligus.
+    Daftar di bawah cuma nampilin kontrak yang <b>masih belum bayar</b> di bucket yang jadi parameter rapor
+    ${d.isAdmin ? d.namaCO : 'kamu'} (kontrak yang sudah lunas/sudah bayar otomatis gak ditampilkan lagi).
+    <b>Ceklis</b> kontrak yang mau disimulasikan <b>berhasil ketagih & lunas/BTC</b> — kontrak itu akan dianggap keluar dari buku piutang
+    yang dipantau (keluar dari Balance, Flow Ever, maupun Flow NOOD/1-30/Forward sekaligus, karena ketiganya dihitung dari status
+    kontrak yang sama). Biarkan kosong kalau kontraknya tetap dianggap belum kebayar (kondisi live sekarang).
+    Lalu lihat apakah nilai Rapor Harian ${d.isAdmin ? '<b>'+d.namaCO+'</b>' : 'kamu'} jadi ON TARGET atau tidak.
   </div>`;
 
   if(d.isAdmin && d.coList && d.coList.length){
@@ -1297,9 +1299,9 @@ function renderSimulasiRapor(){
 
   html += `<div class="ins-section"><h2>Rapor Saat Ini (Live)</h2><div class="ins-row">${simResultCard_('Kondisi Sekarang', d.original, false)}</div></div>`;
 
-  html += `<div class="panel-title">Pilih kontrak yang disimulasikan belum terselesaikan</div>`;
+  html += `<div class="panel-title">Ceklis kontrak yang disimulasikan berhasil ketagih & lunas/BTC</div>`;
   if(!d.kontrakList || !d.kontrakList.length){
-    html += `<div class="state-box">Tidak ada kontrak yang statusnya sudah bergerak dari Bucket Awal saat ini, jadi belum ada yang bisa disimulasikan.</div>`;
+    html += `<div class="state-box">Gak ada kontrak yang masih belum bayar di bucket parameter rapor saat ini, jadi belum ada yang bisa disimulasikan. 🎉</div>`;
   } else {
     html += `
     <div class="controls">
@@ -1317,9 +1319,9 @@ function renderSimulasiRapor(){
   if(SIMULASI_RAPOR_RESULT){
     const r = SIMULASI_RAPOR_RESULT;
     const badge = r.tercapaiSimulasi
-      ? '<span class="sim-target-badge sim-target-ok">✅ Masih ON TARGET</span>'
+      ? '<span class="sim-target-badge sim-target-ok">✅ ON TARGET</span>'
       : '<span class="sim-target-badge sim-target-bad">⚠️ Di bawah ON TARGET</span>';
-    html += `<div class="ins-section"><h2>Hasil Simulasi (${r.jumlahKontrakDipilih} kontrak dianggap belum selesai) ${badge}</h2>
+    html += `<div class="ins-section"><h2>Hasil Simulasi (${r.jumlahKontrakDipilih} kontrak dianggap berhasil selesai) ${badge}</h2>
       <div class="ins-row">
         ${simResultCard_('Sebelum (Live)', r.original, false)}
         ${simResultCard_('Simulasi', r.simulasi, true)}
