@@ -309,12 +309,15 @@ module.exports = async (req, res) => {
     const minggu = getMingguSekarang();
 
     // Total Insentif per CO = Insentif Rapor (achievement harian) + Insentif Penyelesaian Mingguan
+    // Hanya untuk CO yang punya target rapor (FE/MR/BCH via CONFIG_ROLE) — role lain (misal DESKCALL) tidak ada target, jadi dilewati.
     const raporMap = {};
     [...hasilFE, ...hasilMR, hasilBCH].filter(Boolean).forEach(h => { raporMap[h.namaCO] = h.insentif; });
-    const totalInsentif = hasilPenyelesaian.map(p => {
-      const insentifRapor = raporMap[p.namaCO] || 0;
-      return { namaCO: p.namaCO, role: p.role, minggu: p.minggu, insentifRapor, insentifWeekly: p.nilai, total: insentifRapor + p.nilai };
-    });
+    const totalInsentif = hasilPenyelesaian
+      .filter(p => Object.prototype.hasOwnProperty.call(raporMap, p.namaCO))
+      .map(p => {
+        const insentifRapor = raporMap[p.namaCO] || 0;
+        return { namaCO: p.namaCO, role: p.role, minggu: p.minggu, insentifRapor, insentifWeekly: p.nilai, total: insentifRapor + p.nilai };
+      });
 
     const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(x => x.trim().toLowerCase());
     const isAdmin = adminEmails.indexOf(email) > -1;
