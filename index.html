@@ -365,6 +365,14 @@
   .ins-metric .mval{font-family:var(--mono);font-weight:600;}
   .ins-nilai{font-family:var(--mono);font-size:22px;font-weight:700;color:var(--navy);margin:10px 0 4px;}
   .ins-insentif{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--good);}
+  .ins-total-card{background:linear-gradient(155deg,var(--navy) 0%,#0A2F4D 100%);border-color:var(--navy);}
+  .ins-total-card .iname{color:#fff;}
+  .ins-total-card .irole{color:#BFD2E0;}
+  .ins-total-card .ins-metric{border-top-color:rgba(255,255,255,0.18);}
+  .ins-total-card .ins-metric .mlabel{color:#BFD2E0;}
+  .ins-total-card .ins-metric .mval{color:#EAF0F4;}
+  .ins-total-label{font-size:11px;text-transform:uppercase;letter-spacing:0.4px;color:#BFD2E0;margin-top:14px;}
+  .ins-total-val{font-family:var(--mono);font-size:26px;font-weight:700;color:#fff;margin-top:2px;}
   .ins-gap{margin-top:12px;padding:10px 12px;background:var(--surface-alt);border-radius:8px;font-size:12px;color:var(--ink-soft);}
   .ins-gap b{color:var(--ink);}
   .ins-rekom{margin-top:10px;}
@@ -1120,6 +1128,19 @@ function penyelesaianCard(p){
   </div>`;
 }
 
+function totalInsentifCard(t){
+  return `
+  <div class="ins-card ins-total-card">
+    <div class="ihead">
+      <div><div class="iname">${t.namaCO}</div><div class="irole">${t.role} · Minggu ${t.minggu}</div></div>
+    </div>
+    <div class="ins-metric"><span class="mlabel">Insentif Rapor</span><span class="mval">${fmtRupiah(t.insentifRapor)}</span></div>
+    <div class="ins-metric"><span class="mlabel">Insentif Penyelesaian</span><span class="mval">${fmtRupiah(t.insentifWeekly)}</span></div>
+    <div class="ins-total-label">Total Insentif</div>
+    <div class="ins-total-val">${fmtRupiah(t.total)}</div>
+  </div>`;
+}
+
 function renderInsentifView(){
   const d = INSENTIF_DATA;
   if(!d) return;
@@ -1132,6 +1153,9 @@ function renderInsentifView(){
       html += `<div class="ins-section"><h2>Achievement Harian — Branch Collection Head (BCH)</h2><div class="ins-row">${achievementCard(d.achievement.BCH,'Flow Forward 31-60','flowForwardPct')}</div></div>`;
     }
     html += `<div class="ins-section"><h2>Insentif Penyelesaian — Minggu ${d.minggu}</h2><div class="ins-row">${d.penyelesaian.map(p=>penyelesaianCard(p)).join('')}</div></div>`;
+    if(d.totalInsentif && d.totalInsentif.length){
+      html += `<div class="ins-section"><h2>Total Insentif Bulan Ini</h2><div class="ins-row">${d.totalInsentif.map(t=>totalInsentifCard(t)).join('')}</div></div>`;
+    }
   } else {
     if(d.achievement){
       const extra = d.achievement.role==='FE' ? ['Flow No OD','flowNoODPct'] : d.achievement.role==='MR' ? ['Flow 1-30','flowPct'] : ['Flow Forward 31-60','flowForwardPct'];
@@ -1139,6 +1163,9 @@ function renderInsentifView(){
     }
     if(d.penyelesaian){
       html += `<div class="ins-section"><h2>Insentif Penyelesaian — Minggu ${d.minggu}</h2><div class="ins-row">${penyelesaianCard(d.penyelesaian)}</div></div>`;
+    }
+    if(d.totalInsentif){
+      html += `<div class="ins-section"><h2>Total Insentif Kamu Bulan Ini</h2><div class="ins-row">${totalInsentifCard(d.totalInsentif)}</div></div>`;
     }
     if(!d.achievement && !d.penyelesaian){
       html += `<div class="state-box">Data insentif kamu belum ditemukan. Hubungi admin kalau ini seharusnya ada datanya.</div>`;
