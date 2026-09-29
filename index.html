@@ -371,6 +371,8 @@
   .ins-total-card .ins-metric{border-top-color:rgba(255,255,255,0.18);}
   .ins-total-card .ins-metric .mlabel{color:#BFD2E0;}
   .ins-total-card .ins-metric .mval{color:#EAF0F4;}
+  .ins-total-card .ins-nilai{color:#fff;}
+  .ins-total-card .ins-insentif{color:#8FE0B4;}
   .ins-total-label{font-size:11px;text-transform:uppercase;letter-spacing:0.4px;color:#BFD2E0;margin-top:14px;}
   .ins-total-val{font-family:var(--mono);font-size:26px;font-weight:700;color:#fff;margin-top:2px;}
   .ins-gap{margin-top:12px;padding:10px 12px;background:var(--surface-alt);border-radius:8px;font-size:12px;color:var(--ink-soft);}
@@ -379,6 +381,20 @@
   .ins-rekom-item{display:flex;justify-content:space-between;font-size:12px;padding:6px 0;border-top:1px solid var(--line);}
   .ins-rekom-item .rname{color:var(--ink);}
   .ins-rekom-item .rval{font-family:var(--mono);color:var(--ink-soft);white-space:nowrap;margin-left:8px;}
+  .sim-intro{background:var(--surface-alt);border:1px solid var(--line);border-radius:10px;padding:12px 16px;font-size:12.5px;color:var(--ink-soft);margin-bottom:18px;line-height:1.5;}
+  .sim-co-select{margin-bottom:18px;}
+  .sim-kontrak-list{display:flex;flex-direction:column;gap:8px;margin-top:10px;}
+  .sim-kontrak-item{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 14px;cursor:pointer;}
+  .sim-kontrak-item:hover{border-color:var(--navy);}
+  .sim-kontrak-item input[type=checkbox]{width:16px;height:16px;flex-shrink:0;}
+  .sim-kontrak-info{flex:1;min-width:0;}
+  .sim-kontrak-name{font-weight:600;font-size:13px;}
+  .sim-kontrak-kontrak{font-family:var(--mono);font-weight:400;font-size:11px;color:var(--ink-soft);margin-left:6px;}
+  .sim-kontrak-meta{font-size:11.5px;color:var(--ink-soft);margin-top:2px;}
+  .sim-kontrak-sipok{font-family:var(--mono);font-size:12.5px;font-weight:600;white-space:nowrap;}
+  .sim-target-badge{font-size:12px;font-weight:700;padding:3px 10px;border-radius:20px;margin-left:8px;vertical-align:middle;text-transform:none;letter-spacing:0;}
+  .sim-target-ok{background:#E1EFE6;color:var(--good);}
+  .sim-target-bad{background:#F7E4E1;color:var(--bad);}
   .view-toggle-note{font-size:11.5px;color:var(--ink-soft);margin-bottom:14px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;}
   .view-toggle-note:hover{color:var(--navy);}
 
@@ -481,6 +497,10 @@
         <button class="nav-item nav-hidden" data-view="dekscall" id="navDekscall">
           <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.34 1.9.63 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.29 1.85.5 2.81.63A2 2 0 0 1 22 16.92z"/></svg>
           <span>Dekscall</span>
+        </button>
+        <button class="nav-item" data-view="simulasirapor" id="navSimulasiRapor">
+          <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.1-2.8-2.8L7 14"/><circle cx="18.7" cy="8" r="1.2" fill="currentColor" stroke="none"/></svg>
+          <span>Simulasi Rapor</span>
         </button>
         <button class="nav-item" data-view="simulasi" id="navSimulasi">
           <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="7" x2="16" y2="7"/><line x1="8" y1="11" x2="10" y2="11"/><line x1="13" y1="11" x2="15" y2="11"/><line x1="8" y1="15" x2="10" y2="15"/><line x1="13" y1="15" x2="15" y2="15"/></svg>
@@ -619,6 +639,7 @@ function showUpdateBanner(){
     else if(VIEW_MODE === 'dashboard') loadData();
     else if(VIEW_MODE === 'nbq' || VIEW_MODE === 'feever' || VIEW_MODE === 'tglbayar') loadData();
     else if(VIEW_MODE === 'insentif') loadInsentif();
+    else if(VIEW_MODE === 'simulasirapor') loadSimulasiRapor(SIMULASI_RAPOR_DATA ? SIMULASI_RAPOR_DATA.namaCO : null);
   });
   document.getElementById('updateBannerClose').addEventListener('click', () => {
     LAST_KNOWN_MODIFIED = null; // reset biar nggak nge-banner ulang terus untuk perubahan yang sama
@@ -662,6 +683,7 @@ document.getElementById('navNBQ').addEventListener('click', () => switchView('nb
 document.getElementById('navFEEver').addEventListener('click', () => switchView('feever'));
 document.getElementById('navTglBayar').addEventListener('click', () => switchView('tglbayar'));
 document.getElementById('navInsentif').addEventListener('click', () => switchView('insentif'));
+document.getElementById('navSimulasiRapor').addEventListener('click', () => switchView('simulasirapor'));
 document.getElementById('navDekscall').addEventListener('click', () => switchView('dekscall'));
 document.getElementById('navSimulasi').addEventListener('click', () => switchView('simulasi'));
 document.getElementById('menuToggle').addEventListener('click', () => {
@@ -721,6 +743,7 @@ function onDataLoaded(res){
   const navNBQ = document.getElementById('navNBQ');
   const navFEEver = document.getElementById('navFEEver');
   const navInsentif = document.getElementById('navInsentif');
+  const navSimulasiRapor = document.getElementById('navSimulasiRapor');
   const navDekscall = document.getElementById('navDekscall');
   if(isMR){
     navNBQ.classList.add('nav-hidden');
@@ -735,6 +758,7 @@ function onDataLoaded(res){
     navNBQ.classList.add('nav-hidden');
     navFEEver.classList.add('nav-hidden');
     navInsentif.classList.add('nav-hidden');
+    navSimulasiRapor.classList.add('nav-hidden');
     navRingkasan.classList.add('nav-hidden');
   }
 
@@ -1022,7 +1046,7 @@ function updateFilterBadge(){
 let VIEW_MODE = 'dashboard';
 let INSENTIF_DATA = null;
 
-const VIEW_TITLES = { ringkasan: 'Dashboard', dashboard: 'Beban Awal', nbq: 'NBQ', feever: 'FE Ever', tglbayar: 'Tanggal Bayar Bulan Lalu', insentif: 'Insentif', dekscall: 'Dekscall', simulasi: 'Simulasi Penawaran' };
+const VIEW_TITLES = { ringkasan: 'Dashboard', dashboard: 'Beban Awal', nbq: 'NBQ', feever: 'FE Ever', tglbayar: 'Tanggal Bayar Bulan Lalu', insentif: 'Insentif', dekscall: 'Dekscall', simulasi: 'Simulasi Penawaran', simulasirapor: 'Simulasi Rapor' };
 
 function triggerFadeIn(){
   const el = document.getElementById('wrap');
@@ -1041,6 +1065,7 @@ function switchView(view){
   document.getElementById('navFEEver').classList.toggle('active', view === 'feever');
   document.getElementById('navTglBayar').classList.toggle('active', view === 'tglbayar');
   document.getElementById('navInsentif').classList.toggle('active', view === 'insentif');
+  document.getElementById('navSimulasiRapor').classList.toggle('active', view === 'simulasirapor');
   document.getElementById('navDekscall').classList.toggle('active', view === 'dekscall');
   document.getElementById('navSimulasi').classList.toggle('active', view === 'simulasi');
   document.getElementById('mobilePageTitle').textContent = VIEW_TITLES[view] || '';
@@ -1073,6 +1098,8 @@ function switchView(view){
     triggerFadeIn();
   } else if(view === 'insentif'){
     if(INSENTIF_DATA){ renderInsentifView(); triggerFadeIn(); } else { loadInsentif(); }
+  } else if(view === 'simulasirapor'){
+    if(SIMULASI_RAPOR_DATA){ renderSimulasiRapor(); triggerFadeIn(); } else { loadSimulasiRapor(); }
   }
 }
 
@@ -1173,6 +1200,170 @@ function renderInsentifView(){
   }
 
   document.getElementById('wrap').innerHTML = html;
+}
+
+// ============================================================
+// SIMULASI RAPOR — "kalau kontrak2 ini dianggap belum terselesaikan
+// (balik ke Bucket Awal), apakah nilai rapor harian tetap ON TARGET?"
+// Semua orang bisa simulasi data diri sendiri; admin bisa pilih CO siapa saja.
+// ============================================================
+let SIMULASI_RAPOR_DATA = null;
+let SIMULASI_RAPOR_RESULT = null;
+let simulasiRaporState = { search:'', selected: new Set() };
+
+function loadSimulasiRapor(namaCO){
+  document.getElementById('wrap').innerHTML = `<div class="skeleton-row"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div><div class="skel tall"></div>`;
+  const qs = namaCO ? ('?namaCO=' + encodeURIComponent(namaCO)) : '';
+  fetch('/api/simulasi-rapor' + qs, { headers: { Authorization: 'Bearer ' + ID_TOKEN } })
+    .then(r => r.json().then(body => ({ ok: r.ok, body })))
+    .then(({ok, body}) => {
+      if(!ok){ document.getElementById('wrap').innerHTML = '<div class="state-box error"><div class="err-icon">⚠</div>'+(body.error||'Gagal memuat simulasi rapor.')+'<br><br><button class="btn" onclick="loadSimulasiRapor()">Coba lagi</button></div>'; return; }
+      if(body.error){ document.getElementById('wrap').innerHTML = '<div class="state-box">'+body.error+'</div>'; return; }
+      SIMULASI_RAPOR_DATA = body;
+      SIMULASI_RAPOR_RESULT = null;
+      simulasiRaporState = { search:'', selected: new Set() };
+      renderSimulasiRapor();
+      triggerFadeIn();
+    })
+    .catch(err => { document.getElementById('wrap').innerHTML = '<div class="state-box error"><div class="err-icon">⚠</div>'+err.message+'<br><br><button class="btn" onclick="loadSimulasiRapor()">Coba lagi</button></div>'; });
+}
+
+function runSimulasiRapor(){
+  const btn = document.getElementById('simRunBtn');
+  if(btn){ btn.disabled = true; btn.textContent = 'Menghitung…'; }
+  fetch('/api/simulasi-rapor', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + ID_TOKEN },
+    body: JSON.stringify({ namaCO: SIMULASI_RAPOR_DATA.namaCO, noKontrakList: Array.from(simulasiRaporState.selected) })
+  })
+    .then(r => r.json().then(body => ({ ok: r.ok, body })))
+    .then(({ok, body}) => {
+      if(!ok || body.error){ alert((body && body.error) || 'Gagal menjalankan simulasi.'); if(btn){ btn.disabled=false; btn.textContent='🔄 Jalankan Simulasi'; } return; }
+      SIMULASI_RAPOR_RESULT = body;
+      renderSimulasiRapor();
+    })
+    .catch(err => { alert(err.message); if(btn){ btn.disabled=false; btn.textContent='🔄 Jalankan Simulasi'; } });
+}
+
+function simMetricLabel_(role){
+  if(role==='FE') return ['Flow No OD','flowNoODPct'];
+  if(role==='MR') return ['Flow 1-30','flowPct'];
+  return ['Flow Forward 31-60','flowForwardPct'];
+}
+
+function simResultCard_(title, h, highlight){
+  const extra = simMetricLabel_(h.role);
+  return `
+  <div class="ins-card ${highlight ? 'ins-total-card' : ''}">
+    <div class="ihead">
+      <div><div class="iname">${title}</div><div class="irole">${h.role}</div></div>
+      <span class="kategori-pill ${katClass(h.kategori)}">${h.kategori}</span>
+    </div>
+    <div class="ins-nilai">${h.totalNilai.toFixed(2)} <span style="font-size:12px;color:${highlight?'#BFD2E0':'var(--ink-soft)'};font-weight:500;">/ 5.00</span></div>
+    <div class="ins-insentif">${fmtRupiah(h.insentif)}</div>
+    <div class="ins-metric"><span class="mlabel">Balance</span><span class="mval">${fmtPct(h.balancePct)}</span></div>
+    <div class="ins-metric"><span class="mlabel">Flow Ever</span><span class="mval">${fmtPct(h.flowEverPct)}</span></div>
+    <div class="ins-metric"><span class="mlabel">${extra[0]}</span><span class="mval">${fmtPct(h[extra[1]])}</span></div>
+  </div>`;
+}
+
+function getSimulasiKontrakFiltered_(){
+  const list = (SIMULASI_RAPOR_DATA && SIMULASI_RAPOR_DATA.kontrakList) || [];
+  if(!simulasiRaporState.search.trim()) return list;
+  const q = simulasiRaporState.search.trim().toLowerCase();
+  return list.filter(k => (k.namaKonsumen||'').toLowerCase().includes(q) || (k.noKontrak||'').toLowerCase().includes(q));
+}
+
+function renderSimulasiRapor(){
+  const d = SIMULASI_RAPOR_DATA;
+  if(!d) return;
+  let html = `<div class="view-toggle-note" onclick="switchView('dashboard')">← Kembali ke Dashboard</div>`;
+
+  html += `<div class="sim-intro">
+    Pilih kontrak yang mau dianggap <b>belum terselesaikan</b> (balik ke kondisi Bucket Awal bulan ini),
+    lalu lihat apakah nilai Rapor Harian ${d.isAdmin ? '<b>'+d.namaCO+'</b>' : 'kamu'} masih ON TARGET atau tidak.
+    Karena Balance, Flow Ever, dan Flow (No OD / 1-30 / Forward) dihitung dari status kontrak yang sama,
+    satu kontrak di-toggle otomatis mempengaruhi ketiganya sekaligus.
+  </div>`;
+
+  if(d.isAdmin && d.coList && d.coList.length){
+    html += `<div class="sim-co-select">
+      <label class="edit-label">Simulasikan untuk CO</label>
+      <select class="filter-select" id="simCoSelect" style="width:100%;max-width:360px;">
+        ${d.coList.map(c => `<option value="${c.namaCO}" ${c.namaCO===d.namaCO?'selected':''}>${c.namaCO} (${c.role})</option>`).join('')}
+      </select>
+    </div>`;
+  }
+
+  html += `<div class="ins-section"><h2>Rapor Saat Ini (Live)</h2><div class="ins-row">${simResultCard_('Kondisi Sekarang', d.original, false)}</div></div>`;
+
+  html += `<div class="panel-title">Pilih kontrak yang disimulasikan belum terselesaikan</div>`;
+  if(!d.kontrakList || !d.kontrakList.length){
+    html += `<div class="state-box">Tidak ada kontrak yang statusnya sudah bergerak dari Bucket Awal saat ini, jadi belum ada yang bisa disimulasikan.</div>`;
+  } else {
+    html += `
+    <div class="controls">
+      <div class="search-box">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4C6272" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="simSearchInput" type="text" placeholder="Cari nama konsumen atau no kontrak…" value="${simulasiRaporState.search}">
+      </div>
+      <button class="btn" id="simClearBtn">Bersihkan pilihan</button>
+      <button class="btn primary" id="simRunBtn">🔄 Jalankan Simulasi</button>
+    </div>
+    <div class="count-note">${simulasiRaporState.selected.size} kontrak dipilih dari ${d.kontrakList.length} yang berpengaruh</div>
+    <div class="sim-kontrak-list" id="simKontrakList"></div>`;
+  }
+
+  if(SIMULASI_RAPOR_RESULT){
+    const r = SIMULASI_RAPOR_RESULT;
+    const badge = r.tercapaiSimulasi
+      ? '<span class="sim-target-badge sim-target-ok">✅ Masih ON TARGET</span>'
+      : '<span class="sim-target-badge sim-target-bad">⚠️ Di bawah ON TARGET</span>';
+    html += `<div class="ins-section"><h2>Hasil Simulasi (${r.jumlahKontrakDipilih} kontrak dianggap belum selesai) ${badge}</h2>
+      <div class="ins-row">
+        ${simResultCard_('Sebelum (Live)', r.original, false)}
+        ${simResultCard_('Simulasi', r.simulasi, true)}
+      </div>
+      <div class="ins-gap" style="margin-top:14px;">
+        Selisih nilai: <b>${r.delta.totalNilai>=0?'+':''}${r.delta.totalNilai.toFixed(2)}</b> ·
+        Selisih insentif rapor: <b>${r.delta.insentif>=0?'+':''}${fmtRupiah(r.delta.insentif)}</b>
+      </div>
+    </div>`;
+  }
+
+  document.getElementById('wrap').innerHTML = html;
+
+  const coSelect = document.getElementById('simCoSelect');
+  if(coSelect){ coSelect.addEventListener('change', e => loadSimulasiRapor(e.target.value)); }
+
+  if(d.kontrakList && d.kontrakList.length){
+    renderSimKontrakList_();
+    document.getElementById('simSearchInput').addEventListener('input', e => { simulasiRaporState.search = e.target.value; renderSimKontrakList_(); });
+    document.getElementById('simClearBtn').addEventListener('click', () => { simulasiRaporState.selected.clear(); SIMULASI_RAPOR_RESULT = null; renderSimulasiRapor(); });
+    document.getElementById('simRunBtn').addEventListener('click', runSimulasiRapor);
+  }
+}
+
+function renderSimKontrakList_(){
+  const box = document.getElementById('simKontrakList');
+  if(!box) return;
+  const rows = getSimulasiKontrakFiltered_();
+  box.innerHTML = rows.map(k => `
+    <label class="sim-kontrak-item">
+      <input type="checkbox" data-nokontrak="${k.noKontrak}" ${simulasiRaporState.selected.has(k.noKontrak)?'checked':''}>
+      <div class="sim-kontrak-info">
+        <div class="sim-kontrak-name">${k.namaKonsumen||'-'} <span class="sim-kontrak-kontrak">${k.noKontrak}</span></div>
+        <div class="sim-kontrak-meta">Bucket Awal ${fmtBucket(k.bucketAwal)} → Sekarang ${fmtBucket(k.bucketUpdateKA||k.bucketUpdateMaster)}${k.flowEver && k.flowEver!==k.bucketUpdateKA ? ' · Flow Ever '+fmtBucket(k.flowEver) : ''}</div>
+      </div>
+      <div class="sim-kontrak-sipok">${fmtRupiah(k.sisaPiutang)}</div>
+    </label>`).join('');
+  box.querySelectorAll('input[type=checkbox]').forEach(cb => {
+    cb.addEventListener('change', e => {
+      const nk = e.target.getAttribute('data-nokontrak');
+      if(e.target.checked) simulasiRaporState.selected.add(nk); else simulasiRaporState.selected.delete(nk);
+      document.querySelector('.count-note').textContent = simulasiRaporState.selected.size + ' kontrak dipilih dari ' + (SIMULASI_RAPOR_DATA.kontrakList.length) + ' yang berpengaruh';
+    });
+  });
 }
 
 // ============================================================
