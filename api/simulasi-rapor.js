@@ -215,10 +215,12 @@ function hitungSatu(role, masterList, petaKA, cfg) {
 }
 
 // Bucket Awal yang benar-benar dipakai di rumus rapor tiap role — di luar bucket ini,
-// pergerakan kontrak gak kebaca sama sekali oleh 3 parameter rapor (flow ever/flow/balance),
+// kontrak gak kebaca sama sekali oleh 3 parameter rapor (flow ever/flow/balance),
 // jadi gak usah ditawarkan buat disimulasikan.
 function bucketAwalRelevan(role, cfg) {
   if (role === 'FE' || role === 'MR') {
+    // FE: BUCKET_ASAL_FLOW=NOOD, BUCKET_PENYELESAIAN=P001_030 -> populasi Flow NOOD & Flow Ever/Balance
+    // MR: BUCKET_ASAL_FLOW=P001_030, BUCKET_PENYELESAIAN=P031_060 -> populasi Flow 1-30 & Flow Ever/Balance
     return [cfg['BUCKET_ASAL_FLOW'], cfg['BUCKET_PENYELESAIAN']].filter(Boolean);
   }
   if (role === 'BCH') {
@@ -228,16 +230,25 @@ function bucketAwalRelevan(role, cfg) {
   return [];
 }
 
+function isBelumBayar(m) {
+  const u = (m['STATUS BAYAR'] || '').toString().trim().toUpperCase();
+  if (!u) return true;
+  return !(u.includes('LUNAS') || u.includes('SUDAH'));
+}
+
 // ============================================================
-// Daftar kontrak yang RELEVAN buat disimulasikan untuk satu CO
-// (kontrak yang Bucket Awal-nya termasuk parameter rapor role ini, DAN statusnya
-// sekarang sudah "bergerak" dari Bucket Awal — yang belum bergerak sama sekali
-// gak akan ngubah hasil apa pun kalau di-toggle)
+// Daftar kontrak yang RELEVAN buat disimulasikan untuk satu CO:
+// kontrak yang Bucket Awal-nya termasuk populasi parameter rapor role ini
+// (persis bucket yang dipakai hitungFE/MR/BCH) DAN statusnya masih BELUM BAYAR
+// periode ini. Kontrak yang sudah lunas/sudah bayar TIDAK ditawarkan lagi —
+// gak ada gunanya disimulasikan karena udah beres duluan.
+// Ini termasuk kontrak yang "stay" (belum sempat pindah bucket sama sekali),
+// karena tetap ikut mempengaruhi Balance/Flow Ever meski belum bergerak.
 // ============================================================
 function daftarKontrakRelevan(namaCO, role, masterList, petaKA, cfg) {
   const bucketSet = bucketAwalRelevan(role, cfg);
   const poolDasar = role === 'BCH' ? masterList : masterList.filter(m => m['CO ALL'] === namaCO && m['FLEET/NON FLEET'] !== 'FLEET');
-  const pool = poolDasar.filter(m => bucketSet.includes(m['BUCKET AWAL']));
+  const pool = poolDasar.filter(m => bucketSet.includes(m['BUCKET AWAL']) && isBelumBayar(m));
   const list = [];
   pool.forEach(m => {
     const noKontrak = m['NO KONTRAK'];
@@ -247,11 +258,6 @@ function daftarKontrakRelevan(namaCO, role, masterList, petaKA, cfg) {
     const bucketUpdateMaster = m['BUCKET UPDATE'];
     const bucketUpdateKA = ka ? ka['BUCKET UPDATE'] : null;
     const flowEver = ka ? ka['FLOW EVER'] : null;
-    const bergerak =
-      bucketIndex(bucketUpdateMaster) !== bucketIndex(bucketAwal) ||
-      (ka && bucketIndex(bucketUpdateKA) !== bucketIndex(bucketAwal)) ||
-      (ka && bucketIndex(flowEver) !== bucketIndex(bucketAwal));
-    if (!bergerak) return;
     const sisaPiutang = ka && typeof ka['SISA PIUTANG'] === 'number' ? ka['SISA PIUTANG'] : sipokOf(m);
     list.push({
       noKontrak,
@@ -261,6 +267,7 @@ function daftarKontrakRelevan(namaCO, role, masterList, petaKA, cfg) {
       bucketUpdateKA,
       flowEver,
       sisaPiutang,
+      statusBayar: m['STATUS BAYAR'] || null,
       coAll: m['CO ALL']
     });
   });
@@ -268,23 +275,20 @@ function daftarKontrakRelevan(namaCO, role, masterList, petaKA, cfg) {
   return list;
 }
 
-// Terapkan simulasi "kontrak X dianggap tidak bergerak/tidak bayar sejak awal periode":
-// balikkan BUCKET UPDATE (di MASTER & KA HARIAN) dan FLOW EVER (di KA HARIAN) ke BUCKET AWAL kontrak itu.
-// Karena Balance, Flow Ever, dan Flow NOOD semua baca field yang sama ini, efeknya otomatis
-// nyambung ke ketiga parameter rapor sekaligus — gak perlu di-toggle manual satu-satu.
+// Terapkan simulasi "kontrak X berhasil ketagih & LUNAS/BTC sekarang":
+// keluarkan kontrak itu SEPENUHNYA dari masterList & KA HARIAN, seolah-olah
+// udah lunas dan keluar dari buku piutang yang masih dipantau.
+// Ini otomatis benar buat semua kasus:
+// - kontrak NOOD/1-30 yang udah kadung flow ke bucket lebih buruk -> hilang dari
+//   pembilang MAUPUN penyebut Flow NOOD/Flow Ever (gak dihitung lagi sama sekali).
+// - kontrak yang masih "stay" di bucket balance (misal 1-30) -> keluar dari
+//   Balance karena bener2 dianggap gak ada lagi di buku, bukan cuma direset bucket-nya
+//   (reset ke Bucket Awal gak akan ngefek buat kontrak yang emang belum pernah pindah).
 function terapkanSimulasi(masterList, petaKA, noKontrakList) {
   const set = new Set(noKontrakList);
-  const masterList2 = masterList.map(m => (set.has(m['NO KONTRAK']) ? { ...m, 'BUCKET UPDATE': m['BUCKET AWAL'] } : m));
+  const masterList2 = masterList.filter(m => !set.has(m['NO KONTRAK']));
   const petaKA2 = {};
-  Object.keys(petaKA).forEach(k => {
-    if (set.has(k)) {
-      const masterRow = masterList.find(m => m['NO KONTRAK'] === k);
-      const bucketAwal = masterRow ? masterRow['BUCKET AWAL'] : petaKA[k]['BUCKET UPDATE'];
-      petaKA2[k] = { ...petaKA[k], 'BUCKET UPDATE': bucketAwal, 'FLOW EVER': bucketAwal };
-    } else {
-      petaKA2[k] = petaKA[k];
-    }
-  });
+  Object.keys(petaKA).forEach(k => { if (!set.has(k)) petaKA2[k] = petaKA[k]; });
   return { masterList2, petaKA2 };
 }
 
