@@ -1135,7 +1135,7 @@ function totalInsentifCard(t){
       <div><div class="iname">${t.namaCO}</div><div class="irole">${t.role} · Minggu ${t.minggu}</div></div>
     </div>
     <div class="ins-metric"><span class="mlabel">Insentif Rapor</span><span class="mval">${fmtRupiah(t.insentifRapor)}</span></div>
-    <div class="ins-metric"><span class="mlabel">Insentif Penyelesaian</span><span class="mval">${fmtRupiah(t.insentifWeekly)}</span></div>
+    <div class="ins-metric"><span class="mlabel">Insentif Penyelesaian (W1-W${t.minggu})</span><span class="mval">${fmtRupiah(t.insentifWeekly)}</span></div>
     <div class="ins-total-label">Total Insentif</div>
     <div class="ins-total-val">${fmtRupiah(t.total)}</div>
   </div>`;
