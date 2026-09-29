@@ -390,6 +390,10 @@
   .sim-kontrak-info{flex:1;min-width:0;}
   .sim-kontrak-name{font-weight:600;font-size:13px;}
   .sim-kontrak-kontrak{font-family:var(--mono);font-weight:400;font-size:11px;color:var(--ink-soft);margin-left:6px;}
+  .sim-kriteria-badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;text-transform:uppercase;letter-spacing:0.3px;margin-left:6px;vertical-align:middle;}
+  .sim-kriteria-STAY{background:#FBEBD6;color:#B8621B;}
+  .sim-kriteria-FLOW{background:#F7E4E1;color:var(--bad);}
+  .sim-kriteria-ROLLBACK{background:#E1EFE6;color:var(--good);}
   .sim-kontrak-meta{font-size:11.5px;color:var(--ink-soft);margin-top:2px;}
   .sim-kontrak-sipok{font-family:var(--mono);font-size:12.5px;font-weight:600;white-space:nowrap;}
   .sim-target-badge{font-size:12px;font-weight:700;padding:3px 10px;border-radius:20px;margin-left:8px;vertical-align:middle;text-transform:none;letter-spacing:0;}
@@ -1280,11 +1284,11 @@ function renderSimulasiRapor(){
   let html = `<div class="view-toggle-note" onclick="switchView('dashboard')">← Kembali ke Dashboard</div>`;
 
   html += `<div class="sim-intro">
-    Daftar di bawah cuma nampilin kontrak yang <b>masih belum bayar</b> di bucket yang jadi parameter rapor
-    ${d.isAdmin ? d.namaCO : 'kamu'} (kontrak yang sudah lunas/sudah bayar otomatis gak ditampilkan lagi).
+    Daftar di bawah nampilin kontrak dengan Kriteria Acct <b>STAY / FLOW / ROLLBACK</b> di bucket yang jadi parameter rapor
+    ${d.isAdmin ? d.namaCO : 'kamu'} (kontrak yang Kriteria Acct-nya udah <b>BTC / LUNAS</b> otomatis gak ditampilkan lagi, karena udah beres duluan).
     <b>Ceklis</b> kontrak yang mau disimulasikan <b>berhasil ketagih & lunas/BTC</b> — kontrak itu akan dianggap keluar dari buku piutang
     yang dipantau (keluar dari Balance, Flow Ever, maupun Flow NOOD/1-30/Forward sekaligus, karena ketiganya dihitung dari status
-    kontrak yang sama). Biarkan kosong kalau kontraknya tetap dianggap belum kebayar (kondisi live sekarang).
+    kontrak yang sama). Biarkan kosong kalau kontraknya tetap dianggap kayak kondisi live sekarang.
     Lalu lihat apakah nilai Rapor Harian ${d.isAdmin ? '<b>'+d.namaCO+'</b>' : 'kamu'} jadi ON TARGET atau tidak.
   </div>`;
 
@@ -1301,7 +1305,7 @@ function renderSimulasiRapor(){
 
   html += `<div class="panel-title">Ceklis kontrak yang disimulasikan berhasil ketagih & lunas/BTC</div>`;
   if(!d.kontrakList || !d.kontrakList.length){
-    html += `<div class="state-box">Gak ada kontrak yang masih belum bayar di bucket parameter rapor saat ini, jadi belum ada yang bisa disimulasikan. 🎉</div>`;
+    html += `<div class="state-box">Gak ada kontrak dengan Kriteria Acct STAY/FLOW/ROLLBACK di bucket parameter rapor saat ini, jadi belum ada yang bisa disimulasikan. 🎉</div>`;
   } else {
     html += `
     <div class="controls">
@@ -1354,7 +1358,7 @@ function renderSimKontrakList_(){
     <label class="sim-kontrak-item">
       <input type="checkbox" data-nokontrak="${k.noKontrak}" ${simulasiRaporState.selected.has(k.noKontrak)?'checked':''}>
       <div class="sim-kontrak-info">
-        <div class="sim-kontrak-name">${k.namaKonsumen||'-'} <span class="sim-kontrak-kontrak">${k.noKontrak}</span></div>
+        <div class="sim-kontrak-name">${k.namaKonsumen||'-'} <span class="sim-kontrak-kontrak">${k.noKontrak}</span>${k.kriteriaAcct ? ' <span class="sim-kriteria-badge sim-kriteria-'+k.kriteriaAcct+'">'+k.kriteriaAcct+'</span>' : ''}</div>
         <div class="sim-kontrak-meta">Bucket Awal ${fmtBucket(k.bucketAwal)} → Sekarang ${fmtBucket(k.bucketUpdateKA||k.bucketUpdateMaster)}${k.flowEver && k.flowEver!==k.bucketUpdateKA ? ' · Flow Ever '+fmtBucket(k.flowEver) : ''}</div>
       </div>
       <div class="sim-kontrak-sipok">${fmtRupiah(k.sisaPiutang)}</div>
