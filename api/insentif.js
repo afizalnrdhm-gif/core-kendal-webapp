@@ -298,11 +298,10 @@ module.exports = async (req, res) => {
 
     // LOG_MINGGUAN opsional — kalau belum ada/gagal dibaca, lanjut tanpa data historis W1-W4
     let logRows = [];
-    let logReadError = null;
     try {
       const logRaw = await fetchSheetRange(sheetId, 'LOG_MINGGUAN', accessToken);
       logRows = parseSheetGeneric(logRaw, 0);
-    } catch (e) { logRows = []; logReadError = e.message; }
+    } catch (e) { logRows = []; }
 
     const masterList = parseSheetGeneric(masterRaw, 0).filter(m => m['NO KONTRAK']);
     const kaRows = parseSheetGeneric(kaRaw, 15); // header KA HARIAN ada di baris ke-16
@@ -340,22 +339,11 @@ module.exports = async (req, res) => {
         return { namaCO: p.namaCO, role: p.role, minggu: p.minggu, insentifRapor, insentifWeekly, total: insentifRapor + insentifWeekly };
       });
 
-    // DEBUG SEMENTARA — biar kelihatan di kartu kenapa datanya kosong. Akan dihapus setelah masalahnya ketemu.
-    const debugLog = {
-      logReadError,
-      totalRowsRead: logRows.length,
-      curTahun, curBulan,
-      matchedThisMonth: Object.keys(weeklyTotalMap).length,
-      weeklyTotalMapKeys: Object.keys(weeklyTotalMap),
-      sampleRawRow: logRows[0] || null,
-      configRoleNames: configRows.map(c => c['NAMA_CO'])
-    };
-
     const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(x => x.trim().toLowerCase());
     const isAdmin = adminEmails.indexOf(email) > -1;
 
     if (isAdmin) {
-      res.status(200).json({ isAdmin: true, achievement: { FE: hasilFE, MR: hasilMR, BCH: hasilBCH }, penyelesaian: hasilPenyelesaian, totalInsentif, minggu, debugLog });
+      res.status(200).json({ isAdmin: true, achievement: { FE: hasilFE, MR: hasilMR, BCH: hasilBCH }, penyelesaian: hasilPenyelesaian, totalInsentif, minggu });
       return;
     }
 
