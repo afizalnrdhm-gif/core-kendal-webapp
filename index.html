@@ -1317,8 +1317,10 @@ function renderSimulasiRapor(){
     diperkirakan tetap seperti data live sekarang:<br>
     • <b>Proyeksi Stay</b> — kontrak <u>flow</u> tapi ada potensi bayar (walau cuma sebagian), sehingga proyeksinya berhenti flow dan
     balik ke <b>Bucket Awal</b>-nya sendiri (piutangnya belum lunas, cuma berhenti nyicil ke bucket berikutnya, gak sampai ngejar ke NOOD).<br>
-    • <b>Proyeksi BTC</b> (Back To Current) — kontrak berhasil ngejar SEMUA tunggakannya balik ke kondisi lancar, jadi bucket-nya balik ke <b>NOOD</b>
-    (bucket pertama/paling sehat) — piutangnya <u>belum lunas</u>, masih tetap kehitung di buku, cuma posisinya balik ke paling awal. <i>(Kalau Bucket Awal kontraknya emang udah NOOD, Stay dan BTC hasilnya sama aja — gak ada bedanya buat kontrak itu.)</i><br>
+    • <b>Proyeksi BTC</b> (Back To Current) — <u>khusus kontrak yang Bucket Awal-nya BUKAN NOOD</u> dan berhasil ngejar SEMUA tunggakannya
+    balik ke kondisi lancar, jadi bucket-nya balik ke <b>NOOD</b> (bucket pertama/paling sehat) — piutangnya <u>belum lunas</u>, masih tetap
+    kehitung di buku, cuma posisinya balik ke paling awal. Kontrak yang Bucket Awal-nya emang udah NOOD gak ditawarin opsi ini — cukup pakai
+    <b>Proyeksi Stay</b> (yang buat kontrak begitu target-nya juga otomatis NOOD).<br>
     • <b>Proyeksi Lunas</b> — kontrak beneran <u>lunas total</u>, sehingga kontrak itu keluar sepenuhnya dari buku piutang yang
     dipantau (keluar dari Balance, Flow Ever, maupun Flow NOOD/1-30/Forward sekaligus).<br>
     Lalu lihat apakah nilai Rapor Harian ${d.isAdmin ? '<b>'+d.namaCO+'</b>' : 'kamu'} jadi ON TARGET atau tidak.
@@ -1395,9 +1397,12 @@ function renderSimKontrakList_(){
     // makin buruk) — buat kontrak STAY (udah diem) atau ROLLBACK (udah membaik), nge-klik Stay
     // gak ngubah apa-apa (dia emang udah "diem" di situ), jadi tombolnya gak usah ditampilkan.
     const showStayBtn = k.kriteriaAcct === 'FLOW';
-    // kontrak yang posisinya SEKARANG udah di NOOD: tombol "Proyeksi BTC" (Back To Current, balik ke NOOD)
-    // gak relevan — dia emang udah di NOOD, gak ada bedanya sama kondisi sekarang.
-    const showBtcBtn = bucketSekarang !== 'NOOD';
+    // "Proyeksi BTC" cuma relevan buat kontrak yang BUCKET AWAL-nya BUKAN NOOD (BTC = ngejar
+    // balik ke NOOD dari kondisi yang udah kadung jelek). Kalau Bucket Awal-nya emang udah NOOD,
+    // itu bukan kasus BTC — cukup "Proyeksi Stay" (yang buat kontrak begini target-nya juga NOOD,
+    // krn Stay = balik ke Bucket Awal sendiri). Tombol BTC juga gak usah muncul kalau posisinya
+    // SEKARANG udah di NOOD (gak ada bedanya sama kondisi live).
+    const showBtcBtn = k.bucketAwal !== 'NOOD' && bucketSekarang !== 'NOOD';
     // badge ini nandain kontrak yang SEKARANG beneran lagi kehitung di Balance rapor — biar CO
     // tau kontrak mana yang paling ngefek kalau di-BTC/Lunas-kan (bukan cuma nebak dari bucket awal).
     const balanceBadge = k.diBalanceSekarang ? '<span class="sim-balance-badge">📍 Di Balance</span>' : '';
