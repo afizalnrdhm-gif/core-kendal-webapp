@@ -308,11 +308,19 @@ module.exports = async (req, res) => {
     const hasilPenyelesaian = hitungPenyelesaianSemua(masterList, configRows);
     const minggu = getMingguSekarang();
 
+    // Total Insentif per CO = Insentif Rapor (achievement harian) + Insentif Penyelesaian Mingguan
+    const raporMap = {};
+    [...hasilFE, ...hasilMR, hasilBCH].filter(Boolean).forEach(h => { raporMap[h.namaCO] = h.insentif; });
+    const totalInsentif = hasilPenyelesaian.map(p => {
+      const insentifRapor = raporMap[p.namaCO] || 0;
+      return { namaCO: p.namaCO, role: p.role, minggu: p.minggu, insentifRapor, insentifWeekly: p.nilai, total: insentifRapor + p.nilai };
+    });
+
     const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(x => x.trim().toLowerCase());
     const isAdmin = adminEmails.indexOf(email) > -1;
 
     if (isAdmin) {
-      res.status(200).json({ isAdmin: true, achievement: { FE: hasilFE, MR: hasilMR, BCH: hasilBCH }, penyelesaian: hasilPenyelesaian, minggu });
+      res.status(200).json({ isAdmin: true, achievement: { FE: hasilFE, MR: hasilMR, BCH: hasilBCH }, penyelesaian: hasilPenyelesaian, totalInsentif, minggu });
       return;
     }
 
@@ -321,8 +329,9 @@ module.exports = async (req, res) => {
     const semuaAchievement = [...hasilFE, ...hasilMR, hasilBCH].filter(Boolean);
     const myAchievement = semuaAchievement.find(h => h.namaCO === myName) || null;
     const myPenyelesaian = hasilPenyelesaian.find(h => h.namaCO === myName) || null;
+    const myTotalInsentif = totalInsentif.find(t => t.namaCO === myName) || null;
 
-    res.status(200).json({ isAdmin: false, achievement: myAchievement, penyelesaian: myPenyelesaian, minggu });
+    res.status(200).json({ isAdmin: false, achievement: myAchievement, penyelesaian: myPenyelesaian, totalInsentif: myTotalInsentif, minggu });
   } catch (err) {
     res.status(500).json({ error: err.message || String(err) });
   }
