@@ -130,7 +130,7 @@ function hitungFESatu(masterList, petaKA, cfg) {
   const nilaiFlowNoOD = tieringFlowNoOD(flowNoODPct);
   const totalNilai = nilaiBalance + nilaiFlowEver + nilaiFlowNoOD;
   const kategori = kategoriRapor(totalNilai);
-  return { namaCO, role: 'FE', balancePct, flowEverPct, flowNoODPct, totalNilai, kategori, insentif: insentifRapor(kategori), totalAwal, flowEverEscaped };
+  return { namaCO, role: 'FE', balancePct, flowEverPct, flowNoODPct, nilaiBalance, nilaiFlowEver, nilaiFlowNoOD, totalNilai, kategori, insentif: insentifRapor(kategori), totalAwal, flowEverEscaped };
 }
 
 function hitungMRSatu(masterList, petaKA, cfg) {
@@ -170,7 +170,7 @@ function hitungMRSatu(masterList, petaKA, cfg) {
   const nilaiFlow = tieringFlow01_30(flowPct);
   const totalNilai = nilaiBalance + nilaiFlowEver + nilaiFlow;
   const kategori = kategoriRapor(totalNilai);
-  return { namaCO, role: 'MR', balancePct, flowEverPct, flowPct, totalNilai, kategori, insentif: insentifRapor(kategori), totalAwal, flowEverEscaped };
+  return { namaCO, role: 'MR', balancePct, flowEverPct, flowPct, nilaiBalance, nilaiFlowEver, nilaiFlow, totalNilai, kategori, insentif: insentifRapor(kategori), totalAwal, flowEverEscaped };
 }
 
 function hitungBCHSatu(masterList, petaKA, cfg) {
@@ -204,7 +204,7 @@ function hitungBCHSatu(masterList, petaKA, cfg) {
   const nilaiBalance = tieringBalance1_60_BCH(balancePct);
   const totalNilai = nilaiFlowEver + nilaiFlowForward + nilaiBalance;
   const kategori = kategoriRapor(totalNilai);
-  return { namaCO, role: 'BCH', flowEverPct, flowForwardPct, balancePct, totalNilai, kategori, insentif: insentifRaporBCH(kategori), totalAwal, flowEverEscaped };
+  return { namaCO, role: 'BCH', flowEverPct, flowForwardPct, balancePct, nilaiFlowEver, nilaiFlowForward, nilaiBalance, totalNilai, kategori, insentif: insentifRaporBCH(kategori), totalAwal, flowEverEscaped };
 }
 
 function hitungSatu(role, masterList, petaKA, cfg) {
@@ -428,6 +428,84 @@ function terapkanSimulasi(masterList, petaKA, proyeksi, role, cfg) {
 }
 
 // ============================================================
+// REKOMENDASI KEJAR — kalau hasil simulasi CO masih di bawah ON TARGET (totalNilai < 3.0),
+// carikan kontrak mana yang PALING ngefek buat dikejar berikutnya (di luar yang udah dipilih
+// user). Caranya BENERAN nyimulasiin tiap kandidat pakai aksi (Stay/BTC/Lunas) yang legal buat
+// kontrak itu lewat hitungSatu() yang SAMA PERSIS dipakai buat hasil utama -- bukan rumus
+// perkiraan/pendekatan terpisah -- biar hasilnya PASTI konsisten & gak ada risiko rumus
+// rekomendasi beda logic sama rumus rapor aslinya. Aksi yang dicoba per kontrak ngikutin
+// persis aturan tombol yang muncul di UI (lihat showStayBtn/showBtcBtn di index.html).
+// ============================================================
+function aksiLegalUntukKontrak(k) {
+  const bucketSekarang = (k.bucketUpdateKA || k.bucketUpdateMaster || '').toString().trim();
+  const aksi = [];
+  if ((k.kriteriaAcct || '').toString().trim().toUpperCase() === 'FLOW') aksi.push('stay');
+  if (k.bucketAwal !== 'NOOD' && bucketSekarang !== 'NOOD') aksi.push('btc');
+  aksi.push('lunas');
+  return aksi;
+}
+
+// PENTING: nilai tiap metric itu TIERED berdasarkan persentase agregat (bukan linear per kontrak),
+// jadi ngejar SATU kontrak SENDIRIAN hampir selalu keliatan "gak nambah poin apa-apa" (karena
+// persentasenya masih di tier yang sama) walau beneran gerak ke arah yang benar -- poinnya baru
+// keliatan naik setelah BEBERAPA kontrak digabung sampai nembus batas tier berikutnya. Makanya
+// rekomendasi ini gak nyari "1 kontrak terbaik" doang, tapi GREEDY bertahap: tiap putaran nyoba
+// SEMUA kandidat x aksi yang tersisa di atas kondisi yang lagi kekumpul sejauh ini, ambil yang
+// hasil akhirnya paling tinggi (walau selisihnya 0 dari putaran sebelumnya -- itu tanda dia lagi
+// "ngisi" tier yang sama menuju ambang berikutnya), lalu ulang lagi. Berhenti begitu ON TARGET
+// kesampaian, kandidat habis, gak ada lagi aksi yang hasilnya sama-atau-lebih-baik (berarti sisanya
+// cuma bakal bikin turun), atau udah 12 putaran (batas wajar dari sisi biaya komputasi).
+function hitungRekomendasiKejar(masterList, petaKA, proyeksiValid, role, cfg, kontrakList, simulasiSekarang) {
+  if (simulasiSekarang.totalNilai >= 3.0) return null; // udah ON TARGET, gak perlu rekomendasi
+
+  // Kandidat = kontrak relevan yang BELUM dikasih proyeksi dari pilihan user sekarang. Dibatasin
+  // ke 40 kontrak SIPOK terbesar biar komputasinya gak berat (tiap putaran perlu nyoba beberapa
+  // kali hitungSatu per kandidat -- gak perlu nyoba SEMUA kontrak sekaligus, dan kontrak SIPOK
+  // gede emang lebih masuk akal buat diprioritaskan dikejar duluan).
+  let kandidat = kontrakList
+    .filter(k => !Object.prototype.hasOwnProperty.call(proyeksiValid, k.noKontrak))
+    .sort((a, b) => b.sisaPiutang - a.sisaPiutang)
+    .slice(0, 40);
+  if (!kandidat.length) return null;
+
+  const MAKS_PUTARAN = 12;
+  const proyeksiKerja = Object.assign({}, proyeksiValid);
+  const daftar = [];
+  let totalNilaiSekarang = simulasiSekarang.totalNilai;
+
+  for (let putaran = 0; putaran < MAKS_PUTARAN && kandidat.length; putaran++) {
+    let terbaik = null; // { idxKandidat, aksi, totalNilaiBaru }
+    kandidat.forEach((k, idx) => {
+      aksiLegalUntukKontrak(k).forEach(aksi => {
+        const trial = Object.assign({}, proyeksiKerja, { [k.noKontrak]: aksi });
+        const { masterList2, petaKA2 } = terapkanSimulasi(masterList, petaKA, trial, role, cfg);
+        const hasil = hitungSatu(role, masterList2, petaKA2, cfg);
+        if (!terbaik || hasil.totalNilai > terbaik.totalNilaiBaru) terbaik = { idxKandidat: idx, aksi, totalNilaiBaru: hasil.totalNilai };
+      });
+    });
+    // Berhenti kalau opsi terbaik yang tersisa malah bikin turun -- gak ada gunanya direkomendasikan.
+    if (!terbaik || terbaik.totalNilaiBaru < totalNilaiSekarang - 1e-9) break;
+
+    const k = kandidat[terbaik.idxKandidat];
+    proyeksiKerja[k.noKontrak] = terbaik.aksi;
+    daftar.push({
+      noKontrak: k.noKontrak, namaKonsumen: k.namaKonsumen, sisaPiutang: k.sisaPiutang, aksi: terbaik.aksi,
+      poinGain: terbaik.totalNilaiBaru - totalNilaiSekarang, totalNilaiSetelah: terbaik.totalNilaiBaru
+    });
+    totalNilaiSekarang = terbaik.totalNilaiBaru;
+    kandidat.splice(terbaik.idxKandidat, 1);
+    if (totalNilaiSekarang >= 3.0) break;
+  }
+
+  if (!daftar.length) return null;
+
+  return {
+    daftar,
+    proyeksiGabungan: { totalNilai: totalNilaiSekarang, kategori: kategoriRapor(totalNilaiSekarang), tercapai: totalNilaiSekarang >= 3.0 }
+  };
+}
+
+// ============================================================
 // HANDLER UTAMA
 // ============================================================
 module.exports = async (req, res) => {
@@ -483,13 +561,17 @@ module.exports = async (req, res) => {
       const { masterList2, petaKA2 } = terapkanSimulasi(masterList, petaKA, proyeksiValid, role, cfg);
       const simulasi = hitungSatu(role, masterList2, petaKA2, cfg);
 
+      const kontrakListUntukRekomendasi = daftarKontrakRelevan(namaCO, role, masterList, petaKA, cfg);
+      const rekomendasiKejar = hitungRekomendasiKejar(masterList, petaKA, proyeksiValid, role, cfg, kontrakListUntukRekomendasi, simulasi);
+
       res.status(200).json({
         namaCO, role, isAdmin, coList,
         original, simulasi,
         delta: { totalNilai: simulasi.totalNilai - original.totalNilai, insentif: simulasi.insentif - original.insentif },
         tercapaiOriginal: original.totalNilai >= 3.0,
         tercapaiSimulasi: simulasi.totalNilai >= 3.0,
-        jumlahKontrakDipilih: Object.keys(proyeksiValid).length
+        jumlahKontrakDipilih: Object.keys(proyeksiValid).length,
+        rekomendasiKejar
       });
       return;
     }
