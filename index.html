@@ -1312,8 +1312,8 @@ function renderSimulasiRapor(){
     (bucket awalnya kepakai di rumus itu), MAUPUN kontrak yang <b>SEKARANG</b> beneran lagi kehitung di Balance — ditandain
     <span class="sim-balance-badge">📍 Di Balance</span> — apapun bucket awalnya (misal kontrak yang rollback dari bucket jauh terus
     balik ke 1-30, tetap ke-cover di sini). Kontrak yang Kriteria Acct-nya udah <b>BTC / LUNAS</b> gak ditampilkan lagi (udah beres
-    duluan), begitu juga kontrak bucket <b>NOOD yang masih STAY</b> (kondisi normal mayoritas kontrak, sengaja gak ditawarkan biar
-    daftarnya gak kebanjiran).${d.role === 'MR' ? ' Khusus MR, parameter Flow 1-30 & Balance itu dihitung <u>org-wide</u> (semua CO, bukan cuma kontrak milikmu sendiri) — jadi kontrak yang pemiliknya CO lain bisa aja ikut muncul di sini (ditandai <span class="sim-owner-badge">👤 nama CO</span>) kalau dia relevan buat metric-mu.' : ''}<br>
+    duluan), begitu juga kontrak yang masih <b>STAY</b> persis di bucket asal flow-nya sendiri (NOOD buat FE, 1-30 buat MR) —
+    kondisi normal mayoritas kontrak, belum actionable buat parameter Flow, sengaja gak ditawarkan biar daftarnya gak kebanjiran.${d.role === 'MR' ? ' Khusus MR, parameter Flow 1-30 & Balance itu dihitung <u>org-wide</u> (semua CO, bukan cuma kontrak milikmu sendiri) — jadi kontrak yang pemiliknya CO lain bisa aja ikut muncul di sini (ditandai <span class="sim-owner-badge">👤 nama CO</span>) kalau dia relevan buat metric-mu.' : ''} Daftar diurutkan per bucket (NOOD → 1-30 → 31-60 → dst) biar rapi, dalam satu bucket yang sama diurutin dari SIPOK terbesar.<br>
     Tiap kontrak punya sampai 3 tombol proyeksi, pilih salah satu kalau ada potensi berubah — biarkan kosong kalau kontraknya
     diperkirakan tetap seperti data live sekarang:<br>
     • <b>Proyeksi Stay</b> — kontrak <u>flow</u> tapi ada potensi bayar (walau cuma sebagian), sehingga proyeksinya berhenti flow dan
