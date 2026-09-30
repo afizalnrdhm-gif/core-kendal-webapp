@@ -214,30 +214,29 @@ function hitungSatu(role, masterList, petaKA, cfg) {
   return null;
 }
 
-// Bucket Awal yang benar-benar dipakai di rumus rapor tiap role — di luar bucket ini,
-// kontrak gak kebaca sama sekali oleh 3 parameter rapor (flow ever/flow/balance),
-// jadi gak usah ditawarkan buat disimulasikan.
+// PENTING — basis SCOPE (per-CO vs org-wide/semua-CO) itu BEDA-BEDA tiap parameter tiap role,
+// ngikutin persis gimana hitungFESatu/MRSatu/BCHSatu ngitungnya:
+//   FE  -> flowEverPct, flowNoODPct, balancePct: SEMUA di-scope ke kontrak & KA HARIAN milik CO ini
+//          (kontrakCO = masterList.filter(CO ALL===namaCO), dan balance-nya filter NAMA COLLECTOR===namaCO).
+//   MR  -> flowEverPct doang yang di-scope ke CO ini (kontrakAwalTarget dari kontrakCO). flowPct
+//          ("Flow 1-30") dan balancePct itu ORG-WIDE (loop ke masterList/petaKA TANPA filter CO
+//          ALL/NAMA COLLECTOR sama sekali, cuma exclude FLEET) — jadi kontrak milik CO LAIN yang
+//          bucket awalnya 1-30 (BUCKET_ASAL_FLOW) atau lagi duduk di bucket balance TETAP relevan
+//          buat disimulasikan CO MR ini, bukan cuma kontrak milik dia sendiri.
+//   BCH -> semuanya org-wide (gak ada filter CO/FLEET sama sekali).
 function bucketAwalRelevan(role, cfg) {
   if (role === 'FE' || role === 'MR') {
-    // FE: BUCKET_ASAL_FLOW=NOOD, BUCKET_PENYELESAIAN=P001_030 -> populasi Flow NOOD & Flow Ever
-    // MR: BUCKET_ASAL_FLOW=P001_030, BUCKET_PENYELESAIAN=P031_060 -> populasi Flow 1-30 & Flow Ever
     return [cfg['BUCKET_ASAL_FLOW'], cfg['BUCKET_PENYELESAIAN']].filter(Boolean);
   }
-  if (role === 'BCH') {
-    // persis basis hitungBCHSatu: populasi Flow Ever dari P001_030, populasi Flow Forward dari P031_060
-    return ['P001_030', 'P031_060'];
-  }
+  if (role === 'BCH') return ['P001_030', 'P031_060'];
   return [];
 }
 
-// PENTING: populasi rumus Balance itu BEDA basisnya dari Flow Ever/Flow NOOD di atas —
-// Balance dihitung dari BUCKET UPDATE (posisi SEKARANG di KA HARIAN), bukan dari BUCKET AWAL.
-// Artinya kontrak apapun asalnya (mau dari bucket manapun dia mulai bulan ini), kalau SEKARANG
-// lagi duduk di bucket balance ini, dia ikut jadi pembilang Balance. Makanya daftar simulasi
-// juga harus nyakup kontrak-kontrak begini (bukan cuma yang match bucketAwalRelevan), soalnya
-// tanpa ini, kontrak besar yang "kebetulan" bukan bucket-awal NOOD/1-30 (misal rollback dari
-// 61-90 balik ke 1-30) gak akan pernah bisa dipilih buat disimulasikan padahal dia ngefek gede
-// ke Balance.
+// Balance dihitung dari BUCKET UPDATE (posisi SEKARANG di KA HARIAN), bukan dari BUCKET AWAL —
+// kontrak apapun asalnya, kalau SEKARANG lagi duduk di bucket balance ini, dia ikut jadi
+// pembilang Balance. Union ini penting: tanpa ini, kontrak yang gak match bucket-awal tapi
+// SEKARANG nyangkut di Balance (misal rollback dari 61-90 balik ke 1-30) gak akan pernah bisa
+// dipilih buat disimulasikan padahal ngefek gede ke Balance.
 function bucketBalanceRelevan(role, cfg) {
   if (role === 'BCH') return ['P001_030', 'P031_060'];
   return (cfg['BUCKET_BALANCE'] || '').split(',').map(s => s.trim()).filter(Boolean);
@@ -265,18 +264,32 @@ function masihRelevanDisimulasikan(m) {
 // Daftar kontrak yang RELEVAN buat disimulasikan untuk satu CO. Kontrak masuk daftar kalau
 // KRITERIA ACCT-nya masih STAY/FLOW/ROLLBACK (belum BTC/LUNAS, lihat masihRelevanDisimulasikan)
 // DAN salah satu dari dua ini kena:
-//   (a) Bucket Awal-nya termasuk populasi Flow Ever/Flow NOOD role ini (bucketAwalRelevan) —
-//       ini kontrak yang relevan buat "Proyeksi Stay" (bisa ngentiin flow-nya).
+//   (a) Bucket Awal-nya termasuk populasi Flow Ever/Flow (NOOD/1-30) role ini (bucketAwalRelevan)
 //   (b) Posisi SEKARANG-nya (BUCKET UPDATE di KA HARIAN) lagi duduk di bucket Balance
-//       (bucketBalanceRelevan) — ini kontrak yang relevan buat "Proyeksi BTC/Lunas" (keluar
-//       dari hitungan Balance), APAPUN bucket awalnya.
-// Union dari (a) dan (b) ini penting: tanpa (b), kontrak yang gak match bucket-awal tapi
-// SEKARANG nyangkut di Balance gak akan pernah muncul buat disimulasikan.
+//       (bucketBalanceRelevan), APAPUN bucket awalnya.
+//
+// SCOPE per-CO vs org-wide beda-beda (lihat komentar bucketAwalRelevan di atas):
+//   - FE: pool-nya SELALU kontrak milik CO ini aja (namaCO) — cocok, karena semua parameter FE
+//     memang di-scope per-CO di rumus aslinya.
+//   - MR: pool-nya org-wide (semua CO, exclude FLEET), TAPI relevansi "Bucket Awal = BUCKET_
+//     PENYELESAIAN" (basis Flow Ever) cuma dianggap match kalau kontraknya emang milik CO ini —
+//     persis kayak kontrakAwalTarget di hitungMRSatu yang di-scope ke kontrakCO. Sementara
+//     "Bucket Awal = BUCKET_ASAL_FLOW" (basis Flow 1-30) dan "lagi di bucket Balance" tetap
+//     relevan APAPUN CO pemiliknya, karena kedua basis itu org-wide di rumus aslinya.
+//   - BCH: pool-nya emang udah org-wide dari awal (masterList tanpa filter apapun).
 // ============================================================
 function daftarKontrakRelevan(namaCO, role, masterList, petaKA, cfg) {
-  const bucketAwalSet = bucketAwalRelevan(role, cfg);
   const balanceSet = bucketBalanceRelevan(role, cfg);
-  const poolDasar = role === 'BCH' ? masterList : masterList.filter(m => m['CO ALL'] === namaCO && m['FLEET/NON FLEET'] !== 'FLEET');
+  const bucketPenyelesaian = cfg['BUCKET_PENYELESAIAN'];
+  const bucketAsalFlow = cfg['BUCKET_ASAL_FLOW'];
+  const bucketAwalSet = bucketAwalRelevan(role, cfg);
+
+  const poolDasar = role === 'FE'
+    ? masterList.filter(m => m['CO ALL'] === namaCO && m['FLEET/NON FLEET'] !== 'FLEET')
+    : role === 'MR'
+      ? masterList.filter(m => m['FLEET/NON FLEET'] !== 'FLEET') // org-wide, exclude FLEET aja
+      : masterList; // BCH: org-wide, gak ada filter apapun
+
   const list = [];
   poolDasar.forEach(m => {
     if (!masihRelevanDisimulasikan(m)) return;
@@ -288,7 +301,14 @@ function daftarKontrakRelevan(namaCO, role, masterList, petaKA, cfg) {
     const bucketUpdateKA = ka ? ka['BUCKET UPDATE'] : null;
     const bucketSekarang = (bucketUpdateKA || bucketUpdateMaster || '').toString().trim();
 
-    const relevanAwal = bucketAwalSet.includes(bucketAwal);
+    let relevanAwal;
+    if (role === 'MR') {
+      // Flow Ever (basis bucketPenyelesaian) cuma relevan kalau kontraknya milik CO ini;
+      // Flow 1-30 (basis bucketAsalFlow) relevan APAPUN CO pemiliknya (org-wide).
+      relevanAwal = (bucketAwal === bucketAsalFlow) || (bucketAwal === bucketPenyelesaian && m['CO ALL'] === namaCO);
+    } else {
+      relevanAwal = bucketAwalSet.includes(bucketAwal);
+    }
     const diBalanceSekarang = balanceSet.includes(bucketSekarang);
     if (!relevanAwal && !diBalanceSekarang) return;
 
