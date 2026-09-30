@@ -174,15 +174,19 @@ const REALISASI_COLS = [
   { key: 'BUCKET AWAL', label: 'Bucket Awal', width: 140 }
 ];
 
-// Kolom khusus /nbq 1-30 — urutan sesuai request Kepala Cabang: No Kontrak, Nama Konsumen,
-// Group Product, CMO, Nama CO. "CO ALL" adalah nama kolom asli di sheet MASTER buat pemilik
-// kontrak, cuma dikasih label tampilan "Nama CO" biar lebih jelas dibaca di gambar.
+// Kolom khusus /nbq 1-30. Dasarnya sesuai request Kepala Cabang (No Kontrak, Nama Konsumen,
+// Group Product, CMO, Nama CO), ditambah MOB & Status NBQ (dikelompokkan deket Nama Konsumen,
+// ngikutin pola tabel /nbq default) plus Angsuran (nominal, ditaruh paling belakang). "CO ALL"
+// adalah nama kolom asli di sheet MASTER buat pemilik kontrak, dikasih label tampilan "Nama CO".
 const BUCKET_STAY_COLS = [
   { key: 'NO KONTRAK', label: 'No Kontrak', width: 150 },
-  { key: 'NAMA KONSUMEN', label: 'Nama Konsumen', width: 200, bold: true },
-  { key: 'GROUP PRODUCT', label: 'Group Product', width: 140 },
-  { key: 'CMO', label: 'CMO', width: 170 },
-  { key: 'CO ALL', label: 'Nama CO', width: 210 }
+  { key: 'NAMA KONSUMEN', label: 'Nama Konsumen', width: 190, bold: true },
+  { key: 'NBQ', label: 'MOB', width: 65 },
+  { key: 'STATUS NBQ', label: 'Status NBQ', width: 120 },
+  { key: 'GROUP PRODUCT', label: 'Group Product', width: 130 },
+  { key: 'CMO', label: 'CMO', width: 160 },
+  { key: 'CO ALL', label: 'Nama CO', width: 200 },
+  { key: 'ANGSURAN_FMT', label: 'Angsuran', width: 130 }
 ];
 
 const DASHBOARD_COLS = [
@@ -959,6 +963,9 @@ module.exports = async (req, res) => {
         res.status(200).json({ ok: true });
         return;
       }
+      // Angsuran-nya di MASTER angka mentah -- diformat ke Rupiah dulu di field terpisah
+      // (ANGSURAN_FMT) biar kolom aslinya gak ketiban, walau di sini gak dipakai lagi.
+      rows = rows.map(r => Object.assign({}, r, { ANGSURAN_FMT: fmtRupiah(r['ANGSURAN']) }));
 
       const { year, month, day } = getWibDateParts();
       const subtitle = `Update per: ${fmtTanggalIndo(toIsoDate(year, month, day))}`;
