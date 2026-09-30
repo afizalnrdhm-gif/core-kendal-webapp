@@ -127,6 +127,14 @@ function parseCommand(text) {
   if (arg === 'motorku') return { type: 'gp', gpList: ['MOTORKU'], title: 'NBQ — Group Product MOTORKU' };
   if (arg === 'nb') return { type: 'gp', gpList: ['HONDA', 'YAMAHA'], title: 'NBQ — Group Product HONDA & YAMAHA' };
 
+  // "/nbq 1-30" -> minta khusus Kepala Cabang: kontrak NBQ 1-12 yang Bucket Awal-nya 1-30 DAN
+  // Kriteria Acct-nya masih STAY (bukan follow-up tunggakan seperti /nbq default, ini justru buat
+  // mantau kontrak yang lagi "aman" di bucket 1-30 secara proaktif). Sengaja dicek SEBELUM
+  // rangeMatch di bawah, karena "1-30" kalau lolos ke rangeMatch bakal kebaca sebagai MOB 1..30
+  // (tidak berarti apa-apa, MOB asli cuma sampai 12) -- jadi gak nabrak makna MOB range yang udah
+  // dipakai buat /nbq 1-3, /nbq 1-6, /nbq 1-9 (semua itu MOB beneran di bawah 12).
+  if (arg === '1-30') return { type: 'bucket_stay', bucketAwal: 'P001_030', title: 'NBQ 1-12 — Bucket Awal 1-30 (STAY)' };
+
   const rangeMatch = arg.match(/^(\d+)-(\d+)$/);
   if (rangeMatch) {
     const from = parseInt(rangeMatch[1], 10), to = parseInt(rangeMatch[2], 10);
@@ -164,6 +172,17 @@ const REALISASI_COLS = [
   { key: 'NAMA KONSUMEN', label: 'Nama Konsumen', width: 260, bold: true },
   { key: 'NAMA CO', label: 'Nama CO', width: 260 },
   { key: 'BUCKET AWAL', label: 'Bucket Awal', width: 140 }
+];
+
+// Kolom khusus /nbq 1-30 — urutan sesuai request Kepala Cabang: No Kontrak, Nama Konsumen,
+// Group Product, CMO, Nama CO. "CO ALL" adalah nama kolom asli di sheet MASTER buat pemilik
+// kontrak, cuma dikasih label tampilan "Nama CO" biar lebih jelas dibaca di gambar.
+const BUCKET_STAY_COLS = [
+  { key: 'NO KONTRAK', label: 'No Kontrak', width: 150 },
+  { key: 'NAMA KONSUMEN', label: 'Nama Konsumen', width: 200, bold: true },
+  { key: 'GROUP PRODUCT', label: 'Group Product', width: 140 },
+  { key: 'CMO', label: 'CMO', width: 170 },
+  { key: 'CO ALL', label: 'Nama CO', width: 210 }
 ];
 
 const DASHBOARD_COLS = [
@@ -726,7 +745,7 @@ module.exports = async (req, res) => {
     if (!parsed) { res.status(200).json({ ok: true }); return; }
 
     if (parsed.type === 'invalid') {
-      await sendTelegramMessage(chatId, 'Command tidak dikenali. Coba: /nbq rahul, /nbq ulil, /nbq mobilku, /nbq motorku, /nbq nb, /nbq 1-3, /nbq 1-6, /nbq 1-9, /fpd, /spd, /realisasi, /dashboard all, /dashboard nonfleet, /perform all, /perform co');
+      await sendTelegramMessage(chatId, 'Command tidak dikenali. Coba: /nbq rahul, /nbq ulil, /nbq mobilku, /nbq motorku, /nbq nb, /nbq 1-3, /nbq 1-6, /nbq 1-9, /nbq 1-30, /fpd, /spd, /realisasi, /dashboard all, /dashboard nonfleet, /perform all, /perform co');
       res.status(200).json({ ok: true });
       return;
     }
@@ -909,6 +928,41 @@ module.exports = async (req, res) => {
       const subtitle = `Update per: ${fmtTanggalIndo(toIsoDate(year, month, day))}`;
 
       const png = await renderRaporImage(title, subtitle, sections, weeklySection);
+      await sendTelegramPhoto(chatId, png);
+      res.status(200).json({ ok: true });
+      return;
+    }
+
+    // /nbq 1-30 — populasi kontrak NBQ 1-12, Bucket Awal 1-30, Kriteria Acct STAY (proaktif,
+    // BUKAN follow-up tunggakan kayak /nbq default -- makanya gak dibatasin JATUH TEMPO, dan cuma
+    // butuh MASTER, gak perlu KA HARIAN).
+    if (parsed.type === 'bucket_stay') {
+      const accessToken = await getAccessToken();
+      const sheetId = process.env.GOOGLE_SHEET_ID;
+      const masterRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/MASTER?valueRenderOption=UNFORMATTED_VALUE`, {
+        headers: { Authorization: 'Bearer ' + accessToken }
+      });
+      const masterJson = await masterRes.json();
+      if (!masterJson.values) { await sendTelegramMessage(chatId, 'Gagal ambil data sheet.'); res.status(200).json({ ok: true }); return; }
+
+      const allRows = parseSheetValues(masterJson.values).filter(r => r['NO KONTRAK']);
+      let rows = allRows.filter(m =>
+        m['FLEET/NON FLEET'] !== 'FLEET' &&
+        m['BUCKET AWAL'] === parsed.bucketAwal &&
+        (m['KRITERIA ACCT'] || '').toString().trim().toUpperCase() === 'STAY' &&
+        nbqNum(m) !== null && nbqNum(m) <= 12
+      );
+      rows.sort((a, b) => (nbqNum(a) || 0) - (nbqNum(b) || 0));
+
+      if (rows.length === 0) {
+        await sendTelegramMessage(chatId, `${parsed.title}: tidak ada kontrak yang cocok saat ini.`);
+        res.status(200).json({ ok: true });
+        return;
+      }
+
+      const { year, month, day } = getWibDateParts();
+      const subtitle = `Update per: ${fmtTanggalIndo(toIsoDate(year, month, day))}`;
+      const png = await renderTableImage(parsed.title, subtitle, rows, BUCKET_STAY_COLS);
       await sendTelegramPhoto(chatId, png);
       res.status(200).json({ ok: true });
       return;
