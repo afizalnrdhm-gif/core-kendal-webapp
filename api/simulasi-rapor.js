@@ -248,15 +248,10 @@ function bucketBalanceRelevan(role, cfg) {
 // Kontrak yang udah BTC/LUNAS gak usah ditawarkan lagi buat disimulasikan — mereka udah
 // "resolved", gak ada gunanya. STAY/FLOW/ROLLBACK masih relevan karena masih di buku piutang.
 //
-// Pengecualian: kontrak yang Bucket Awal-nya NOOD DAN Kriteria Acct-nya masih STAY (belum
-// pernah gerak sama sekali dari bucket pertama) SENGAJA gak ditawarkan. Ini kondisi normal
-// buat mayoritas kontrak, kalau ikut ditampilkan daftarnya jadi membanjiri (ratusan kontrak)
-// dan gak ada yang actionable buat disimulasikan dari situ.
 function masihRelevanDisimulasikan(m) {
   const k = (m['KRITERIA ACCT'] || '').toString().trim().toUpperCase();
   if (!k) return true; // kosong -> tetap tampilkan drpd nyembunyiin yang harusnya kelihatan
   if (k === 'BTC' || k === 'LUNAS') return false;
-  if (k === 'STAY' && (m['BUCKET AWAL'] || '').toString().trim() === 'NOOD') return false;
   return true;
 }
 
@@ -310,6 +305,18 @@ function daftarKontrakRelevan(namaCO, role, masterList, petaKA, cfg) {
       relevanAwal = bucketAwalSet.includes(bucketAwal);
     }
     const diBalanceSekarang = balanceSet.includes(bucketSekarang);
+
+    // Kontrak yang KRITERIA ACCT-nya masih STAY persis di BUCKET ASAL FLOW milik role ini sendiri
+    // (NOOD buat FE, P001_030 buat MR) belum pernah gerak sama sekali dari bucket pertama —
+    // gak actionable buat parameter Flow (gak ada yang bisa "di-BTC-in balik", dia emang belum
+    // kemana-mana), jadi gak usah ditawarkan. Berlaku buat FE & MR (BCH gak punya konsep bucket-
+    // asal-flow tunggal kayak gini). Kalau kontraknya KEBETULAN tetap relevan lewat jalur Balance,
+    // tetap ditampilkan.
+    if ((role === 'FE' || role === 'MR') && !diBalanceSekarang) {
+      const kriteria = (m['KRITERIA ACCT'] || '').toString().trim().toUpperCase();
+      if (kriteria === 'STAY' && bucketAwal === bucketAsalFlow) relevanAwal = false;
+    }
+
     if (!relevanAwal && !diBalanceSekarang) return;
 
     const flowEver = ka ? ka['FLOW EVER'] : null;
@@ -327,7 +334,16 @@ function daftarKontrakRelevan(namaCO, role, masterList, petaKA, cfg) {
       diBalanceSekarang
     });
   });
-  list.sort((a, b) => b.sisaPiutang - a.sisaPiutang);
+  // Urut per bucket dulu (NOOD -> 1-30 -> 31-60 -> dst, ngikutin BUCKET_ORDER) berdasarkan posisi
+  // SEKARANG-nya (bukan bucket awal) biar kelompoknya sesuai apa yang kelihatan di layar (baris
+  // "Sekarang"), baru di dalam satu bucket yang sama diurutin dari SIPOK terbesar ke terkecil.
+  list.sort((a, b) => {
+    const bucketA = a.bucketUpdateKA || a.bucketUpdateMaster || a.bucketAwal;
+    const bucketB = b.bucketUpdateKA || b.bucketUpdateMaster || b.bucketAwal;
+    const idxA = bucketIndex(bucketA), idxB = bucketIndex(bucketB);
+    if (idxA !== idxB) return idxA - idxB;
+    return b.sisaPiutang - a.sisaPiutang;
+  });
   return list;
 }
 
