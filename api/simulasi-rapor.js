@@ -355,14 +355,14 @@ function daftarKontrakRelevan(namaCO, role, masterList, petaKA, cfg) {
 //             (bukan ke bucket target role/cfg). Contoh: bucket awal 1-30, konsumen bayar 1x,
 //             bucket update yang tadinya mau lanjut ke 31-60 balik lagi jadi 1-30. Piutangnya
 //             belum lunas jadi TETAP ada di buku (gak dikeluarkan). BUCKET UPDATE (di MASTER
-//             & KA HARIAN) dan FLOW EVER dipaksa = BUCKET AWAL kontrak itu, berlaku sama buat
-//             semua role (FE/MR/BCH) — bukan bucket acuan role (BUCKET_PENYELESAIAN).
+//             & KA HARIAN) dipaksa = BUCKET AWAL kontrak itu, berlaku sama buat semua role
+//             (FE/MR/BCH) — bukan bucket acuan role (BUCKET_PENYELESAIAN).
 //
 //  'btc'   -> Back To Current: kontrak ngejar SEMUA tunggakan sampai bucket update-nya balik
 //             ke NOOD, dari bucket berapapun sekarang (beda dari 'stay' yang cuma balik ke
 //             bucket awal sendiri — BTC lompat lebih jauh, lunasin semua keterlambatan).
 //             Piutangnya BELUM lunas (masih ada SISA PIUTANG, tetap kehitung di buku) — cuma
-//             bucket-nya (MASTER & KA HARIAN) dan FLOW EVER dipaksa balik ke 'NOOD'.
+//             bucket-nya (MASTER & KA HARIAN) dipaksa balik ke 'NOOD'.
 //             Catatan: kalau BUCKET AWAL kontraknya emang udah NOOD, 'stay' dan 'btc' hasilnya
 //             sama-sama NOOD (gak ada bedanya buat kontrak itu secara angka).
 //
@@ -370,6 +370,15 @@ function daftarKontrakRelevan(namaCO, role, masterList, petaKA, cfg) {
 //             seolah keluar dari buku piutang yang dipantau. Otomatis ngefek bener buat semua
 //             kasus: baik yang lagi flow (ilang dari pembilang+penyebut Flow NOOD/Flow Ever)
 //             maupun yang masih stay di bucket balance (ilang dari Balance).
+//
+// PENTING soal FLOW EVER: kolom ini adalah REKOR bucket TERBURUK yang PERNAH dicapai kontrak itu
+// bulan ini (dipertahankan apa adanya dari KA HARIAN, bukan dihitung ulang di sini) — begitu
+// sebuah kontrak "flow ever" ngelewatin bucket acuan, itu udah PERMANEN kehitung buat periode ini,
+// gak bisa "batal" lagi cuma gara-gara kontraknya bayar/membaik (Stay maupun BTC). Satu-satunya
+// cara ngurangin kontribusinya ke Flow Ever adalah kontraknya bener2 LUNAS (keluar total dari buku,
+// otomatis ilang dari pembilang MAUPUN penyebut). Makanya proyeksi 'stay'/'btc' di bawah CUMA
+// mengubah BUCKET UPDATE (posisi sekarang — ini yang boleh membaik), dan SENGAJA TIDAK menyentuh
+// FLOW EVER sama sekali, biar gak "mengunci-buka" rekor yang udah kejadian.
 function bucketTargetSTAY(role, cfg, bucketAwal) {
   return bucketAwal;
 }
@@ -405,9 +414,11 @@ function terapkanSimulasi(masterList, petaKA, proyeksi, role, cfg) {
     if (stayMap[noKontrak]) {
       const m = masterList.find(x => x['NO KONTRAK'] === noKontrak);
       const target = bucketTargetSTAY(role, cfg, m ? m['BUCKET AWAL'] : null);
-      petaKA2[noKontrak] = Object.assign({}, petaKA[noKontrak], { 'BUCKET UPDATE': target, 'FLOW EVER': target });
+      // FLOW EVER SENGAJA gak diubah -- rekor terburuk yang udah kejadian tetap kekunci.
+      petaKA2[noKontrak] = Object.assign({}, petaKA[noKontrak], { 'BUCKET UPDATE': target });
     } else if (btcMap[noKontrak]) {
-      petaKA2[noKontrak] = Object.assign({}, petaKA[noKontrak], { 'BUCKET UPDATE': 'NOOD', 'FLOW EVER': 'NOOD' });
+      // FLOW EVER SENGAJA gak diubah -- rekor terburuk yang udah kejadian tetap kekunci.
+      petaKA2[noKontrak] = Object.assign({}, petaKA[noKontrak], { 'BUCKET UPDATE': 'NOOD' });
     } else {
       petaKA2[noKontrak] = petaKA[noKontrak];
     }
