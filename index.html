@@ -1274,9 +1274,16 @@ function runSimulasiRapor(){
 }
 
 function simMetricLabel_(role){
-  if(role==='FE') return ['Flow No OD','flowNoODPct'];
-  if(role==='MR') return ['Flow 1-30','flowPct'];
-  return ['Flow Forward 31-60','flowForwardPct'];
+  if(role==='FE') return ['Flow No OD','flowNoODPct','nilaiFlowNoOD'];
+  if(role==='MR') return ['Flow 1-30','flowPct','nilaiFlow'];
+  return ['Flow Forward 31-60','flowForwardPct','nilaiFlowForward'];
+}
+
+// Poin tiap metric ditulis di samping persentasenya (mis. "94.59% · 0.30 poin") biar keliatan
+// jelas berapa kontribusi poin dari tiap metric ke total nilai, bukan cuma persentase mentah yang
+// susah dibayangin lagi dekat/jauhnya ke ambang tier berikutnya.
+function simMetricRow_(label, pct, poin, highlight){
+  return `<div class="ins-metric"><span class="mlabel">${label}</span><span class="mval">${fmtPct(pct)} <span class="ins-poin" style="opacity:.65;font-weight:500;">(${(typeof poin==='number'?poin.toFixed(2):'-')} poin)</span></span></div>`;
 }
 
 function simResultCard_(title, h, highlight){
@@ -1289,9 +1296,9 @@ function simResultCard_(title, h, highlight){
     </div>
     <div class="ins-nilai">${h.totalNilai.toFixed(2)} <span style="font-size:12px;color:${highlight?'#BFD2E0':'var(--ink-soft)'};font-weight:500;">/ 5.00</span></div>
     <div class="ins-insentif">${fmtRupiah(h.insentif)}</div>
-    <div class="ins-metric"><span class="mlabel">Balance</span><span class="mval">${fmtPct(h.balancePct)}</span></div>
-    <div class="ins-metric"><span class="mlabel">Flow Ever</span><span class="mval">${fmtPct(h.flowEverPct)}</span></div>
-    <div class="ins-metric"><span class="mlabel">${extra[0]}</span><span class="mval">${fmtPct(h[extra[1]])}</span></div>
+    ${simMetricRow_('Balance', h.balancePct, h.nilaiBalance, highlight)}
+    ${simMetricRow_('Flow Ever', h.flowEverPct, h.nilaiFlowEver, highlight)}
+    ${simMetricRow_(extra[0], h[extra[1]], h[extra[2]], highlight)}
   </div>`;
 }
 
@@ -1355,6 +1362,36 @@ function renderSimulasiRapor(){
         Selisih insentif rapor: <b>${r.delta.insentif>=0?'+':''}${fmtRupiah(r.delta.insentif)}</b>
       </div>
     </div>`;
+
+    // Muncul CUMA kalau hasil simulasi masih di bawah ON TARGET (backend juga udah ngecek ini,
+    // jadi rekomendasiKejar dari server bakal null begitu udah ON TARGET). Daftar ini beneran
+    // hasil simulasi bertahap di server (bukan tebakan), makanya "poin gain" per baris kadang
+    // 0.00 -- itu tandanya kontrak itu lagi "ngisi" menuju ambang tier berikutnya bareng kontrak
+    // lain di daftar yang sama, poinnya baru keliatan naik pas beberapa kontrak digabung.
+    if(r.rekomendasiKejar && r.rekomendasiKejar.daftar && r.rekomendasiKejar.daftar.length){
+      const rk = r.rekomendasiKejar;
+      const aksiLabel = { stay: 'Proyeksi Stay', btc: 'Proyeksi BTC', lunas: 'Proyeksi Lunas' };
+      html += `<div class="ins-section">
+        <h2>💡 Rekomendasi Kontrak yang Perlu Dikejar</h2>
+        <div class="sim-intro" style="margin-bottom:12px;">
+          Simulasi kamu masih <b>di bawah ON TARGET</b>. Ini kontrak-kontrak yang paling ngefek buat dikejar
+          duluan (diurutin dari SIPOK terbesar, dicoba beneran disimulasikan bertahap) — kalau ke-${rk.daftar.length}
+          kontrak ini semua berhasil dikejar sesuai aksi yang disaranin di bawah, proyeksi nilai totalnya jadi
+          <b>${rk.proyeksiGabungan.totalNilai.toFixed(2)}</b> (${rk.proyeksiGabungan.kategori})${rk.proyeksiGabungan.tercapai ? ' — udah ✅ ON TARGET' : ' — masih perlu usaha tambahan di luar daftar ini (populasi kontrak yang berpengaruh mungkin udah abis atau butuh dikejar lebih banyak lagi)'}.
+        </div>
+        <div class="sim-kontrak-list">
+          ${rk.daftar.map(x => `
+            <div class="sim-kontrak-item">
+              <div class="sim-kontrak-info">
+                <div class="sim-kontrak-name">${x.namaKonsumen||'-'} <span class="sim-kontrak-kontrak">${x.noKontrak}</span></div>
+                <div class="sim-kontrak-meta">Disaranin: <b>${aksiLabel[x.aksi]||x.aksi}</b> · setelah kontrak ini nilai jadi ${x.totalNilaiSetelah.toFixed(2)} (${x.poinGain>=0?'+':''}${x.poinGain.toFixed(2)})</div>
+              </div>
+              <div class="sim-kontrak-sipok">${fmtRupiah(x.sisaPiutang)}</div>
+            </div>`).join('')}
+        </div>
+        <div style="margin-top:10px;"><button class="btn primary" id="simTerapkanRekomendasiBtn">✅ Terapkan Semua Rekomendasi Ini</button></div>
+      </div>`;
+    }
   }
 
   html += `<div class="panel-title">Pilih proyeksi tiap kontrak (Stay / BTC / Lunas)</div>`;
@@ -1378,6 +1415,14 @@ function renderSimulasiRapor(){
 
   const coSelect = document.getElementById('simCoSelect');
   if(coSelect){ coSelect.addEventListener('change', e => loadSimulasiRapor(e.target.value)); }
+
+  const terapkanRekomendasiBtn = document.getElementById('simTerapkanRekomendasiBtn');
+  if(terapkanRekomendasiBtn){
+    terapkanRekomendasiBtn.addEventListener('click', () => {
+      SIMULASI_RAPOR_RESULT.rekomendasiKejar.daftar.forEach(x => { simulasiRaporState.proyeksi.set(x.noKontrak, x.aksi); });
+      runSimulasiRapor();
+    });
+  }
 
   if(d.kontrakList && d.kontrakList.length){
     renderSimKontrakList_();
