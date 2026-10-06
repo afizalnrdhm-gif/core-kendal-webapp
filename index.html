@@ -986,6 +986,7 @@ function buildLayout(){
             <th>Bucket</th>
             <th data-key="STATUS BAYAR">Status</th>
             <th data-key="SIPOK" class="num">Sisa Piutang</th>
+            <th class="num" title="Porsi SIPOK kontrak ini terhadap total SIPOK bucket awal yang sama. Kalau kontrak ini flow, persentase Flow bucket itu naik sebesar angka ini.">% Flow</th>
             <th data-key="ANGSURAN" class="num">Angsuran</th>
             <th data-key="DPD" class="num">DPD</th>
             <th data-key="STATUS EVER">Status Ever</th>
@@ -2974,12 +2975,38 @@ function renderActiveChips(){
   });
 }
 
+// % pengaruh kontrak ke Flow bucket awalnya = SIPOK kontrak / total SIPOK non-fleet di bucket awal yang
+// sama (penyebut rumus Flow). FE: penyebut cuma kontrak milik CO itu sendiri (Flow FE per-CO);
+// MR/BCH/Admin/Deskcall: seluruh cabang (Flow MR & BCH org-wide). Kontrak FLEET gak ikut rumus -> "-".
+let FLOW_DENOM_CACHE = null;
+function flowDenom_(){
+  if(FLOW_DENOM_CACHE && FLOW_DENOM_CACHE.src === DATA) return FLOW_DENOM_CACHE;
+  const org = {}, perCO = {};
+  DATA.forEach(r => {
+    if(r['FLEET/NON FLEET'] === 'FLEET') return;
+    const b = r['BUCKET AWAL']; const v = typeof r['SIPOK']==='number' ? r['SIPOK'] : 0;
+    org[b] = (org[b]||0) + v;
+    const k = b + '|' + r['CO ALL']; perCO[k] = (perCO[k]||0) + v;
+  });
+  FLOW_DENOM_CACHE = { src: DATA, org, perCO };
+  return FLOW_DENOM_CACHE;
+}
+function pengaruhFlowText_(r){
+  if(r['FLEET/NON FLEET'] === 'FLEET') return '-';
+  const v = typeof r['SIPOK']==='number' ? r['SIPOK'] : 0;
+  const d = flowDenom_();
+  const isFE = !IS_ADMIN && ROLE_INFO && ROLE_INFO.role === 'FE';
+  const den = isFE ? d.perCO[r['BUCKET AWAL']+'|'+r['CO ALL']] : d.org[r['BUCKET AWAL']];
+  if(!den) return '-';
+  return (v/den*100).toFixed(2) + '%';
+}
+
 function renderTable(){
   const rows = getFiltered();
   const total = currentSourceRecords().length;
   document.getElementById('countNote').innerHTML = `Menampilkan <b>${rows.length}</b> dari <b>${total}</b> kontrak`;
   const tbody = document.getElementById('tbody');
-  if(rows.length===0){ tbody.innerHTML = '<tr class="empty-row"><td colspan="10">Tidak ada kontrak yang cocok.</td></tr>'; return; }
+  if(rows.length===0){ tbody.innerHTML = '<tr class="empty-row"><td colspan="11">Tidak ada kontrak yang cocok.</td></tr>'; return; }
   const showCO = IS_ADMIN || state.tab === 'escalation';
   tbody.innerHTML = rows.map(r => {
     const meta = CO_META[r['CO ALL']] || {short:r['CO ALL']||'-'};
@@ -2991,6 +3018,7 @@ function renderTable(){
       <td data-label="Bucket"><div class="bucket-flow"><span class="bpill" style="background:${BUCKET_COLOR[r['BUCKET AWAL']]||'#999'}">${fmtBucket(r['BUCKET AWAL'])}</span>${differs?' → <span class="bpill" style="background:'+(BUCKET_COLOR[r['BUCKET UPDATE']]||'#999')+'">'+fmtBucket(r['BUCKET UPDATE'])+'</span>':''}</div></td>
       <td data-label="Status"><span class="status-pill ${statusClass(r['STATUS BAYAR'])}">${r['STATUS BAYAR']||'-'}</span></td>
       <td data-label="Sisa Piutang" class="num">${fmtRupiah(r['SIPOK'])}</td>
+      <td data-label="% Flow" class="num">${pengaruhFlowText_(r)}</td>
       <td data-label="Angsuran" class="num">${fmtRupiah(r['ANGSURAN'])}</td>
       <td data-label="DPD" class="num">${r['DPD'] ?? '-'}</td>
       <td data-label="Status Ever">${r['STATUS EVER'] ? `<span class="status-pill ${r['STATUS EVER']==='SUDAH EVER'?'status-belum':'status-sudah'}">${r['STATUS EVER']}</span>` : '-'}</td>
