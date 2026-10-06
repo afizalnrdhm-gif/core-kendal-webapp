@@ -2995,7 +2995,8 @@ function pengaruhFlowText_(r){
   if(r['FLEET/NON FLEET'] === 'FLEET') return '-';
   const v = typeof r['SIPOK']==='number' ? r['SIPOK'] : 0;
   const d = flowDenom_();
-  const isFE = !IS_ADMIN && ROLE_INFO && ROLE_INFO.role === 'FE';
+  // Penyebut mengikuti CO pemilik kontrak (sama dengan Insentif Penyelesaian): FE = per CO, selain itu se-cabang.
+  const isFE = (CO_META[r['CO ALL']] || {}).role === 'Front End';
   const den = isFE ? d.perCO[r['BUCKET AWAL']+'|'+r['CO ALL']] : d.org[r['BUCKET AWAL']];
   if(!den) return '-';
   return (v/den*100).toFixed(2) + '%';
