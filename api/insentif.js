@@ -95,8 +95,16 @@ function kategoriRapor(n){ if(n<1.5)return 'UNACCEPTABLE'; if(n<3.0)return 'NEED
 function insentifRapor(k){ return k==='EXCEPTIONAL'?1000000:k==='EXCEED TARGET'?800000:k==='ON TARGET'?650000:0; }
 function insentifRaporBCH(k){ return k==='EXCEPTIONAL'?1200000:k==='EXCEED TARGET'?900000:k==='ON TARGET'?500000:0; }
 
+// Tanggal "efektif" data: data MASTER ditarik tiap pagi (~08:30 WIB) dan isinya kondisi akhir KEMARIN (H-1).
+// Jadi data pagi tgl 8 = penutup W1 (tgl 1-7), pagi tgl 15 = penutup W2, pagi tgl 22 = penutup W3,
+// dan pagi tgl 1 bulan berikutnya = penutup W4 bulan sebelumnya. Dihitung pakai WIB (UTC+7) supaya
+// tidak geser walau server Vercel jalan di UTC.
+function tanggalEfektif(){
+  const t = new Date(Date.now() + 7*3600*1000 - 24*3600*1000);
+  return { tahun: t.getUTCFullYear(), bulan: t.getUTCMonth() + 1, hari: t.getUTCDate() };
+}
 function getMingguSekarang(){
-  const hari = new Date().getDate();
+  const hari = tanggalEfektif().hari;
   if(hari<=7) return 1; if(hari<=14) return 2; if(hari<=21) return 3; return 4;
 }
 function insentifPenyelesaianFE(p,mg){ const t={1:[[40,750000],[35,500000]],2:[[60,750000],[55,500000]],3:[[75,500000],[70,250000]],4:[[95,500000],[90,250000]]}[mg]; for(const [b,n] of t){ if(p>b) return n; } return 0; }
@@ -317,9 +325,7 @@ module.exports = async (req, res) => {
 
     // Total Insentif per CO = Insentif Rapor (achievement harian) + akumulasi Insentif Penyelesaian dari W1 s.d. minggu berjalan
     // Hanya untuk CO yang punya target rapor (FE/MR/BCH via CONFIG_ROLE) — role lain (misal DESKCALL) tidak ada target, jadi dilewati.
-    const now = new Date();
-    const curTahun = now.getFullYear();
-    const curBulan = now.getMonth() + 1;
+    const { tahun: curTahun, bulan: curBulan } = tanggalEfektif();
     const weeklyTotalMap = {}; // namaCO -> jumlah NILAI dari semua minggu (W1-W4) yang sudah tercatat di LOG_MINGGUAN bulan ini
     logRows.forEach(r => {
       if (Number(r['TAHUN']) !== curTahun || Number(r['BULAN']) !== curBulan) return;
