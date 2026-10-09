@@ -407,6 +407,27 @@
   .sim-target-badge{font-size:12px;font-weight:700;padding:3px 10px;border-radius:20px;margin-left:8px;vertical-align:middle;text-transform:none;letter-spacing:0;}
   .sim-target-ok{background:#E1EFE6;color:var(--good);}
   .sim-target-bad{background:#F7E4E1;color:var(--bad);}
+  .info-tip{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;margin-left:5px;border-radius:50%;border:1px solid var(--line);font-size:10px;font-weight:700;font-style:normal;color:var(--ink-soft);cursor:pointer;vertical-align:middle;line-height:1;user-select:none;}
+  .info-tip:hover{background:var(--navy);border-color:var(--navy);color:#fff;}
+  .pg-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:14px;}
+  .pg-card h3{margin:0 0 6px;font-size:14px;color:var(--navy);}
+  .pg-card p{margin:6px 0;font-size:12.5px;line-height:1.55;color:var(--ink-soft);}
+  .pg-card p b, .pg-card li b{color:var(--ink);}
+  .pg-card ul{margin:6px 0 0;padding-left:18px;font-size:12.5px;line-height:1.6;color:var(--ink-soft);}
+  .pg-metric{border-top:1px dashed var(--line);padding-top:12px;margin-top:12px;scroll-margin-top:70px;}
+  .pg-metric:first-of-type{border-top:none;padding-top:0;margin-top:8px;}
+  .pg-metric.flash{background:var(--gold-soft);border-radius:8px;transition:background .4s;}
+  .pg-metric .pg-title{font-weight:700;font-size:13px;color:var(--ink);}
+  .pg-table{border-collapse:collapse;width:100%;min-width:0;font-size:12px;margin-top:8px;}
+  .pg-table th, .pg-table td{display:table-cell;padding:6px 10px;border-bottom:1px solid var(--line);text-align:left;white-space:normal;background:none !important;cursor:default;position:static;}
+  .pg-table th{font-size:10.5px;text-transform:uppercase;color:var(--ink-soft);}
+  .pg-table td.r, .pg-table th.r{text-align:right;font-family:var(--mono);}
+  .pg-scroll{overflow-x:auto;}
+  .pg-note{font-size:11.5px;color:var(--ink-soft);margin-top:8px;}
+  .pg-table{display:table !important;} .pg-table thead{display:table-header-group !important;} .pg-table tbody{display:table-row-group !important;}
+  .pg-table tr, .pg-table thead tr{display:table-row !important;margin:0 !important;border:none !important;border-radius:0 !important;}
+  .pg-table td, .pg-table th{display:table-cell !important;}
+  .pg-table td::before{content:none !important;}
   .view-toggle-note{font-size:11.5px;color:var(--ink-soft);margin-bottom:14px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;}
   .view-toggle-note:hover{color:var(--navy);}
 
@@ -517,6 +538,10 @@
         <button class="nav-item" data-view="simulasi" id="navSimulasi">
           <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="7" x2="16" y2="7"/><line x1="8" y1="11" x2="10" y2="11"/><line x1="13" y1="11" x2="15" y2="11"/><line x1="8" y1="15" x2="10" y2="15"/><line x1="13" y1="15" x2="15" y2="15"/></svg>
           <span>Simulasi Penawaran</span>
+        </button>
+        <button class="nav-item" data-view="panduan" id="navPanduan">
+          <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16"/><line x1="12" y1="8" x2="12" y2="8.01"/></svg>
+          <span>Panduan KPI</span>
         </button>
       </nav>
       <div class="sidebar-footer">
@@ -713,6 +738,7 @@ document.getElementById('navInsentif').addEventListener('click', () => switchVie
 document.getElementById('navSimulasiRapor').addEventListener('click', () => switchView('simulasirapor'));
 document.getElementById('navDekscall').addEventListener('click', () => switchView('dekscall'));
 document.getElementById('navSimulasi').addEventListener('click', () => switchView('simulasi'));
+document.getElementById('navPanduan').addEventListener('click', () => switchView('panduan'));
 document.getElementById('menuToggle').addEventListener('click', () => {
   document.getElementById('sidebar').classList.add('show');
   document.getElementById('sidebarOverlay').classList.add('show');
@@ -787,6 +813,7 @@ function onDataLoaded(res){
     navInsentif.classList.add('nav-hidden');
     navSimulasiRapor.classList.add('nav-hidden');
     navRingkasan.classList.add('nav-hidden');
+    document.getElementById('navPanduan').classList.add('nav-hidden');
   }
 
   // Tanggal Bayar Bulan Lalu: FE, MR, Admin, dan DESKCALL boleh lihat (lingkupnya beda-beda per role).
@@ -1074,7 +1101,7 @@ function updateFilterBadge(){
 let VIEW_MODE = 'dashboard';
 let INSENTIF_DATA = null;
 
-const VIEW_TITLES = { ringkasan: 'Dashboard', dashboard: 'Beban Awal', nbq: 'NBQ', feever: 'FE Ever', tglbayar: 'Tanggal Bayar Bulan Lalu', insentif: 'Insentif', dekscall: 'Dekscall', simulasi: 'Simulasi Penawaran', simulasirapor: 'Simulasi Rapor' };
+const VIEW_TITLES = { ringkasan: 'Dashboard', dashboard: 'Beban Awal', nbq: 'NBQ', feever: 'FE Ever', tglbayar: 'Tanggal Bayar Bulan Lalu', insentif: 'Insentif', dekscall: 'Dekscall', simulasi: 'Simulasi Penawaran', simulasirapor: 'Simulasi Rapor', panduan: 'Panduan KPI & Insentif' };
 
 function triggerFadeIn(){
   const el = document.getElementById('wrap');
@@ -1096,6 +1123,7 @@ function switchView(view){
   document.getElementById('navSimulasiRapor').classList.toggle('active', view === 'simulasirapor');
   document.getElementById('navDekscall').classList.toggle('active', view === 'dekscall');
   document.getElementById('navSimulasi').classList.toggle('active', view === 'simulasi');
+  document.getElementById('navPanduan').classList.toggle('active', view === 'panduan');
   document.getElementById('mobilePageTitle').textContent = VIEW_TITLES[view] || '';
   closeSidebarDrawer();
 
@@ -1128,6 +1156,145 @@ function switchView(view){
     if(INSENTIF_DATA){ renderInsentifView(); triggerFadeIn(); } else { loadInsentif(); }
   } else if(view === 'simulasirapor'){
     if(SIMULASI_RAPOR_DATA){ renderSimulasiRapor(); triggerFadeIn(); } else { loadSimulasiRapor(); }
+  } else if(view === 'panduan'){
+    renderPanduan();
+    triggerFadeIn();
+  }
+}
+
+
+// ============================================================
+// PANDUAN KPI & INSENTIF — angka mengikuti tiering di api/insentif.js (kalau tiering di sana berubah, ubah juga di sini)
+// ============================================================
+const PANDUAN_TIER = {
+  FE: [
+    { key:'flowever',  nama:'Flow Ever 1-30', maks:1.5, tiers:[['> 60%',0.3],['> 55%',0.6],['> 50%',0.9],['> 45%',1.2],['≤ 45%',1.5]] },
+    { key:'balance',   nama:'Balance 1-30',   maks:1.5, tiers:[['> 10%',0.3],['> 9.5%',0.6],['> 9%',0.9],['> 8.5%',1.2],['≤ 8.5%',1.5]] },
+    { key:'flownood',  nama:'Flow No OD (NOOD → 1-30)', maks:2.0, tiers:[['> 4.2%',0.4],['> 3.7%',0.8],['> 3.2%',1.2],['> 2.7%',1.6],['≤ 2.7%',2.0]] }
+  ],
+  MR: [
+    { key:'flowever',  nama:'Flow Ever 31-60', maks:1.5, tiers:[['> 70%',0.3],['> 65%',0.6],['> 60%',0.9],['> 55%',1.2],['≤ 55%',1.5]] },
+    { key:'balance',   nama:'Balance 31-60',   maks:1.5, tiers:[['> 2.4%',0.3],['> 2.2%',0.6],['> 2.0%',0.9],['> 1.8%',1.2],['≤ 1.8%',1.5]] },
+    { key:'flow130',   nama:'Flow 1-30 (1-30 → 31-60)', maks:2.0, tiers:[['> 9.6%',0.4],['> 8.6%',0.8],['> 7.6%',1.2],['> 6.6%',1.6],['≤ 6.6%',2.0]] }
+  ],
+  BCH: [
+    { key:'flowever',  nama:'Flow Ever 1-30', maks:2.0, tiers:[['> 60%',0.4],['> 55%',0.8],['> 50%',1.2],['> 45%',1.6],['≤ 45%',2.0]] },
+    { key:'flowfwd',   nama:'Flow Forward 31-60 (→ 61-90)', maks:2.0, tiers:[['> 33%',0.4],['> 31%',0.8],['> 29%',1.2],['> 27%',1.6],['≤ 27%',2.0]] },
+    { key:'balance',   nama:'Balance 1-60',   maks:1.0, tiers:[['> 12%',0.2],['> 11%',0.4],['> 10%',0.6],['> 9%',0.8],['≤ 9%',1.0]] }
+  ]
+};
+const PANDUAN_ROLE_NAMA = { FE:'Front End (FE)', MR:'Mid Range (MR)', BCH:'Branch Collection Head (BCH)' };
+const PANDUAN_INSENTIF_RAPOR = {
+  FE:  [['EXCEPTIONAL','≥ 4.50',1000000],['EXCEED TARGET','4.00 – 4.49',800000],['ON TARGET','3.00 – 3.99',650000],['NEED IMPROVEMENT','1.50 – 2.99',0],['UNACCEPTABLE','< 1.50',0]],
+  BCH: [['EXCEPTIONAL','≥ 4.50',1200000],['EXCEED TARGET','4.00 – 4.49',900000],['ON TARGET','3.00 – 3.99',500000],['NEED IMPROVEMENT','1.50 – 2.99',0],['UNACCEPTABLE','< 1.50',0]]
+};
+PANDUAN_INSENTIF_RAPOR.MR = PANDUAN_INSENTIF_RAPOR.FE;
+// [batas1, nominal1, batas2, nominal2] per minggu
+const PANDUAN_PENYELESAIAN = {
+  FE:  { 1:[40,750000,35,500000], 2:[60,750000,55,500000], 3:[75,500000,70,250000], 4:[95,500000,90,250000] },
+  MR:  { 1:[30,750000,25,500000], 2:[50,750000,45,500000], 3:[65,500000,60,250000], 4:[75,500000,70,250000] },
+  BCH: { 1:[32,1000000,27,500000], 2:[52,1000000,47,500000], 3:[68,500000,63,250000], 4:[83,500000,78,250000] }
+};
+const PANDUAN_INFO = {
+  balance:  { judul:'Balance', ringkas:'Porsi SIPOK di bucket target dibanding seluruh portofolio. Makin kecil makin bagus.',
+    isi:'<b>Balance</b> = total SIPOK kontrak yang <u>sekarang</u> berada di bucket target ÷ total SIPOK seluruh portofolio (sampai bucket 181-210), dikali 100. Bucket target: FE = 1-30, MR = 31-60, BCH = 1-60. FE dihitung per CO (tanpa FLEET), MR dan BCH se-cabang. <b>Makin kecil makin bagus</b>: kontrak yang lunas atau BTC keluar dari bucket target dan menurunkan angka ini.' },
+  flowever: { judul:'Flow Ever', ringkas:'Persen kontrak bucket awal target yang pernah naik ke bucket lebih tinggi bulan ini. Sifatnya permanen.',
+    isi:'<b>Flow Ever</b> = jumlah kontrak berbucket awal target yang <u>pernah</u> tercatat naik ke bucket lebih tinggi bulan ini ÷ jumlah semua kontrak berbucket awal target, dikali 100. Dihitung per kontrak (bukan per rupiah). Catatan FLOW EVER tidak turun lagi walau kontrak itu kemudian membayar dan balik ke bucket awal, jadi cara menjaganya adalah <b>mencegah kontrak flow sejak awal</b>. Makin kecil makin bagus.' },
+  flownood: { judul:'Flow No OD (khusus FE)', ringkas:'SIPOK kontrak NOOD awal yang kini jadi 1-30, dibanding total SIPOK NOOD awal.',
+    isi:'<b>Flow No OD</b> = SIPOK kontrak yang bucket awalnya NOOD tetapi bucket update-nya sudah 1-30 ÷ total SIPOK kontrak berbucket awal NOOD (milik CO itu, tanpa FLEET), dikali 100. Artinya: seberapa banyak kontrak lancar yang jatuh telat bulan ini. Makin kecil makin bagus.' },
+  flow130:  { judul:'Flow 1-30 (khusus MR)', ringkas:'SIPOK kontrak bucket awal 1-30 yang kini jadi 31-60, dibanding total SIPOK bucket awal 1-30.',
+    isi:'<b>Flow 1-30</b> = SIPOK kontrak yang bucket awalnya 1-30 tetapi update-nya sudah 31-60 ÷ total SIPOK kontrak berbucket awal 1-30, dikali 100. Dihitung <u>se-cabang</u> (semua CO, tanpa FLEET), jadi kontrak CO lain ikut berpengaruh ke rapor MR. Makin kecil makin bagus.' },
+  flowfwd:  { judul:'Flow Forward 31-60 (khusus BCH)', ringkas:'SIPOK kontrak bucket awal 31-60 yang kini jadi 61-90, dibanding total SIPOK bucket awal 31-60.',
+    isi:'<b>Flow Forward 31-60</b> = SIPOK kontrak yang bucket awalnya 31-60 tetapi update-nya sudah 61-90 ÷ total SIPOK kontrak berbucket awal 31-60, dikali 100. Dihitung se-cabang. Makin kecil makin bagus.' },
+  penyelesaian: { judul:'Insentif Penyelesaian', ringkas:'Persen SIPOK bucket penyelesaian yang berhasil tidak flow. Batas tier naik tiap minggu.',
+    isi:'' }
+};
+function infoTip_(key){
+  const i = PANDUAN_INFO[key]; if(!i) return '';
+  return `<i class="info-tip" title="${i.ringkas.replace(/"/g,'&quot;')} (klik untuk panduan lengkap)" onclick="event.stopPropagation();bukaPanduan('${key}')">i</i>`;
+}
+function infoTipByLabel_(label){
+  const l = String(label||'');
+  if(/^Balance/.test(l)) return infoTip_('balance');
+  if(/^Flow Ever/.test(l)) return infoTip_('flowever');
+  if(/^Flow No OD/.test(l)) return infoTip_('flownood');
+  if(/^Flow 1-30/.test(l)) return infoTip_('flow130');
+  if(/^Flow Forward/.test(l)) return infoTip_('flowfwd');
+  return '';
+}
+let PANDUAN_ROLE = null;
+let PANDUAN_FOKUS = null;
+function bukaPanduan(key){
+  PANDUAN_FOKUS = key;
+  if(VIEW_MODE === 'panduan'){ renderPanduan(); } else { switchView('panduan'); }
+}
+function panduanRoleDefault_(){
+  const r = ROLE_INFO && ROLE_INFO.role;
+  if(r === 'FE' || r === 'MR' || r === 'BCH') return r;
+  return 'FE';
+}
+function renderPanduan(){
+  if(!PANDUAN_ROLE) PANDUAN_ROLE = panduanRoleDefault_();
+  const role = PANDUAN_ROLE;
+  const rp = n => n > 0 ? fmtRupiah(n) : '-';
+  let html = `<div class="view-toggle-note" onclick="switchView('dashboard')">← Kembali ke Dashboard</div>`;
+  html += `<div class="rk-header"><h1>Panduan KPI &amp; Insentif</h1></div>`;
+  html += `<div class="pg-card"><p>Halaman ini menjelaskan <b>cara baca rapor</b>, <b>target KPI per metrik</b>, dan <b>cara hitung insentif</b>. Angkanya sama dengan yang dipakai sistem untuk menghitung Achievement dan Insentif. Pilih role di bawah untuk melihat tabel poinnya.</p></div>`;
+  html += `<div class="pill-toggle" style="margin-bottom:14px;">${['FE','MR','BCH'].map(r => `<button class="${r===role?'active':''}" onclick="PANDUAN_ROLE='${r}';renderPanduan()">${r}</button>`).join('')}</div>`;
+
+  // 1. Rapor
+  html += `<div class="pg-card"><h3>1. Rapor harian — ${PANDUAN_ROLE_NAMA[role]}</h3>
+    <p>Nilai rapor = jumlah poin dari <b>3 metrik</b> (maksimal <b>5.00</b>). Semua metrik ini <b>makin kecil makin bagus</b>.</p>`;
+  PANDUAN_TIER[role].forEach(m => {
+    const info = PANDUAN_INFO[m.key];
+    html += `<div class="pg-metric" id="pg-${m.key}"><div class="pg-title">${m.nama} <span style="font-weight:500;color:var(--ink-soft);">· maks ${m.maks.toFixed(2)} poin</span></div>
+      <p style="margin-top:4px;">${info ? info.isi : ''}</p>
+      <div class="pg-scroll"><table class="pg-table"><thead><tr><th>Hasil</th><th class="r">Poin</th></tr></thead><tbody>
+      ${m.tiers.map(t => `<tr><td>${t[0]}</td><td class="r">${t[1].toFixed(2)}</td></tr>`).join('')}
+      </tbody></table></div></div>`;
+  });
+  html += `</div>`;
+
+  // 2. Kategori + insentif rapor
+  html += `<div class="pg-card"><h3>2. Kategori &amp; insentif rapor</h3>
+    <p>Total poin menentukan kategori, dan kategori menentukan insentif rapor.</p>
+    <div class="pg-scroll"><table class="pg-table"><thead><tr><th>Kategori</th><th>Total poin</th><th class="r">Insentif</th></tr></thead><tbody>
+    ${PANDUAN_INSENTIF_RAPOR[role].map(k => `<tr><td><span class="kategori-pill ${katClass(k[0])}">${k[0]}</span></td><td>${k[1]}</td><td class="r">${rp(k[2])}</td></tr>`).join('')}
+    </tbody></table></div>
+    <p class="pg-note">Target minimal untuk dapat insentif rapor adalah <b>ON TARGET</b> (total poin 3.00).</p></div>`;
+
+  // 3. Penyelesaian
+  const pen = PANDUAN_PENYELESAIAN[role];
+  html += `<div class="pg-card" id="pg-penyelesaian"><h3>3. Insentif Penyelesaian (mingguan)</h3>
+    <p><b>Persen penyelesaian</b> = 100% − persen flow. Dihitung dari SIPOK kontrak di bucket penyelesaian milikmu yang <u>tidak naik bucket</u> ÷ total SIPOK bucket tersebut. <b>Makin besar makin bagus</b> (kebalikan dari metrik rapor). ${role==='FE' ? 'FE dihitung per CO tanpa FLEET.' : role==='MR' ? 'MR dihitung se-cabang tanpa FLEET.' : 'BCH dihitung se-cabang termasuk FLEET.'}</p>
+    <p>Batas tier naik tiap minggu: minggu 1 = tanggal 1–7, minggu 2 = 8–14, minggu 3 = 15–21, minggu 4 = tanggal 22 sampai akhir bulan.</p>
+    <div class="pg-scroll"><table class="pg-table"><thead><tr><th>Minggu</th><th>Tier 1 (lebih tinggi)</th><th>Tier 2</th></tr></thead><tbody>
+    ${[1,2,3,4].map(w => `<tr><td>Minggu ${w}</td><td>&gt; ${pen[w][0]}% → ${fmtRupiah(pen[w][1])}</td><td>&gt; ${pen[w][2]}% → ${fmtRupiah(pen[w][3])}</td></tr>`).join('')}
+    </tbody></table></div>
+    <p class="pg-note">Di halaman Insentif, kartu Insentif Penyelesaian menunjukkan berapa persen lagi yang dibutuhkan ke tier berikutnya dan kontrak mana yang sebaiknya dikejar.</p></div>`;
+
+  // 4. Istilah
+  html += `<div class="pg-card"><h3>4. Istilah yang sering muncul</h3><ul>
+    <li><b>SIPOK</b>: sisa piutang pokok kontrak (di tabel tertulis "Sisa Piutang").</li>
+    <li><b>Bucket awal</b>: posisi bucket kontrak di awal bulan. <b>Bucket update</b>: posisi terbarunya.</li>
+    <li><b>NOOD</b>: kontrak lancar, belum telat. <b>1-30, 31-60, dst</b>: rentang hari keterlambatan.</li>
+    <li><b>Kriteria STAY</b>: bucket update masih sama dengan bucket awal.</li>
+    <li><b>Kriteria FLOW</b>: bucket update lebih buruk dari bucket awal.</li>
+    <li><b>Kriteria BTC (Back To Current)</b>: kontrak yang tadinya telat sudah kembali ke NOOD.</li>
+    <li><b>Kriteria ROLLBACK</b>: bucket update lebih baik dari bucket awal.</li>
+    <li><b>FLEET</b>: kontrak fleet tidak dihitung di Flow dan Balance FE/MR, jadi persen Flow-nya tampil "-".</li>
+    <li><b>NBQ</b>: umur kontrak dalam MOB (bulan sejak kontrak berjalan). Status NBQ seperti Normal, Appeal, atau Pre Approval menunjukkan jalur persetujuannya.</li>
+    <li><b>% Flow di Beban Awal</b>: SIPOK kontrak ÷ total SIPOK bucket awal yang sama. Untuk kontrak CO Front End, pembaginya total bucket itu milik CO tersebut; untuk CO Mid Range, pembaginya se-cabang. Angkanya menunjukkan seberapa besar kontrak itu menambah flow kalau sampai naik bucket.</li>
+  </ul></div>`;
+
+  document.getElementById('wrap').innerHTML = html;
+  if(PANDUAN_FOKUS){
+    const id = PANDUAN_FOKUS === 'penyelesaian' ? 'pg-penyelesaian' : 'pg-' + PANDUAN_FOKUS;
+    PANDUAN_FOKUS = null;
+    setTimeout(() => {
+      const el = document.getElementById(id);
+      if(el){ el.scrollIntoView({behavior:'smooth', block:'start'}); el.classList.add('flash'); setTimeout(() => el.classList.remove('flash'), 1800); }
+    }, 60);
   }
 }
 
@@ -1156,15 +1323,15 @@ function achievementCard(h, extraLabel, extraKey){
     </div>
     <div class="ins-nilai">${h.totalNilai.toFixed(2)} <span style="font-size:12px;color:var(--ink-soft);font-weight:500;">/ 5.00</span></div>
     <div class="ins-insentif">${fmtRupiah(h.insentif)}</div>
-    <div class="ins-metric"><span class="mlabel">Balance</span><span class="mval">${fmtPct(h.balancePct)}</span></div>
-    <div class="ins-metric"><span class="mlabel">Flow Ever (${h.flowEverEscaped}/${h.totalAwal})</span><span class="mval">${fmtPct(h.flowEverPct)}</span></div>
-    <div class="ins-metric"><span class="mlabel">${extraLabel}</span><span class="mval">${fmtPct(h[extraKey])}</span></div>
+    <div class="ins-metric"><span class="mlabel">Balance${infoTip_('balance')}</span><span class="mval">${fmtPct(h.balancePct)}</span></div>
+    <div class="ins-metric"><span class="mlabel">Flow Ever (${h.flowEverEscaped}/${h.totalAwal})${infoTip_('flowever')}</span><span class="mval">${fmtPct(h.flowEverPct)}</span></div>
+    <div class="ins-metric"><span class="mlabel">${extraLabel}${infoTipByLabel_(extraLabel)}</span><span class="mval">${fmtPct(h[extraKey])}</span></div>
   </div>`;
 }
 
 function penyelesaianCard(p){
   const gapHtml = p.gapPct !== null
-    ? `<div class="ins-gap">🎯 Butuh naik <b>${p.gapPct.toFixed(2)}%</b> lagi ke tier berikutnya<br>(± <b>${fmtRupiah(p.gapRupiah)}</b> SIPOK yang perlu diselesaikan)</div>`
+    ? `<div class="ins-gap">🎯 Butuh naik <b>${p.gapPct.toFixed(2)}%</b> lagi ke tier berikutnya ${infoTip_('penyelesaian')}<br>(± <b>${fmtRupiah(p.gapRupiah)}</b> SIPOK yang perlu diselesaikan)</div>`
     : `<div class="ins-gap">🏆 Sudah di tier tertinggi minggu ini</div>`;
   const rekomHtml = p.rekomendasi && p.rekomendasi.length
     ? `<div class="ins-rekom">
@@ -1284,7 +1451,7 @@ function simMetricLabel_(role){
 // jelas berapa kontribusi poin dari tiap metric ke total nilai, bukan cuma persentase mentah yang
 // susah dibayangin lagi dekat/jauhnya ke ambang tier berikutnya.
 function simMetricRow_(label, pct, poin, highlight){
-  return `<div class="ins-metric"><span class="mlabel">${label}</span><span class="mval">${fmtPct(pct)} <span class="ins-poin" style="opacity:.65;font-weight:500;">(${(typeof poin==='number'?poin.toFixed(2):'-')} poin)</span></span></div>`;
+  return `<div class="ins-metric"><span class="mlabel">${label}${infoTipByLabel_(label)}</span><span class="mval">${fmtPct(pct)} <span class="ins-poin" style="opacity:.65;font-weight:500;">(${(typeof poin==='number'?poin.toFixed(2):'-')} poin)</span></span></div>`;
 }
 
 function simResultCard_(title, h, highlight){
