@@ -565,8 +565,16 @@ function bchRowFor(h) {
 // ============================================================
 // INSENTIF PENYELESAIAN MINGGUAN — replikasi persis formula di api/insentif.js
 // ============================================================
+// Tanggal "efektif" data: data MASTER ditarik tiap pagi (~08:30 WIB) dan isinya kondisi akhir KEMARIN (H-1).
+// Jadi data pagi tgl 8 = penutup W1 (tgl 1-7), pagi tgl 15 = penutup W2, pagi tgl 22 = penutup W3,
+// dan pagi tgl 1 bulan berikutnya = penutup W4 bulan sebelumnya. Dihitung pakai WIB (UTC+7) supaya
+// tidak geser walau server Vercel jalan di UTC.
+function tanggalEfektif(){
+  const t = new Date(Date.now() + 7*3600*1000 - 24*3600*1000);
+  return { tahun: t.getUTCFullYear(), bulan: t.getUTCMonth() + 1, hari: t.getUTCDate() };
+}
 function getMingguSekarang(){
-  const hari = new Date().getDate();
+  const hari = tanggalEfektif().hari;
   if(hari<=7) return 1; if(hari<=14) return 2; if(hari<=21) return 3; return 4;
 }
 function insentifPenyelesaianFE(p,mg){ const t={1:[[40,750000],[35,500000]],2:[[60,750000],[55,500000]],3:[[75,500000],[70,250000]],4:[[95,500000],[90,250000]]}[mg]; for(const [b,n] of t){ if(p>b) return n; } return 0; }
@@ -908,9 +916,7 @@ module.exports = async (req, res) => {
       if (parsed.scope === 'all' && hasilBCH) raporInsentifMap[hasilBCH.namaCO] = hasilBCH.insentif;
 
       // Rekap historis W1-W4 dari sheet LOG_MINGGUAN (diisi otomatis tiap hari oleh cron log-snapshot)
-      const now = new Date();
-      const curTahun = now.getFullYear();
-      const curBulan = now.getMonth() + 1;
+      const { tahun: curTahun, bulan: curBulan } = tanggalEfektif();
       const logRows = logJson.values ? parseSheetValues(logJson.values) : [];
       const logMap = {};
       logRows.forEach(r => {
