@@ -1267,7 +1267,7 @@ function renderPanduan(){
   const pen = PANDUAN_PENYELESAIAN[role];
   html += `<div class="pg-card" id="pg-penyelesaian"><h3>3. Insentif Penyelesaian (mingguan)</h3>
     <p><b>Persen penyelesaian</b> = 100% − persen flow. Dihitung dari SIPOK kontrak di bucket penyelesaian milikmu yang <u>tidak naik bucket</u> ÷ total SIPOK bucket tersebut. <b>Makin besar makin bagus</b> (kebalikan dari metrik rapor). ${role==='FE' ? 'FE dihitung per CO tanpa FLEET.' : role==='MR' ? 'MR dihitung se-cabang tanpa FLEET.' : 'BCH dihitung se-cabang termasuk FLEET.'}</p>
-    <p>Batas tier naik tiap minggu: minggu 1 = tanggal 1–7, minggu 2 = 8–14, minggu 3 = 15–21, minggu 4 = tanggal 22 sampai akhir bulan.</p>
+    <p>Batas tier naik tiap minggu: minggu 1 = tanggal 1–7, minggu 2 = 8–14, minggu 3 = 15–21, minggu 4 = tanggal 22 sampai akhir bulan. Data MASTER ditarik tiap pagi dan isinya kondisi <b>kemarin (H-1)</b>, jadi <b>data pagi tanggal 8 mengunci W1</b>, pagi tanggal 15 mengunci W2, pagi tanggal 22 mengunci W3, dan pagi tanggal 1 bulan berikutnya mengunci W4.</p>
     <div class="pg-scroll"><table class="pg-table"><thead><tr><th>Minggu</th><th>Tier 1 (lebih tinggi)</th><th>Tier 2</th></tr></thead><tbody>
     ${[1,2,3,4].map(w => `<tr><td>Minggu ${w}</td><td>&gt; ${pen[w][0]}% → ${fmtRupiah(pen[w][1])}</td><td>&gt; ${pen[w][2]}% → ${fmtRupiah(pen[w][3])}</td></tr>`).join('')}
     </tbody></table></div>
