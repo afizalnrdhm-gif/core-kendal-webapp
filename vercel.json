@@ -7,7 +7,7 @@
   "crons": [
     {
       "path": "/api/log-snapshot",
-      "schedule": "50 16 * * *"
+      "schedule": "0 2 * * *"
     }
   ]
 }
