@@ -4035,7 +4035,7 @@ function loadCms(){
     .catch(err => { document.getElementById('wrap').innerHTML = '<div class="state-box error"><div class="err-icon">'+ic('alert')+'</div>'+esc(err.message)+'<br><br><button class="btn" onclick="loadCms()">Coba lagi</button></div>'; });
 }
 const CMS_COLS = [
-  { g:'', cols:[ { l:'Awal', m:'awal', tip:'Kontrak dengan Bucket Awal ini (dari MASTER). Bisa beda dengan angka manual di Excel.' }, { l:'Actual', m:'actual', tip:'Kontrak yang bucket aktualnya saat ini di bucket ini' } ] },
+  { g:'', cols:[ { l:'Actual', m:'actual', tip:'Kontrak yang bucket aktualnya saat ini di bucket ini' } ] },
   { g:'Terbentuk DKH', cols:[ { l:'Total', m:'terbentuk', tip:'Actual − tidak terbentuk' }, { l:'%', pct:['terbentuk','actual'] }, { l:'Tdk dikerjakan', m:'tdk', tip:'Terbentuk tapi belum ada risk code' }, { l:'%', pct:['tdk','terbentuk'] }, { l:'Dikerjakan', m:'dikerjakan', tip:'Terbentuk dan sudah ada risk code' }, { l:'%', pct:['dikerjakan','terbentuk'] } ] },
   { g:'Bertemu', cols:['JB','BYR','SBY','STB','TRB'].map(a => ({ l:a, m:'ac'+a })).concat([{ l:'%', pct:['bertemu','dikerjakan'] }]) },
   { g:'Tidak bertemu', cols:['KPR','KTD','TKK','TTP'].map(a => ({ l:a, m:'ac'+a })).concat([{ l:'%', pct:['tidakbertemu','dikerjakan'] }]) },
