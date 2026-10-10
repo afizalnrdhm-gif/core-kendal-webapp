@@ -900,6 +900,55 @@
   .tren-table .pg-table .r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;}
   .tren-table .pg-table td .muted{font-size:11.5px;}
   .tg-legend{justify-content:center;}
+
+  /* CMS Produktivitas */
+  .cms-meta{display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px;font-size:12.5px;color:var(--ink-soft);margin:0 0 14px;}
+  .cms-meta b{color:var(--ink);} .cms-meta .btn{margin-left:auto;}
+  .cms-note{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:var(--radius-sm);font-size:12.5px;line-height:1.5;margin-bottom:12px;color:var(--ink);}
+  .cms-note svg{flex:none;width:16px;height:16px;margin-top:2px;}
+  .cms-note.warn{background:var(--warn-bg);border:1px solid color-mix(in srgb,var(--warn) 40%,transparent);} .cms-note.warn svg{color:var(--warn);}
+  .cms-note.bad{background:var(--bad-bg);border:1px solid color-mix(in srgb,var(--bad) 40%,transparent);} .cms-note.bad svg{color:var(--bad);}
+  .cms-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-1);margin-bottom:20px;overflow:hidden;}
+  .cms-title{font-size:13px;font-weight:800;letter-spacing:.06em;padding:14px 16px;border-bottom:1px solid var(--line);color:var(--ink);}
+  .cms-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .cms-table{border-collapse:separate;border-spacing:0;font-size:12.5px;width:100%;min-width:1180px;}
+  .cms-table th,.cms-table td{padding:8px 8px;text-align:center;border-bottom:1px solid var(--line);white-space:nowrap;background:var(--surface);}
+  .cms-table th{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);background:var(--surface-sunken);}
+  .cms-table th.cms-g{border-bottom:1px solid var(--line-strong);color:var(--ink);}
+  .cms-table .cms-co{position:sticky;left:0;z-index:2;text-align:left;min-width:120px;font-weight:700;color:var(--ink);box-shadow:1px 0 0 var(--line);}
+  .cms-table th.cms-co{background:var(--surface-sunken);}
+  .cms-table .g-terbentuk{--cg:var(--info);} .cms-table .g-bertemu{--cg:var(--good);} .cms-table .g-tidak{--cg:var(--warn);} .cms-table .g-risk{--cg:var(--gold-ink);} .cms-table .g-tdk{--cg:var(--bad);}
+  .cms-table th[class*="g-"]{box-shadow:inset 0 3px 0 var(--cg);}
+  .cms-table td.cms-pct{color:var(--ink-soft);font-family:var(--mono);font-size:12px;}
+  .cms-table td.cms-n{font-family:var(--mono);font-weight:700;}
+  .cms-table td.zero{color:var(--ink-soft);font-weight:500;opacity:.6;}
+  .cms-hit{font:inherit;font-weight:800;color:var(--link);background:none;border:none;padding:4px 8px;border-radius:8px;cursor:pointer;min-width:30px;}
+  .cms-hit:hover{background:color-mix(in srgb,var(--navy-lighter) 16%,transparent);} .cms-hit:active{transform:scale(.94);}
+  .cms-table tr.cms-total td{background:var(--surface-sunken);font-weight:800;}
+  .cms-foot{font-size:12px;color:var(--ink-soft);line-height:1.6;margin:4px 2px 0;}
+  .cms-drill{position:fixed;inset:0;z-index:60;display:none;align-items:flex-end;justify-content:center;}
+  .cms-drill.show{display:flex;}
+  .cms-drill-bg{position:absolute;inset:0;background:rgba(5,15,25,.55);animation:fadeIn .25s ease;}
+  .cms-drill-box{position:relative;background:var(--surface);color:var(--ink);width:min(980px,100%);max-height:86dvh;border-radius:24px 24px 0 0;display:flex;flex-direction:column;box-shadow:var(--shadow-2);animation:mIn .4s var(--out) both;}
+  @media (min-width:901px){ .cms-drill{align-items:center;} .cms-drill-box{border-radius:20px;} }
+  .cms-drill-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:18px 20px 12px;border-bottom:1px solid var(--line);}
+  .cms-drill-t{font-size:16px;font-weight:800;} .cms-drill-s{font-size:12.5px;color:var(--ink-soft);margin-top:2px;}
+  .cms-drill-x{border:none;background:var(--surface-sunken);color:var(--ink);width:38px;height:38px;border-radius:12px;display:grid;place-items:center;cursor:pointer;}
+  .cms-drill-body{overflow:auto;padding:0 8px 16px;}
+  .cms-drill-body table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  .cms-drill-body th{position:sticky;top:0;background:var(--surface);text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);padding:10px 10px;border-bottom:1px solid var(--line-strong);}
+  .cms-drill-body td{padding:9px 10px;border-bottom:1px solid var(--line);white-space:nowrap;}
+  .cms-drill-body tbody tr{cursor:pointer;} .cms-drill-body tbody tr:hover{background:var(--surface-alt);}
+  @media (max-width:900px){ .cms-meta .btn{margin-left:0;} }
+
+  /* tabel CMS tidak ikut diubah jadi kartu di HP */
+  .cms-table,.cms-drill-body table{display:table !important;}
+  .cms-table thead,.cms-drill-body thead{display:table-header-group !important;}
+  .cms-table tbody,.cms-drill-body tbody{display:table-row-group !important;}
+  .cms-table tr,.cms-drill-body tr{display:table-row !important;margin:0 !important;border:none !important;border-radius:0 !important;box-shadow:none !important;background:none !important;}
+  .cms-table td,.cms-table th,.cms-drill-body td,.cms-drill-body th{display:table-cell !important;}
+  .cms-table td::before,.cms-drill-body td::before{content:none !important;}
+  .cms-drill-body td{max-width:240px;overflow:hidden;text-overflow:ellipsis;}
 </style>
 </head>
 <body>
@@ -960,6 +1009,10 @@
         <button class="nav-item active" data-view="dashboard" id="navDashboard">
           <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="20" x2="6" y2="12"/><line x1="12" y1="20" x2="12" y2="6"/><line x1="18" y1="20" x2="18" y2="14"/></svg>
           <span>Beban Awal</span>
+        </button>
+        <button class="nav-item nav-hidden" data-view="cms" id="navCMS">
+          <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+          <span>CMS Produktivitas</span>
         </button>
         <button class="nav-item" data-view="nbq" id="navNBQ">
           <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
@@ -1284,6 +1337,7 @@ function doLogout() {
 }
 document.getElementById('logoutBtn').addEventListener('click', doLogout);
 document.getElementById('navRingkasan').addEventListener('click', () => switchView('ringkasan'));
+document.getElementById('navCMS').addEventListener('click', () => switchView('cms'));
 document.getElementById('navDashboard').addEventListener('click', () => switchView('dashboard'));
 document.getElementById('navNBQ').addEventListener('click', () => switchView('nbq'));
 document.getElementById('navFEEver').addEventListener('click', () => switchView('feever'));
@@ -1367,6 +1421,7 @@ function onDataLoaded(res){
   const isMR = ROLE_INFO && ROLE_INFO.role === 'MR';
   const navRingkasan = document.getElementById('navRingkasan');
   navRingkasan.classList.toggle('nav-hidden', !IS_ADMIN);
+  document.getElementById('navCMS').classList.toggle('nav-hidden', !IS_ADMIN);
   const navNBQ = document.getElementById('navNBQ');
   const navFEEver = document.getElementById('navFEEver');
   const navInsentif = document.getElementById('navInsentif');
@@ -1740,7 +1795,7 @@ function updateFilterBadge(){
 let VIEW_MODE = 'dashboard';
 let INSENTIF_DATA = null;
 
-const VIEW_TITLES = { ringkasan: 'Ringkasan Cabang', dashboard: 'Beban Awal', nbq: 'NBQ', feever: 'FE Ever', tglbayar: 'Tgl Bayar Bulan Lalu', insentif: 'Insentif', dekscall: 'Dekscall', simulasi: 'Simulasi Penawaran', simulasirapor: 'Simulasi Rapor', panduan: 'Panduan KPI' };
+const VIEW_TITLES = { ringkasan: 'Ringkasan Cabang', cms: 'CMS Produktivitas', dashboard: 'Beban Awal', nbq: 'NBQ', feever: 'FE Ever', tglbayar: 'Tgl Bayar Bulan Lalu', insentif: 'Insentif', dekscall: 'Dekscall', simulasi: 'Simulasi Penawaran', simulasirapor: 'Simulasi Rapor', panduan: 'Panduan KPI' };
 
 function triggerFadeIn(){
   const el = document.getElementById('wrap');
@@ -1754,6 +1809,7 @@ function switchView(view){
   if(view === VIEW_MODE){ closeSidebarDrawer(); return; }
   VIEW_MODE = view;
   document.getElementById('navRingkasan').classList.toggle('active', view === 'ringkasan');
+  document.getElementById('navCMS').classList.toggle('active', view === 'cms');
   document.getElementById('navDashboard').classList.toggle('active', view === 'dashboard');
   document.getElementById('navNBQ').classList.toggle('active', view === 'nbq');
   document.getElementById('navFEEver').classList.toggle('active', view === 'feever');
@@ -1795,6 +1851,8 @@ function switchView(view){
     if(INSENTIF_DATA){ renderInsentifView(); triggerFadeIn(); } else { loadInsentif(); }
   } else if(view === 'simulasirapor'){
     if(SIMULASI_RAPOR_DATA){ renderSimulasiRapor(); triggerFadeIn(); } else { loadSimulasiRapor(); }
+  } else if(view === 'cms'){
+    if(CMS_DATA){ renderCms(); triggerFadeIn(); } else { loadCms(); }
   } else if(view === 'panduan'){
     renderPanduan();
     triggerFadeIn();
@@ -3960,6 +4018,83 @@ function loadHistory(noKontrak){
     }).catch(() => {});
 }
 
+
+// ============================================================
+// CMS PRODUKTIVITAS — Balance 1-30 & 31-60 (admin). Data dihitung di /api/cms dari tab MASTER + PRODUCTIVITY.
+// ============================================================
+let CMS_DATA = null;
+function loadCms(){
+  document.getElementById('wrap').innerHTML = '<div class="skeleton-row"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div><div class="skel tall"></div>';
+  fetch('/api/cms', { headers: { Authorization: 'Bearer ' + ID_TOKEN } })
+    .then(r => r.json().then(b => ({ ok: r.ok, b })))
+    .then(({ok, b}) => {
+      if(VIEW_MODE !== 'cms') return;
+      if(!ok){ document.getElementById('wrap').innerHTML = '<div class="state-box error"><div class="err-icon">'+ic('alert')+'</div>'+esc(b.error||'Gagal memuat CMS.')+'<br><br><button class="btn" onclick="loadCms()">Coba lagi</button></div>'; return; }
+      CMS_DATA = b; renderCms(); triggerFadeIn();
+    })
+    .catch(err => { document.getElementById('wrap').innerHTML = '<div class="state-box error"><div class="err-icon">'+ic('alert')+'</div>'+esc(err.message)+'<br><br><button class="btn" onclick="loadCms()">Coba lagi</button></div>'; });
+}
+const CMS_COLS = [
+  { g:'', cols:[ { l:'Actual', m:'actual', tip:'Kontrak yang bucket aktualnya saat ini di bucket ini' } ] },
+  { g:'Terbentuk DKH', cols:[ { l:'Total', m:'terbentuk', tip:'Actual − tidak terbentuk' }, { l:'%', pct:['terbentuk','actual'] }, { l:'Tdk dikerjakan', m:'tdk', tip:'Terbentuk tapi belum ada risk code' }, { l:'%', pct:['tdk','terbentuk'] }, { l:'Dikerjakan', m:'dikerjakan', tip:'Terbentuk dan sudah ada risk code' }, { l:'%', pct:['dikerjakan','terbentuk'] } ] },
+  { g:'Bertemu', cols:['JB','BYR','SBY','STB','TRB'].map(a => ({ l:a, m:'ac'+a })).concat([{ l:'%', pct:['bertemu','dikerjakan'] }]) },
+  { g:'Tidak bertemu', cols:['KPR','KTD','TKK','TTP'].map(a => ({ l:a, m:'ac'+a })).concat([{ l:'%', pct:['tidakbertemu','dikerjakan'] }]) },
+  { g:'Risk code', cols:['A','B','C','D','E','F'].map(a => ({ l:a, m:'rc'+a })) },
+  { g:'Tdk terbentuk DKH', cols:[ { l:'Fresh flow', m:'flow' }, { l:'Stay', m:'stay' }, { l:'Roll back', m:'rollback' }, { l:'TTL', m:'ttl' }, { l:'%', pct:['ttl','actual'] } ] }
+];
+const CMS_CLS = ['', 'g-terbentuk', 'g-bertemu', 'g-tidak', 'g-risk', 'g-tdk'];
+function cmsPct(n, d){ return d > 0 ? (n / d * 100).toFixed(2).replace('.', ',') + '%' : '-'; }
+function cmsMetricItems(items, bal, co, m){
+  const has = (it, t) => it.t.indexOf(bal + '|' + co + '|' + t) > -1;
+  if(m === 'tdk') return items.filter(it => has(it, 'terbentuk') && !has(it, 'dikerjakan'));
+  return items.filter(it => has(it, m));
+}
+function renderCms(){
+  const wrap = document.getElementById('wrap'); const D = CMS_DATA; if(!wrap || !D) return;
+  if(!D.tersedia){
+    wrap.innerHTML = '<div class="state-box"><div class="err-icon">'+ic('alert')+'</div>' + esc(D.pesan || 'Data CMS belum tersedia.') + '<br><br><button class="btn" onclick="CMS_DATA=null;loadCms()">Muat ulang</button></div>'; return;
+  }
+  const cnt = {}; D.items.forEach(it => it.t.forEach(t => { cnt[t] = (cnt[t] || 0) + 1; }));
+  const get = (bal, co, m) => m === 'tdk' ? (cnt[bal+'|'+co+'|terbentuk']||0) - (cnt[bal+'|'+co+'|dikerjakan']||0) : (cnt[bal+'|'+co+'|'+m] || 0);
+  const nm = n => (CO_META[n] || {}).short || n;
+  const M = D.meta || {};
+  const notes = [];
+  if(M.kolomHilang && M.kolomHilang.length) notes.push('<div class="cms-note bad">'+ic('alert')+'<span><b>Kolom belum ditemukan:</b> '+esc(M.kolomHilang.join('; '))+'. Angka di bawah bisa belum lengkap.</span></div>');
+  (M.peringatan || []).forEach(p => notes.push('<div class="cms-note warn">'+ic('alert')+'<span>'+esc(p)+'</span></div>'));
+  const status = `<div class="cms-meta"><span><b>${M.masterBaris||0}</b> kontrak MASTER</span><span><b>${M.prodKontrak||0}</b> kontrak di PRODUCTIVITY (${M.prodBaris||0} tugas)</span><span>Tgl tagihan terbaru <b>${esc(M.tglTagihanTerbaru||'-')}</b></span><span>OD dari <b>${esc(M.odSumber||'-')}</b></span><button class="btn" id="cmsRefresh">${ic('refresh')} Muat ulang</button></div>`;
+  const head = '<tr><th rowspan="2" class="cms-co">CO</th>' + CMS_COLS.map((g, gi) => (g.g ? `<th colspan="${g.cols.length}" class="cms-g ${CMS_CLS[gi]}">${esc(g.g)}</th>` : `<th colspan="${g.cols.length}" class="cms-g"></th>`)).join('') + '</tr><tr>' +
+    CMS_COLS.map((g, gi) => g.cols.map(c => `<th class="cms-sub ${CMS_CLS[gi]}"${c.tip ? ' title="'+esc(c.tip)+'"' : ''}>${esc(c.l)}</th>`).join('')).join('') + '</tr>';
+  const rowHtml = (bal, co, label, isTotal) => '<tr' + (isTotal ? ' class="cms-total"' : '') + `><td class="cms-co">${esc(label)}</td>` +
+    CMS_COLS.map((g, gi) => g.cols.map(c => {
+      if(c.pct){ const n = get(bal, co, c.pct[0]), d = get(bal, co, c.pct[1]); return `<td class="cms-pct ${CMS_CLS[gi]}">${cmsPct(n, d)}</td>`; }
+      const v = get(bal, co, c.m);
+      return v > 0 ? `<td class="cms-n ${CMS_CLS[gi]}"><button type="button" class="cms-hit" data-b="${bal}" data-co="${esc(co)}" data-m="${c.m}" data-l="${esc(c.l)}" data-r="${esc(label)}" aria-label="${esc(label)} ${esc(c.l)}: ${v} kontrak. Lihat daftar">${v}</button></td>` : `<td class="cms-n zero ${CMS_CLS[gi]}">0</td>`;
+    }).join('')).join('') + '</tr>';
+  const fe = D.urutan.fe.filter(c => D.items.some(it => it.co === c));
+  const tbl = (b) => {
+    const rows = b.id === 'b1' ? fe.map(c => rowHtml(b.id, c, nm(c), false)).join('') + rowHtml(b.id, '*', 'JATARA', true) : rowHtml(b.id, '*', nm(D.urutan.mr), true);
+    return `<section class="cms-card"><div class="cms-title">${esc(b.judul)}</div><div class="cms-scroll"><table class="cms-table"><thead>${head}</thead><tbody>${rows}</tbody></table></div></section>`;
+  };
+  wrap.innerHTML = notes.join('') + status + D.balances.map(tbl).join('') +
+    '<p class="cms-foot">Klik angka untuk melihat daftar kontraknya. DKH terbentuk: bucket 1-30 dibentuk oleh FE (DPD tugas ≤ 30), bucket 31-60 oleh MR (DPD tugas > 30). Kontrak yang punya beberapa tugas memakai tugas dengan tanggal tagihan terbaru.</p>';
+  document.getElementById('cmsRefresh').onclick = () => { CMS_DATA = null; loadCms(); };
+  wrap.querySelectorAll('.cms-hit').forEach(b => b.onclick = () => cmsDrill(b.dataset));
+}
+function cmsDrill(d){
+  const items = cmsMetricItems(CMS_DATA.items, d.b, d.co, d.m);
+  const bj = (CMS_DATA.balances.find(x => x.id === d.b) || {}).judul || '';
+  let host = document.getElementById('cmsDrill');
+  if(!host){ host = document.createElement('div'); host.id = 'cmsDrill'; host.className = 'cms-drill'; document.body.appendChild(host); }
+  const rows = items.map(it => `<tr data-k="${esc(it.k)}"><td>${esc(it.n || '-')}</td><td class="mono">${esc(it.k)}</td><td>${esc(((CO_META[it.co]||{}).short)||it.co)}</td><td>${esc(fmtBucket(it.ba))}${it.bu && it.bu !== it.ba ? ' → ' + esc(fmtBucket(it.bu)) : ''}</td><td>${esc(it.kr || '-')}</td><td>${esc(it.rc || '-')}</td><td>${esc(it.ac || '-')}</td><td class="mono">${esc(it.tg || '-')}</td></tr>`).join('');
+  host.innerHTML = `<div class="cms-drill-bg" data-close="1"></div><div class="cms-drill-box" role="dialog" aria-modal="true" aria-label="Daftar kontrak"><div class="cms-drill-head"><div><div class="cms-drill-t">${esc(d.r)} · ${esc(d.l)}</div><div class="cms-drill-s">${esc(bj)} · ${items.length} kontrak</div></div><button type="button" class="cms-drill-x" data-close="1" aria-label="Tutup">${ic('x')}</button></div><div class="cms-drill-body"><table><thead><tr><th>Nama</th><th>No Kontrak</th><th>CO</th><th>Bucket</th><th>Kriteria</th><th>RC</th><th>AC</th><th>Tgl tagihan</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+  host.classList.add('show'); document.body.style.overflow = 'hidden';
+  const close = () => { host.classList.remove('show'); document.body.style.overflow = ''; document.removeEventListener('keydown', onKey); };
+  const onKey = e => { if(e.key === 'Escape') close(); };
+  document.addEventListener('keydown', onKey);
+  host.querySelectorAll('[data-close]').forEach(el => el.onclick = close);
+  host.querySelectorAll('tbody tr').forEach(tr => tr.onclick = () => { const k = tr.dataset.k; if(DATA.find(x => x['NO KONTRAK'] === k)){ close(); openPanel(k); } });
+}
+
 function openPanel(noKontrak){
   const r = DATA.find(x => x['NO KONTRAK']===noKontrak) || ESCALATIONS.find(x => x['NO KONTRAK']===noKontrak);
   if(!r) return;
@@ -4116,14 +4251,14 @@ document.getElementById('overlay').onclick = document.getElementById('panelClose
   const dateEl = document.getElementById('topDate');
   if(!sidebar || !nav) return;
 
-  const HINT = { ringkasan:'Ringkasan performa cabang: sebaran bucket, flow, dan tren mingguan', dashboard:'Beban awal: daftar kontrak per bucket beserta status bayarnya', nbq:'Kontrak NBQ (new booking quality) dan status bayarnya', feever:'Kontrak limpahan 31+ hari', tglbayar:'Kontrak yang bulan lalu dibayar pada tanggal hari ini', insentif:'Proyeksi insentif mingguan', dekscall:'Daftar tugas deskcall', simulasirapor:'Simulasi nilai rapor jika kontrak tertentu flow/stay/lunas', simulasi:'Simulasi penawaran MotorKu', panduan:'Panduan membaca KPI dan insentif' };
+  const HINT = { cms:'Produktivitas collection: balance 1-30 dan 31-60, DKH terbentuk, dikerjakan, bertemu, risk code', ringkasan:'Ringkasan performa cabang: sebaran bucket, flow, dan tren mingguan', dashboard:'Beban awal: daftar kontrak per bucket beserta status bayarnya', nbq:'Kontrak NBQ (new booking quality) dan status bayarnya', feever:'Kontrak limpahan 31+ hari', tglbayar:'Kontrak yang bulan lalu dibayar pada tanggal hari ini', insentif:'Proyeksi insentif mingguan', dekscall:'Daftar tugas deskcall', simulasirapor:'Simulasi nilai rapor jika kontrak tertentu flow/stay/lunas', simulasi:'Simulasi penawaran MotorKu', panduan:'Panduan membaca KPI dan insentif' };
   sidebar.querySelectorAll('.nav-item[data-view]').forEach(b => { if(HINT[b.dataset.view]) b.title = HINT[b.dataset.view]; });
   function orderFor(){
     if(IS_DESKCALL) return ['dashboard','dekscall','tglbayar','simulasi','panduan'];
-    if(IS_ADMIN) return ['ringkasan','dashboard','nbq','insentif','feever','tglbayar','simulasirapor','simulasi','panduan'];
+    if(IS_ADMIN) return ['ringkasan','dashboard','cms','nbq','insentif','feever','tglbayar','simulasirapor','simulasi','panduan'];
     return ['dashboard','nbq','feever','insentif','tglbayar','simulasirapor','simulasi','panduan'];
   }
-  const SHORT = { ringkasan:'Ringkasan', dashboard:'Beban', nbq:'NBQ', feever:'FE Ever', tglbayar:'Tgl Bayar', insentif:'Insentif', dekscall:'Dekscall', simulasirapor:'Rapor', simulasi:'Simulasi', panduan:'Panduan' };
+  const SHORT = { cms:'CMS', ringkasan:'Ringkasan', dashboard:'Beban', nbq:'NBQ', feever:'FE Ever', tglbayar:'Tgl Bayar', insentif:'Insentif', dekscall:'Dekscall', simulasirapor:'Rapor', simulasi:'Simulasi', panduan:'Panduan' };
   const MORE_ICON = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/></svg>';
 
   function items(){
@@ -4199,7 +4334,7 @@ document.getElementById('overlay').onclick = document.getElementById('panelClose
 /* V4 — gerak halus: transisi antar menu, reveal saat gulir, top bar adaptif, pil bottom nav */
 (function(){
   const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const ORDER = ['ringkasan','dashboard','nbq','feever','dekscall','tglbayar','insentif','simulasirapor','simulasi','panduan'];
+  const ORDER = ['ringkasan','dashboard','cms','nbq','feever','dekscall','tglbayar','insentif','simulasirapor','simulasi','panduan'];
   let prevView = null, io = null, holdTimer = null;
 
   function revealAll(){ document.querySelectorAll('#wrap > .m-hold').forEach(el => { el.classList.add('m-show'); }); }
