@@ -3419,9 +3419,10 @@ function loadRingkasan(){
 function barListSection(title, rows, opts){
   opts = opts || {};
   const maxPct = Math.max(...rows.map(r => r.pct), 1);
+  const fid = opts.foldId;
   return `
-  <div class="ins-section">
-    <h2>${title}</h2>
+  <${fid ? 'details class="ins-section fold" data-fold="'+fid+'"'+(opts.open?' data-open="1"':'') : 'div class="ins-section"'}>
+    ${fid ? '<summary>'+title+'</summary>' : '<h2>'+title+'</h2>'}
     <div class="bar-list">
       ${rows.map(r => `
         <div class="bar-row ${opts.emphasisLast && r === rows[rows.length-1] ? 'emphasis' : ''}">
@@ -3436,13 +3437,13 @@ function barListSection(title, rows, opts){
           <div class="bar-track"><div class="bar-fill ${opts.gold?'gold':''}" style="width:${Math.min(r.pct/maxPct*100,100)}%"></div></div>
         </div>`).join('')}
     </div>
-  </div>`;
+  </${fid ? 'details' : 'div'}>`;
 }
 
 function bigCustSection(bigCust){
   return `
-  <div class="ins-section">
-    <h2>Big Customer Non-Realisasi (SIPOK &gt; Rp100jt)</h2>
+  <details class="ins-section fold" data-fold="rk-big">
+    <summary>Big Customer Non-Realisasi (SIPOK &gt; Rp100jt)</summary>
     ${bigCust.map(b => `
       <div class="bigcust-card">
         <div class="bigcust-head">
@@ -3468,7 +3469,7 @@ function bigCustSection(bigCust){
           ${b.belum.count > 10 ? `<div class="bigcust-detail-more">+${b.belum.count - 10} kontrak lainnya</div>` : ''}
         </div>` : ''}
       </div>`).join('')}
-  </div>`;
+  </details>`;
 }
 
 
@@ -3545,6 +3546,18 @@ function bindTrenToggle(){
   document.querySelectorAll('#trenToggle button').forEach(b => b.addEventListener('click', () => { TREN_MONTH = b.dataset.m; renderTren(); }));
 }
 
+
+// Lipatan yang mengingat status buka/tutup per perangkat
+function initFolds(sel){
+  document.querySelectorAll(sel).forEach(f => {
+    const k = 'ck-fold-' + f.getAttribute('data-fold');
+    let v = null; try{ v = localStorage.getItem(k); }catch(e){}
+    const open = v === null ? f.getAttribute('data-open') === '1' : v === '1';
+    if(open) f.setAttribute('open',''); else f.removeAttribute('open');
+    f.addEventListener('toggle', () => { try{ localStorage.setItem(k, f.open ? '1' : '0'); }catch(e){} });
+  });
+}
+
 function renderRingkasanView(){
   const full = RINGKASAN_DATA;
   if(!full) return;
@@ -3568,10 +3581,10 @@ function renderRingkasanView(){
         <div class="rk-hero-card"><div class="lbl">Total Sisa Piutang (ENR)</div><div class="val" id="rkValAmt">Rp0</div></div>
       </div>
       <div class="rk-grid">
-        <div>${barListSection('Sebaran per Bucket (Kondisi Aktual)', d.perBucket)}</div>
+        <div>${barListSection('Sebaran per Bucket (Kondisi Aktual)', d.perBucket, {foldId:'rk-bucket', open:true})}</div>
         <div>
-          ${barListSection('Analisis Kumulatif Overdue', d.cumulative, {gold:true})}
-          ${barListSection('Flow & Back-to-Current (Branch-wide)', d.flowBtc)}
+          ${barListSection('Analisis Kumulatif Overdue', d.cumulative, {gold:true, foldId:'rk-cum'})}
+          ${barListSection('Flow & Back-to-Current (Branch-wide)', d.flowBtc, {foldId:'rk-flow', open:true})}
         </div>
       </div>
       ${bigCustSection(d.bigCust)}
@@ -3579,6 +3592,7 @@ function renderRingkasanView(){
     <div class="rk-report-card" id="trenCard" style="margin-top:16px;"></div>
   `;
 
+  initFolds('#wrap details[data-fold]');
   loadTren();
   animateCount(document.getElementById('rkValCount'), d.enrCount, false);
   animateCount(document.getElementById('rkValAmt'), d.enr, true);
