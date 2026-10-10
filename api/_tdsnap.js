@@ -71,7 +71,12 @@ function terapkanProgres(td, base) {
     const b = base[p.namaCO + '|' + q.kunci];
     const sekarang = new Set((q.semuaKandidat || []).map(x => x[0]));
     if (b) {
-      const bayar = (b.kontrak || []).filter(x => !sekarang.has(x[0]));
+      // Bayar = kontrak baseline yang sudah keluar dari daftar belum bayar, DITAMBAH kontrak dengan REALISASI > 0 hari ini (KA HARIAN),
+      // digabung per no kontrak supaya tidak dobel. REALISASI membuat progres tetap benar walau baseline terlambat dibekukan.
+      const gab = new Map();
+      (b.kontrak || []).filter(x => !sekarang.has(x[0])).forEach(x => gab.set(x[0], x));
+      (q.bayarHariIni || []).forEach(x => { if (!gab.has(x[0])) gab.set(x[0], x); });
+      const bayar = Array.from(gab.values());
       const tercapai = bayar.reduce((t, x) => t + (Number(x[1]) || 0), 0);
       q.progres = {
         targetHari: b.targetHari, baseNilai: b.baseNilai, tercapai,
@@ -80,7 +85,7 @@ function terapkanProgres(td, base) {
         jumlahBayar: bayar.length, kontrakBayar: bayar.slice().sort((a, c) => c[1] - a[1]).slice(0, 15).map(x => ({ noKontrak: x[0], sipok: x[1], nama: x[2] || '-' }))
       };
     }
-    delete q.semuaKandidat;
+    delete q.semuaKandidat; delete q.bayarHariIni;
   }));
   return td;
 }
