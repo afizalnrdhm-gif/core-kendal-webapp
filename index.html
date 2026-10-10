@@ -4093,7 +4093,7 @@ function renderCms(){
   };
   const fe = D.urutan.fe.filter(c => D.items.some(it => it.co === c));
   const tbl = (b) => {
-    const cards = b.id === 'b1' ? fe.map(c => card(b.id, c, nm(c), false)).join('') + card(b.id, '*', 'JATARA', true) : card(b.id, '*', nm(D.urutan.mr), true);
+    const cards = b.id === 'b1' ? fe.map(c => card(b.id, c, nm(c), false)).join('') + card(b.id, '*', 'TOTAL', true) : card(b.id, '*', nm(D.urutan.mr), true);
     return `<section class="cms-sec"><div class="cms-title">${esc(b.judul)}</div><div class="cms-cards">${cards}</div></section>`;
   };
   wrap.innerHTML = notes.join('') + status + D.balances.map(tbl).join('') +

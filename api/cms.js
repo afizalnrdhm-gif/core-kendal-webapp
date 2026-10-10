@@ -92,6 +92,8 @@ function toMs(v) {
   return null;
 }
 function isoDay(ms) { return ms === null ? '' : new Date(ms).toISOString().slice(0, 10); }
+// MASTER Google menulis 'NOOD', Excel menulis 'NO OD' -> samakan
+function normBucket(b) { const u = String(b || '').trim().toUpperCase(); return u.replace(/\s+/g, '') === 'NOOD' ? 'NO OD' : u; }
 function idxOf(header, name) { return header.findIndex(h => clean(h).toUpperCase() === name); }
 function firstWord(v) { return clean(v).split('|')[0].trim().toUpperCase(); }
 
@@ -137,7 +139,7 @@ function compute(masterValues, prodValues, cfgRows) {
     for (let r = 1; r < masterValues.length; r++) {
       const v = masterValues[r] || []; const k = clean(v[iK]); if (!k) continue;
       masterBaris++;
-      const awal = iAwal > -1 ? clean(v[iAwal]) : '';
+      const awal = iAwal > -1 ? normBucket(clean(v[iAwal])) : '';
       const odRaw = iOd > -1 ? v[iOd] : null;
       const od = (typeof odRaw === 'number') ? odRaw : (clean(odRaw) !== '' && isFinite(Number(clean(odRaw))) ? Number(clean(odRaw)) : null);
       const aktual = od === null ? null : bucketFromOd(od);
