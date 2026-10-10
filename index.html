@@ -889,6 +889,17 @@
     html{scroll-behavior:auto;}
     .wrap > .m-hold{opacity:1;transform:none;}
   }
+
+  /* rapikan kartu tren */
+  .tren-wrap{max-width:780px;margin:0 auto;}
+  .tg-val{paint-order:stroke;stroke:var(--surface);stroke-width:4px;stroke-linejoin:round;}
+  .tren-warn{display:flex;gap:10px;align-items:flex-start;margin:12px 0 0;padding:10px 12px;border-radius:var(--radius-sm);background:var(--warn-bg);color:var(--ink);font-size:12.5px;line-height:1.5;border:1px solid color-mix(in srgb,var(--warn) 40%,transparent);}
+  .tren-warn svg{flex:none;width:16px;height:16px;color:var(--warn);margin-top:2px;}
+  .tren-table .pg-table{width:100%;table-layout:fixed;}
+  .tren-table .pg-table th:first-child,.tren-table .pg-table td:first-child{width:30%;}
+  .tren-table .pg-table .r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;}
+  .tren-table .pg-table td .muted{font-size:11.5px;}
+  .tg-legend{justify-content:center;}
 </style>
 </head>
 <body>
@@ -3356,7 +3367,9 @@ function renderTren(){
     card.innerHTML = trenShell('<div class="tren-head">' + toggle + '</div><div class="tren-note">Belum ada rekap mingguan untuk ' + esc(monthLabel) + '. Rekap tersimpan otomatis tiap hari lewat tab LOG_MINGGUAN.</div>');
     bindTrenToggle(); return;
   }
-  const get = (w, s) => { const r = rows.find(x => x.minggu === w && x.namaCO === s.namaCO); return r && isFinite(r.pct) ? r.pct : null; };
+  const bad = [];
+  const get = (w, s) => { const r = rows.find(x => x.minggu === w && x.namaCO === s.namaCO); if(!r || !isFinite(r.pct)) return null;
+    if(r.pct < 0 || r.pct > 100){ bad.push('W' + w + ' ' + s.label); return null; } return r.pct; };
   const tgt = (w, s) => { const t = D.targets[s.role]; return t && t[w] ? t[w][0] : null; };
   const narrow = card.clientWidth < 520;
   const W = narrow ? 360 : 640, H = narrow ? 250 : 270, pl = narrow ? 34 : 38, pr = 6, pt = 16, pb = 28;
@@ -3377,12 +3390,14 @@ function renderTren(){
       if(w === lastW) g += `<text x="${x+bw/2}" y="${top-5}" class="tg-val" text-anchor="middle">${v.toFixed(0)}</text>`;
     });
   }
+  const uniqBad = [...new Set(bad)];
   const legend = series.map(s => `<span class="tg-leg"><i style="background:${s.color}"></i>${esc(s.label)}</span>`).join('') + '<span class="tg-leg"><i class="tg-leg-line"></i>Target tier 1 insentif</span>';
   const table = '<div class="pg-scroll"><table class="pg-table"><thead><tr><th>Penyelesaian</th>' + [1,2,3,4].map(w => '<th class="r">W' + w + '</th>').join('') + '</tr></thead><tbody>' +
     series.map(s => '<tr><td>' + esc(s.label) + '</td>' + [1,2,3,4].map(w => { const v = get(w, s), t = tgt(w, s); return '<td class="r">' + (v === null ? '-' : v.toFixed(1) + '%') + (t !== null ? ' <span class="muted">/ ' + t + '%</span>' : '') + '</td>'; }).join('') + '</tr>').join('') + '</tbody></table></div>';
   card.innerHTML = trenShell(`<div class="tren-head">${toggle}<span class="tren-month">${esc(monthLabel)}</span></div>
     <div class="tren-wrap"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Grafik batang penyelesaian mingguan ${esc(monthLabel)} per CO dan cabang">${g}</svg><div class="tren-tip" id="trenTip" role="tooltip" hidden></div></div>
     <div class="tg-legend">${legend}</div>
+    ${uniqBad.length ? `<div class="tren-warn" role="status">${ic('alert')}<span>Data tidak valid dan tidak ditampilkan: <b>${esc(uniqBad.join(', '))}</b>. Nilai PCT di tab LOG_MINGGUAN harus 0–100. Cek barisnya, atau biarkan cron menulis ulang minggu itu.</span></div>` : ''}
     <details class="tren-table"><summary>Lihat sebagai tabel</summary>${table}</details>
     <p class="tren-foot">Angka = persentase penyelesaian (100% - Flow). Garis hitam di tiap batang = batas tier 1 insentif minggu itu. Rekap W terakhir diperbarui tiap hari sampai minggunya berganti.</p>`);
   bindTrenToggle();
