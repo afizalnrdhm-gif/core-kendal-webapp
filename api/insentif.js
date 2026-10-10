@@ -408,11 +408,14 @@ function hitungTargetDaily(masterList, petaKA, configRows) {
     };
     // Kontrak yang BAYAR hari ini menurut KA HARIAN (kolom REALISASI > 0, sama dengan command /realisasi di Telegram).
     // Dipakai untuk progres supaya tetap akurat walau baseline pagi terlambat dibekukan.
-    const bayarList = (awalSet) => masterList
-      .filter(m => scopeM(m) && awalSet.includes(m['BUCKET AWAL']) && petaKA[m['NO KONTRAK']] && Number(petaKA[m['NO KONTRAK']]['REALISASI']) > 0)
-      .map(m => [m['NO KONTRAK'], sipokOf(m), m['NAMA KONSUMEN'] || '-']);
-    balance.bayarHariIni = bayarList(role === 'FE' ? ['P001_030'] : balBuckets);
-    flow.bayarHariIni = bayarList([bAsal]);
+    // Status SEBELUM bayar dibaca dari BUCKET POTENSIAL (bucket kalau tidak bayar): kontrak yang bayar hari ini kembali ke bucket awal di BUCKET UPDATE,
+    // jadi hanya BUCKET POTENSIAL yang menunjukkan apakah kontrak itu memang termasuk yang dikejar. Bayar tepat waktu sebelum jatuh tempo (potensial = awal) tidak dihitung.
+    const bayarHariIni = m => scopeM(m) && petaKA[m['NO KONTRAK']] && Number(petaKA[m['NO KONTRAK']]['REALISASI']) > 0;
+    const bayarKe = m => [m['NO KONTRAK'], sipokOf(m), m['NAMA KONSUMEN'] || '-'];
+    // Balance: kontrak yang sebelum bayar berada di bucket balance PIC (FE: 1-30 -> bayar -> NOOD naik)
+    balance.bayarHariIni = masterList.filter(m => bayarHariIni(m) && (role === 'FE' ? ['P001_030'] : balBuckets).includes(m['BUCKET POTENSIAL'])).map(bayarKe);
+    // Flow: kontrak bucket asal yang sebelum bayar berpotensi flow (potensial > awal)
+    flow.bayarHariIni = masterList.filter(m => bayarHariIni(m) && m['BUCKET AWAL'] === bAsal && bucketIndex(m['BUCKET POTENSIAL']) > bucketIndex(m['BUCKET AWAL'])).map(bayarKe);
     return { namaCO, role, poin: [balance, flow] };
   });
   return { tanggal: w, pic: hasil };
