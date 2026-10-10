@@ -752,6 +752,17 @@
   tbody tr.empty-row:hover td{background:transparent;}
 
   /* pantauan janji bayar */
+  .proy-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:-8px 0 18px;}
+  .proy-title{font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);margin-right:2px;}
+  .proy-chip,.proy-opt{--pc:var(--ink-soft);font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;color:var(--ink);background:var(--surface);border:1px solid var(--line-strong);border-radius:99px;padding:6px 12px;min-height:34px;display:inline-flex;align-items:center;gap:6px;transition:background .15s,border-color .15s,color .15s;}
+  .proy-chip b{font-family:var(--mono);font-size:11.5px;color:var(--ink-soft);}
+  .proy-chip.active,.proy-opt.on{background:color-mix(in srgb,var(--pc) 16%,var(--surface));border-color:var(--pc);color:var(--ink);box-shadow:inset 0 0 0 1px var(--pc);}
+  .proy-chip.active b{color:var(--ink);}
+  .p-stay{--pc:#1B78B0;} .p-btc{--pc:#1F8A5B;} .p-rollback{--pc:#8B5CA8;} .p-flow{--pc:#B02F37;} .p-lunas{--pc:#B9791A;} .p-none{--pc:var(--ink-soft);}
+  :root[data-theme="dark"] .p-stay{--pc:#3A8FCC;} :root[data-theme="dark"] .p-btc{--pc:#2E9E6E;} :root[data-theme="dark"] .p-rollback{--pc:#A070C8;} :root[data-theme="dark"] .p-flow{--pc:#FF8E93;} :root[data-theme="dark"] .p-lunas{--pc:#BF8226;}
+  .proy-pick{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;}
+  .proy-opt{justify-content:center;padding:9px 4px;border-radius:10px;font-size:12.5px;min-height:42px;}
+  .proy-pill{display:inline-block;font-size:11.5px;font-weight:700;padding:2px 10px;border-radius:99px;white-space:nowrap;--pc:var(--ink-soft);color:var(--ink);background:color-mix(in srgb,var(--pc) 16%,var(--surface));border:1px solid color-mix(in srgb,var(--pc) 55%,transparent);}
   .alert-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;}
   .alert-tile{display:flex;align-items:center;gap:12px;text-align:left;background:var(--surface);border:1px solid color-mix(in srgb, var(--line) 70%, transparent);border-radius:var(--radius);padding:12px 16px;cursor:pointer;box-shadow:var(--shadow-1);border-left:4px solid var(--c, var(--navy-lighter));transition:transform .2s var(--ease),box-shadow .2s var(--ease);color:var(--ink);}
   .alert-tile:hover{transform:translateY(-2px);box-shadow:0 14px 28px -14px rgba(15,30,45,.3);}
@@ -1033,7 +1044,7 @@ function exportCsv(){
   const c = EXPORT_CTX; if(!c || !c.rows.length){ return; }
   const defs = [['CO ALL','CO'],['NO KONTRAK','No Kontrak'],['NAMA KONSUMEN','Nama Konsumen'],['BUCKET AWAL','Bucket Awal'],['BUCKET UPDATE','Bucket Update'],
     ['STATUS BAYAR','Status Bayar'],['SIPOK','Sisa Piutang'],['ANGSURAN','Angsuran'],['DPD','DPD'],['STATUS EVER','Status Ever'],['JATUH TEMPO','Jatuh Tempo'],
-    ['TANGGAL BAYAR BULAN LALU','Tgl Bayar Bulan Lalu'],['NBQ','NBQ'],['STATUS NBQ','Status NBQ'],['STATUS BAYAR NBQ','Status Bayar NBQ'],['JANJI BAYAR','Janji Bayar'],['KRONOLOGIS','Kronologis']];
+    ['TANGGAL BAYAR BULAN LALU','Tgl Bayar Bulan Lalu'],['NBQ','NBQ'],['STATUS NBQ','Status NBQ'],['STATUS BAYAR NBQ','Status Bayar NBQ'],['PROYEKSI','Proyeksi'],['JANJI BAYAR','Janji Bayar'],['KRONOLOGIS','Kronologis']];
   const cols = defs.filter(d => c.rows.some(r => r[d[0]] !== undefined && r[d[0]] !== ''));
   const cell = v => {
     let t = v == null ? '' : String(v);
@@ -1080,7 +1091,7 @@ let IS_ADMIN = false;
 let IS_DESKCALL = false;
 let USER_EMAIL = '';
 let ID_TOKEN = null;
-let state = { quick:'', search:'', co:'ALL', bucket:'ALL', kriteria:'ALL', tipe:'ALL', kecamatan:'ALL', ever:'ALL', janjiList:[], sortKey:'JATUH TEMPO', sortDir:1, tab:'own' };
+let state = { quick:'', proy:'', search:'', co:'ALL', bucket:'ALL', kriteria:'ALL', tipe:'ALL', kecamatan:'ALL', ever:'ALL', janjiList:[], sortKey:'JATUH TEMPO', sortDir:1, tab:'own' };
 
 function fmtBucket(b){ return (b||'-').replace('_','-'); }
 function fmtRupiah(n){ if(typeof n !== 'number') return '-'; return 'Rp' + Math.round(n).toLocaleString('id-ID'); }
@@ -1428,6 +1439,7 @@ function buildLayout(){
 
   html += `
     <div class="alert-row" id="janjiStrip" role="group" aria-label="Pantauan janji bayar"></div>
+    <div class="proy-row" id="proyStrip" role="group" aria-label="Filter proyeksi"></div>
     <details class="fold" id="foldSebaran" open>
       <summary><span>Sebaran bucket${IS_ADMIN ? ' &amp; per CO' : ''}</span><small>klik untuk memfilter tabel</small></summary>
       <div class="bucket-bar" id="bucketBar"></div>
@@ -1516,6 +1528,7 @@ function buildLayout(){
             <th data-key="NAMA KONSUMEN">Nama Konsumen</th>
             <th>Bucket</th>
             <th data-key="STATUS BAYAR">Status</th>
+            <th data-key="PROYEKSI">Proyeksi</th>
             <th data-key="SIPOK" class="num">Sisa Piutang</th>
             <th class="num" title="Porsi SIPOK kontrak ini terhadap total SIPOK bucket awal yang sama. Kalau kontrak ini flow, persentase Flow bucket itu naik sebesar angka ini.">% Flow</th>
             <th data-key="ANGSURAN" class="num" data-opt>Angsuran</th>
@@ -1541,7 +1554,7 @@ function buildLayout(){
   document.getElementById('searchInput').addEventListener('input', e => { state.search = e.target.value; renderTable(); });
   document.getElementById('resetBtn').addEventListener('click', () => {
     const keepTab = state.tab;
-    state = { quick:'', search:'', co:'ALL', bucket:'ALL', kriteria:'ALL', tipe:'ALL', kecamatan:'ALL', ever:'ALL', janjiList:[], sortKey:'JATUH TEMPO', sortDir:1, tab:keepTab };
+    state = { quick:'', proy:'', search:'', co:'ALL', bucket:'ALL', kriteria:'ALL', tipe:'ALL', kecamatan:'ALL', ever:'ALL', janjiList:[], sortKey:'JATUH TEMPO', sortDir:1, tab:keepTab };
     buildLayout();
     render();
   });
@@ -1609,6 +1622,23 @@ function quickMatch(r, q){
   if(q === 'lewat') return j > 0 && j < D;
   if(q === 'belum') return j === 0;
   return true;
+}
+// ---------- Proyeksi (hasil follow up: arah kontrak sampai akhir bulan) ----------
+const PROY_LIST = ['STAY','BTC','ROLLBACK','FLOW','LUNAS'];
+const PROY_LABEL = { STAY:'Stay', BTC:'BTC', ROLLBACK:'Rollback', FLOW:'Flow', LUNAS:'Lunas' };
+const PROY_HINT = { STAY:'Bucket tetap, tidak naik dan tidak turun', BTC:'Bayar untuk turun ke bucket lebih rendah (back to current)', ROLLBACK:'Turun ke bucket yang lebih rendah', FLOW:'Naik ke bucket yang lebih tinggi', LUNAS:'Kontrak dilunasi' };
+function proyOf(r){ const v = (r['PROYEKSI']||'').toString().trim().toUpperCase(); return PROY_LIST.includes(v) ? v : ''; }
+function proyPill(v){ const k = (v||'').toString().trim().toUpperCase(); return PROY_LIST.includes(k) ? `<span class="proy-pill p-${k.toLowerCase()}">${PROY_LABEL[k]}</span>` : '<span class="muted">-</span>'; }
+function renderProyStrip(){
+  const box = document.getElementById('proyStrip'); if(!box) return;
+  const src = currentSourceRecords();
+  const cnt = k => src.filter(r => proyOf(r) === (k === 'NONE' ? '' : k)).length;
+  const keys = PROY_LIST.concat(['NONE']);
+  box.innerHTML = '<span class="proy-title">Proyeksi</span>' + keys.map(k => `<button type="button" class="proy-chip p-${k.toLowerCase()}${state.proy===k?' active':''}" data-p="${k}" title="${esc(k==='NONE'?'Belum diisi proyeksinya':PROY_HINT[k])}" aria-pressed="${state.proy===k}">${k==='NONE'?'Belum':PROY_LABEL[k]} <b>${cnt(k)}</b></button>`).join('');
+  box.querySelectorAll('.proy-chip').forEach(b => b.onclick = () => {
+    state.proy = state.proy === b.dataset.p ? '' : b.dataset.p;
+    renderProyStrip(); renderTable();
+  });
 }
 const QUICK_LABEL = { today:'Janji hari ini', lewat:'Janji terlewat', belum:'Belum ada janji' };
 function renderJanjiStrip(){
@@ -3637,7 +3667,7 @@ function render(){
   }
   renderBucketBar();
   renderCoRow();
-  renderJanjiStrip();
+  renderJanjiStrip(); renderProyStrip();
   renderTable();
   updateTabButtons();
   const thCO = document.getElementById('thCO');
@@ -3729,6 +3759,7 @@ function getFiltered(){
   if(state.ever!=='ALL') rows = rows.filter(r => r['STATUS EVER']===state.ever);
   if(state.janjiList.length > 0) rows = rows.filter(r => state.janjiList.includes((r['JANJI BAYAR']||'').toString().trim()));
   if(state.quick) rows = rows.filter(r => quickMatch(r, state.quick));
+  if(state.proy) rows = rows.filter(r => proyOf(r) === (state.proy === 'NONE' ? '' : state.proy));
   if(state.search.trim()){
     const q = state.search.trim().toLowerCase();
     rows = rows.filter(r => (r['NAMA KONSUMEN']||'').toLowerCase().includes(q) || (r['NO KONTRAK']||'').toLowerCase().includes(q) || (r['NOPOL']||'').toLowerCase().includes(q));
@@ -3755,6 +3786,7 @@ function renderActiveChips(){
   if(state.kecamatan !== 'ALL') chips.push({label:'Kecamatan', value:state.kecamatan, clear:() => { state.kecamatan='ALL'; const s=document.getElementById('kecamatanSelect'); if(s)s.value='ALL'; updateFilterBadge(); renderTable(); }});
   if(state.ever !== 'ALL') chips.push({label:'Status Ever', value:state.ever, clear:() => { state.ever='ALL'; const s=document.getElementById('everSelect'); if(s)s.value='ALL'; updateFilterBadge(); renderTable(); }});
   if(state.janjiList.length > 0) chips.push({label:'Janji Bayar', value:state.janjiList.join(', '), clear:() => { state.janjiList=[]; buildLayout(); render(); }});
+  if(state.proy) chips.push({label:'Proyeksi', value: state.proy === 'NONE' ? 'Belum diproyeksi' : PROY_LABEL[state.proy], clear:() => { state.proy=''; renderProyStrip(); renderTable(); }});
   if(state.quick) chips.push({label:'Pantauan', value:QUICK_LABEL[state.quick], clear:() => { state.quick=''; renderJanjiStrip(); renderTable(); }});
   if(state.search.trim()) chips.push({label:'Cari', value:state.search, clear:() => { state.search=''; const i=document.getElementById('searchInput'); if(i)i.value=''; renderTable(); }});
 
@@ -3799,7 +3831,7 @@ function renderTable(){
   const total = currentSourceRecords().length;
   document.getElementById('countNote').innerHTML = `Menampilkan <b>${rows.length}</b> dari <b>${total}</b> kontrak`;
   const tbody = document.getElementById('tbody');
-  if(rows.length===0){ tbody.innerHTML = emptyRowHtml(11, tbody); return; }
+  if(rows.length===0){ tbody.innerHTML = emptyRowHtml(12, tbody); return; }
   const showCO = IS_ADMIN || state.tab === 'escalation';
   tbody.innerHTML = pageRows('main', rows, tbody, renderTable).map(r => {
     const meta = CO_META[r['CO ALL']] || {short:r['CO ALL']||'-'};
@@ -3810,6 +3842,7 @@ function renderTable(){
       <td data-label="Nama">${esc(r['NAMA KONSUMEN']||'-')}${rowWa(r)}</td>
       <td data-label="Bucket"><div class="bucket-flow"><span class="bpill" style="--c:${BUCKET_COLOR[r['BUCKET AWAL']]||'#999'}">${fmtBucket(r['BUCKET AWAL'])}</span>${differs?' → <span class="bpill" style="--c:'+(BUCKET_COLOR[r['BUCKET UPDATE']]||'#999')+'">'+fmtBucket(r['BUCKET UPDATE'])+'</span>':''}</div></td>
       <td data-label="Status"><span class="status-pill ${statusClass(r['STATUS BAYAR'])}">${esc(r['STATUS BAYAR']||'-')}</span></td>
+      <td data-label="Proyeksi">${proyPill(r['PROYEKSI'])}</td>
       <td data-label="Sisa Piutang" class="num">${fmtRupiah(r['SIPOK'])}</td>
       <td data-label="% Flow" class="num">${pengaruhFlowText_(r)}</td>
       <td data-label="Angsuran" class="num" data-opt>${fmtRupiah(r['ANGSURAN'])}</td>
@@ -3842,7 +3875,7 @@ function renderHistory(){
   const items = HIST_ITEMS;
   box.innerHTML = '<h3>Riwayat Tindak Lanjut</h3>' + (items.length ? '<div class="hist">' + items.map(it => `
     <div class="hist-item">
-      <div class="hist-meta">${fmtWaktu(it.waktu)} · ${esc(String(it.email||'').split('@')[0])}${it.janji ? ' · janji tgl <b>' + esc(it.janji) + '</b>' : ''}</div>
+      <div class="hist-meta">${fmtWaktu(it.waktu)} · ${esc(String(it.email||'').split('@')[0])}${it.proyeksi ? ' · ' + proyPill(it.proyeksi) : ''}${it.janji ? ' · janji tgl <b>' + esc(it.janji) + '</b>' : ''}</div>
       <div class="hist-text">${it.kronologis ? esc(it.kronologis) : '<span class="muted">(tanpa catatan)</span>'}</div>
     </div>`).join('') + '</div>' : '<div class="hist-empty">Belum ada riwayat. Setiap kali kamu menyimpan janji bayar atau kronologis, catatannya tersimpan di sini.</div>');
 }
@@ -3881,13 +3914,16 @@ function openPanel(noKontrak){
     <div class="field-group">
       <h3>Progress Penanganan</h3>
       ${canEdit ? `
-        <label class="edit-label">Janji Bayar (tgl)</label>
+        <label class="edit-label">Proyeksi</label>
+        <div class="proy-pick" id="proyPick" role="radiogroup" aria-label="Proyeksi">${PROY_LIST.map(k => `<button type="button" class="proy-opt p-${k.toLowerCase()}${proyOf(r)===k?' on':''}" role="radio" aria-checked="${proyOf(r)===k}" data-p="${k}" title="${esc(PROY_HINT[k])}">${PROY_LABEL[k]}</button>`).join('')}</div>
+        <label class="edit-label" style="margin-top:12px;">Janji Bayar (tgl)</label>
         <input type="text" id="janjiBayarInput" class="edit-input" placeholder="misal: 07" inputmode="numeric" value="${esc((r['JANJI BAYAR']||'').toString())}" maxlength="2">
         <label class="edit-label" style="margin-top:10px;">Kronologis</label>
         <textarea id="kronologisInput" class="edit-textarea" maxlength="1000" placeholder="Catatan hasil follow up…">${esc((r['KRONOLOGIS']||'').toString())}</textarea>
         <button class="btn primary" id="saveProgressBtn" style="width:100%;margin-top:10px;">Simpan</button>
         <div id="saveProgressMsg" style="font-size:11.5px;margin-top:8px;" role="status"></div>
       ` : `
+        <div class="field-row"><span class="k">Proyeksi</span><span class="v">${proyPill(r['PROYEKSI'])}</span></div>
         <div class="field-row"><span class="k">Janji Bayar</span><span class="v">${esc(r['JANJI BAYAR']||'-')}</span></div>
         <div class="field-row"><span class="k">Kronologis</span><span class="v">${esc(r['KRONOLOGIS']||'-')}</span></div>
       `}
@@ -3897,6 +3933,11 @@ function openPanel(noKontrak){
   loadHistory(r['NO KONTRAK']);
 
   if(canEdit){
+    document.querySelectorAll('#proyPick .proy-opt').forEach(b => b.onclick = () => {
+      const on = b.classList.contains('on');
+      document.querySelectorAll('#proyPick .proy-opt').forEach(x => { x.classList.remove('on'); x.setAttribute('aria-checked','false'); });
+      if(!on){ b.classList.add('on'); b.setAttribute('aria-checked','true'); }
+    });
     document.getElementById('saveProgressBtn').addEventListener('click', () => saveProgress(r));
   }
 
@@ -3911,26 +3952,27 @@ function saveProgress(r){
   const msg = document.getElementById('saveProgressMsg');
   const janjiBayar = document.getElementById('janjiBayarInput').value.trim();
   const kronologis = document.getElementById('kronologisInput').value.trim();
+  const pOn = document.querySelector('#proyPick .proy-opt.on'); const proyeksi = pOn ? pOn.dataset.p : '';
   btn.disabled = true; btn.textContent = 'Menyimpan…';
   msg.textContent = ''; msg.style.color = '';
 
   fetch('/api/save-progress', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + ID_TOKEN },
-    body: JSON.stringify({ noKontrak: r['NO KONTRAK'], rowNumber: r['_rowNumber'], janjiBayar, kronologis })
+    body: JSON.stringify({ noKontrak: r['NO KONTRAK'], rowNumber: r['_rowNumber'], janjiBayar, kronologis, proyeksi })
   })
   .then(res => res.json().then(body => ({ ok: res.ok, body })))
   .then(({ok, body}) => {
     btn.disabled = false; btn.textContent = 'Simpan';
     if(!ok){ msg.style.color = 'var(--bad)'; msg.textContent = body.error || 'Gagal menyimpan.'; return; }
-    r['JANJI BAYAR'] = janjiBayar; r['KRONOLOGIS'] = kronologis;
+    r['JANJI BAYAR'] = janjiBayar; r['KRONOLOGIS'] = kronologis; r['PROYEKSI'] = proyeksi;
     if(body.logged && PANEL_KONTRAK === r['NO KONTRAK']){
       const t = new Date(Date.now() + 7*3600*1000).toISOString().replace('T',' ').slice(0,16);
-      HIST_ITEMS.unshift({ waktu: t, email: USER_EMAIL, janji: janjiBayar, kronologis });
+      HIST_ITEMS.unshift({ waktu: t, email: USER_EMAIL, janji: janjiBayar, kronologis, proyeksi });
       renderHistory();
     }
     msg.style.color = 'var(--good)'; msg.innerHTML = ic('check') + ' Tersimpan';
-    if(VIEW_MODE==='dashboard'){ renderJanjiStrip(); renderTable(); }
+    if(VIEW_MODE==='dashboard'){ renderJanjiStrip(); renderProyStrip(); renderTable(); }
   })
   .catch(err => {
     btn.disabled = false; btn.textContent = 'Simpan';
