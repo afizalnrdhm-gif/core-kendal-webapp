@@ -1035,6 +1035,53 @@
   .fc-list .row-wa{flex:none;align-self:center;}
   .fc-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;}
   @media (max-width:680px){ .focus-card{padding:14px;margin-bottom:16px;} .fc-title h2{font-size:16px;} .fc-ring{width:48px;height:48px;} .fc-ring::before{inset:5px;} .fc-actions .btn{flex:1 1 100%;} }
+
+  /* ===== Fokus hari ini (ringkas) & Target Daily ===== */
+  .fc-skel{height:96px;border-radius:12px;background:linear-gradient(90deg,var(--surface-sunken),var(--surface-alt),var(--surface-sunken));background-size:200% 100%;animation:skelMove 1.2s linear infinite;}
+  @keyframes skelMove{from{background-position:200% 0}to{background-position:-200% 0}}
+  .fc-pics{display:grid;gap:8px;margin-top:14px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));}
+  .fc-pic{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;text-align:left;background:var(--surface-alt);border:1px solid color-mix(in srgb,var(--line) 60%,transparent);border-radius:12px;padding:10px 12px;cursor:pointer;color:var(--ink);transition:transform .15s,border-color .15s;}
+  .fc-pic:hover{transform:translateY(-1px);border-color:var(--fc);}
+  .fc-pn{grid-column:1/-1;display:flex;align-items:baseline;gap:8px;} .fc-pn b{font-size:14px;} .fc-pn small{font-size:12px;color:var(--ink-soft);}
+  .fc-pt{display:grid;gap:1px;} .fc-pt small{font-size:11.5px;color:var(--ink-soft);} .fc-pt b{font-size:15px;font-variant-numeric:tabular-nums;} .fc-pt em{font-style:normal;font-size:11.5px;color:var(--ink-soft);}
+  .td-intro h2{margin:0 0 4px;font-size:20px;color:var(--ink);} .td-intro p{margin:0 0 14px;font-size:13px;color:var(--ink-soft);max-width:70ch;}
+  .td-meta{display:flex;margin-bottom:12px;font-size:13px;color:var(--ink-soft);} .td-meta .ic{margin-right:6px;}
+  .td-chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-bottom:14px;scrollbar-width:none;} .td-chips::-webkit-scrollbar{display:none;}
+  .td-chip{flex:none;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:99px;padding:8px 16px;font:600 13px/1 var(--sans);cursor:pointer;min-height:38px;}
+  .td-chip.active{background:var(--primary);color:var(--on-primary);border-color:var(--primary);}
+  .td-sum{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));}
+  .td-card{display:grid;gap:10px;text-align:left;background:var(--surface);border:1px solid color-mix(in srgb,var(--line) 70%,transparent);border-left:4px solid var(--gold);border-radius:var(--radius);padding:14px 16px;cursor:pointer;color:var(--ink);box-shadow:var(--shadow-1);transition:transform .2s,box-shadow .2s;}
+  .td-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-2);}
+  .td-ch b{font-size:16px;} .td-ch small{display:block;font-size:12px;color:var(--ink-soft);}
+  .td-cl{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;border-top:1px dashed var(--line);padding-top:8px;}
+  .td-cl>span:first-child{display:grid;font-size:13px;font-weight:600;} .td-cl small{font-size:11.5px;color:var(--ink-soft);font-weight:500;}
+  .td-cv{display:grid;justify-items:end;} .td-cv b{font-size:17px;font-variant-numeric:tabular-nums;} .td-cv b.ok{color:var(--good);} .td-cv em{font-style:normal;font-size:11.5px;color:var(--ink-soft);}
+  .td-go{font-size:12.5px;font-weight:600;color:var(--link);}
+  .td-pichead{margin:4px 0 12px;} .td-pichead b{font-size:18px;color:var(--ink);} .td-pichead small{display:block;font-size:12px;color:var(--ink-soft);}
+  .td-grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));align-items:start;}
+  .td-poin{background:var(--surface);border:1px solid color-mix(in srgb,var(--line) 70%,transparent);border-top:4px solid var(--gold);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow-1);}
+  .td-poin.aman{border-top-color:var(--good);}
+  .td-poin header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;}
+  .td-tag{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--gold-ink);} .td-poin h3{margin:2px 0 0;font-size:17px;color:var(--ink);}
+  .td-big{text-align:right;} .td-big b{font-size:22px;font-variant-numeric:tabular-nums;color:var(--ink);} .td-big em{display:block;font-style:normal;font-size:11.5px;color:var(--ink-soft);}
+  .td-poin.aman .td-big b{color:var(--good);}
+  .td-ket{margin:6px 0 12px;font-size:12.5px;color:var(--ink-soft);}
+  .td-meter{position:relative;height:8px;border-radius:8px;background:var(--surface-sunken);margin:0 0 12px;} .td-meter i{position:absolute;inset:0 auto 0 0;border-radius:8px;background:var(--warn);} .td-poin.aman .td-meter i{background:var(--good);} .td-meter s{position:absolute;top:-4px;bottom:-4px;width:3px;border-radius:2px;background:var(--ink);}
+  .td-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;} .td-stats div{display:grid;gap:1px;} .td-stats small{font-size:11.5px;color:var(--ink-soft);} .td-stats b{font-size:15px;font-variant-numeric:tabular-nums;} .td-stats span{font-size:11.5px;color:var(--ink-soft);}
+  .td-ok{margin:0 0 10px;font-size:12.5px;color:var(--good);}
+  .td-sub{display:grid;gap:1px;margin:12px 0 6px;padding-top:10px;border-top:1px solid var(--line);} .td-sub b{font-size:13px;} .td-sub small{font-size:11.5px;color:var(--ink-soft);} .td-sub.rek b{color:var(--gold-ink);}
+  .td-list{list-style:none;margin:0;padding:0;display:grid;gap:6px;}
+  .td-row{display:flex;align-items:center;gap:6px;}
+  .td-open{flex:1;min-width:0;display:flex;justify-content:space-between;align-items:flex-start;gap:10px;text-align:left;background:var(--surface-alt);border:1px solid color-mix(in srgb,var(--line) 60%,transparent);border-radius:10px;padding:9px 11px;color:var(--ink);cursor:pointer;font:inherit;}
+  .td-open.static{cursor:default;}
+  button.td-open:hover{border-color:var(--gold);}
+  .td-kn{min-width:0;display:grid;gap:2px;} .td-kn b{font-size:13.5px;} .td-kn small{font-size:11.5px;color:var(--ink-soft);} .td-why{font-size:11.5px;color:var(--gold-ink);font-weight:600;}
+  .td-amt{flex:none;font-size:12.5px;font-weight:700;font-variant-numeric:tabular-nums;}
+  .td-cut{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;color:var(--good);} .td-cut::before,.td-cut::after{content:"";flex:1;height:1px;background:color-mix(in srgb,var(--good) 45%,transparent);}
+  .td-toggle{margin-top:8px;width:100%;} .td-row[hidden],.td-cut[hidden]{display:none;}
+  .td-more,.td-empty{margin:8px 0 0;font-size:12px;color:var(--ink-soft);}
+  .td-warn,.td-good{margin-top:10px;padding:9px 12px;border-radius:10px;font-size:12.5px;} .td-warn{background:var(--warn-bg);color:var(--warn);} .td-good{background:var(--good-bg);color:var(--good);}
+  @media (max-width:680px){ .td-stats{grid-template-columns:1fr 1fr 1fr;gap:6px;} .td-stats b{font-size:14px;} .td-big b{font-size:19px;} .td-poin{padding:14px;} .fc-pics{grid-template-columns:1fr;} }
 </style>
 </head>
 <body>
@@ -1097,6 +1144,10 @@
         <button class="nav-item active" data-view="dashboard" id="navDashboard">
           <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="20" x2="6" y2="12"/><line x1="12" y1="20" x2="12" y2="6"/><line x1="18" y1="20" x2="18" y2="14"/></svg>
           <span>Beban Awal</span>
+        </button>
+        <button class="nav-item nav-hidden" data-view="targetdaily" id="navTargetDaily">
+          <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg>
+          <span>Target Daily</span>
         </button>
         <button class="nav-item nav-hidden" data-view="cms" id="navCMS">
           <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
@@ -1428,6 +1479,7 @@ document.getElementById('logoutBtn').addEventListener('click', doLogout);
 document.getElementById('navRingkasan').addEventListener('click', () => switchView('ringkasan'));
 document.getElementById('navCMS').addEventListener('click', () => switchView('cms'));
 document.getElementById('navDashboard').addEventListener('click', () => switchView('dashboard'));
+document.getElementById('navTargetDaily').addEventListener('click', () => switchView('targetdaily'));
 document.getElementById('navNBQ').addEventListener('click', () => switchView('nbq'));
 document.getElementById('navFEEver').addEventListener('click', () => switchView('feever'));
 document.getElementById('navTglBayar').addEventListener('click', () => switchView('tglbayar'));
@@ -1535,6 +1587,9 @@ function onDataLoaded(res){
   }
 
   // Tanggal Bayar Bulan Lalu: FE, MR, Admin, dan DESKCALL boleh lihat (lingkupnya beda-beda per role).
+  const canSeeTarget = IS_ADMIN || (ROLE_INFO && (ROLE_INFO.role === 'FE' || ROLE_INFO.role === 'MR'));
+  document.getElementById('navTargetDaily').classList.toggle('nav-hidden', !canSeeTarget);
+  TD_DATA = null; TD_LOADING = false;
   const navTglBayar = document.getElementById('navTglBayar');
   const canSeeTglBayar = IS_ADMIN || IS_DESKCALL || (ROLE_INFO && (ROLE_INFO.role === 'FE' || ROLE_INFO.role === 'MR'));
   navTglBayar.classList.toggle('nav-hidden', !canSeeTglBayar);
@@ -1884,7 +1939,7 @@ function updateFilterBadge(){
 let VIEW_MODE = 'dashboard';
 let INSENTIF_DATA = null;
 
-const VIEW_TITLES = { ringkasan: 'Ringkasan Cabang', cms: 'CMS Produktivitas', dashboard: 'Beban Awal', nbq: 'NBQ', feever: 'FE Ever', tglbayar: 'Tgl Bayar Bulan Lalu', insentif: 'Insentif', dekscall: 'Deskcall', simulasi: 'Simulasi Penawaran', simulasirapor: 'Simulasi Rapor', panduan: 'Panduan KPI' };
+const VIEW_TITLES = { ringkasan: 'Ringkasan Cabang', cms: 'CMS Produktivitas', dashboard: 'Beban Awal', targetdaily: 'Target Daily', nbq: 'NBQ', feever: 'FE Ever', tglbayar: 'Tgl Bayar Bulan Lalu', insentif: 'Insentif', dekscall: 'Deskcall', simulasi: 'Simulasi Penawaran', simulasirapor: 'Simulasi Rapor', panduan: 'Panduan KPI' };
 
 function triggerFadeIn(){
   const el = document.getElementById('wrap');
@@ -1900,6 +1955,7 @@ function switchView(view){
   document.getElementById('navRingkasan').classList.toggle('active', view === 'ringkasan');
   document.getElementById('navCMS').classList.toggle('active', view === 'cms');
   document.getElementById('navDashboard').classList.toggle('active', view === 'dashboard');
+  document.getElementById('navTargetDaily').classList.toggle('active', view === 'targetdaily');
   document.getElementById('navNBQ').classList.toggle('active', view === 'nbq');
   document.getElementById('navFEEver').classList.toggle('active', view === 'feever');
   document.getElementById('navTglBayar').classList.toggle('active', view === 'tglbayar');
@@ -1920,6 +1976,8 @@ function switchView(view){
     triggerFadeIn();
   } else if(view === 'ringkasan'){
     if(RINGKASAN_DATA){ renderRingkasanView(); triggerFadeIn(); } else { loadRingkasan(); }
+  } else if(view === 'targetdaily'){
+    renderTargetDaily(); triggerFadeIn();
   } else if(view === 'dashboard'){
     buildLayout();
     render();
@@ -3876,41 +3934,119 @@ function currentSourceRecords(){
   return (state.tab === 'escalation') ? ESCALATIONS : DATA;
 }
 
-// ---------- Fokus hari ini: status singkat + prioritas kejar ----------
+// ---------- Target Daily: data, Fokus Hari Ini (ringkas), dan menu lengkap ----------
+let TD_DATA = null, TD_LOADING = false, TD_SEL = 'ALL', TD_ERR = '';
+const TD_SHORT_ROLE = { FE:'Front End', MR:'Mid Range', BCH:'Branch Head' };
+function tdShort(nama, role){ const m = CO_META[nama]; if(m) return m.short; if(role === 'BCH') return 'Cabang (BCH)'; return String(nama||'').split(' ')[0]; }
+function tdRp(n){ n = Number(n)||0; const a = Math.abs(n); if(a >= 1e9) return 'Rp' + fmtDec(n/1e9, 2) + ' M'; if(a >= 1e6) return 'Rp' + fmtDec(n/1e6, 1) + ' jt'; return fmtRupiah(n); }
+let TD_QUEUE = [];
+function ensureTD(cb){
+  if(TD_DATA){ cb(); return; }
+  TD_QUEUE.push(cb);
+  if(TD_LOADING) return;
+  TD_LOADING = true; TD_ERR = '';
+  const done = () => { TD_LOADING = false; const q = TD_QUEUE; TD_QUEUE = []; q.forEach(f => { try{ f(); }catch(e){} }); };
+  fetch('/api/insentif?target=1', { headers: { Authorization: 'Bearer ' + ID_TOKEN } })
+    .then(r => r.json().then(body => ({ ok: r.ok, body })))
+    .then(({ok, body}) => { if(!ok){ TD_ERR = body.error || 'Gagal memuat target daily.'; } else { TD_DATA = body; } done(); })
+    .catch(err => { TD_ERR = err.message; done(); });
+}
+function tdPerHariTotal(p){ return p.poin.reduce((s, q) => s + (q.perHari||0), 0); }
+
 function renderFocus(){
   const box = document.getElementById('focusCard'); if(!box) return;
-  const src = DATA, total = src.length;
-  const unpaid = src.filter(r => !isPaidRow(r));
-  const paid = total - unpaid.length;
-  const n = q => unpaid.filter(r => quickMatch(r, q)).length;
-  const nLewat = n('lewat'), nToday = n('today'), nBelum = n('belum');
-  const tone = nLewat > 0 ? 'bad' : (nBelum > 0 ? 'warn' : 'good');
-  const headline = total === 0 ? 'Belum ada data' : nLewat > 0 ? `${nLewat} janji bayar terlewat perlu dikejar` : nBelum > 0 ? `${nBelum} kontrak belum punya janji bayar` : 'Semua kontrak sudah tertangani';
-  const sub = total === 0 ? '' : `${paid.toLocaleString('id-ID')} dari ${total.toLocaleString('id-ID')} kontrak sudah bayar · ${nToday} janji jatuh hari ini`;
-  const pct = total ? Math.round(paid / total * 100) : 0;
-  const D = new Date().getDate();
-  const reasonOf = r => { const j = janjiDay(r); return j === 0 ? ['Belum ada janji', 'warn', 2] : j < D ? ['Janji terlewat tgl ' + j, 'bad', 0] : j === D ? ['Janji hari ini', 'info', 1] : ['Janji tgl ' + j, 'ok', 3]; };
-  const top = unpaid.map(r => ({ r, why: reasonOf(r) })).filter(x => x.why[2] <= 2)
-    .sort((a, b) => a.why[2] - b.why[2] || (b.r['SIPOK'] || 0) - (a.r['SIPOK'] || 0)).slice(0, 5);
-  const list = top.map(x => {
-    const r = x.r, co = IS_ADMIN ? ((CO_META[r['CO ALL']] || {}).short || r['CO ALL'] || '') : '';
-    return `<li><button type="button" class="fc-item" data-k="${esc(r['NO KONTRAK'] || '')}"><span class="fc-main"><b>${esc(r['NAMA KONSUMEN'] || '-')}</b><small>${esc(fmtBucket(r['BUCKET AWAL']))}${co ? ' · ' + esc(co) : ''} · DPD ${esc(r['DPD'] ?? '-')}</small></span><span class="fc-side"><span class="fc-why ${x.why[1]}">${esc(x.why[0])}</span><em>${fmtRupiah(r['SIPOK'])}</em></span></button>${rowWa(r)}</li>`;
-  }).join('');
-  box.className = 'focus-card ' + tone;
-  box.innerHTML = `
-    <div class="fc-head">
-      <div class="fc-badge" aria-hidden="true">${ic(tone === 'good' ? 'check' : 'target')}</div>
-      <div class="fc-title"><small>Fokus hari ini · ${new Date().toLocaleDateString('id-ID', {weekday:'short', day:'numeric', month:'short'})}</small><h2>${esc(headline)}</h2>${sub ? '<p>' + esc(sub) + '</p>' : ''}</div>
-      <div class="fc-ring" role="img" aria-label="${pct}% kontrak sudah bayar" style="--p:${pct}"><span>${pct}%</span></div>
+  const draw = () => {
+    const b2 = document.getElementById('focusCard'); if(!b2) return;
+    if(!TD_DATA || !TD_DATA.pic || !TD_DATA.pic.length){
+      b2.className = 'focus-card'; b2.innerHTML = TD_ERR ? '' : '';
+      if(!TD_DATA && !TD_ERR) b2.innerHTML = '<div class="fc-skel"></div>';
+      if(TD_ERR || (TD_DATA && !TD_DATA.pic.length)) b2.style.display = 'none';
+      return;
+    }
+    b2.style.display = '';
+    const w = TD_DATA.tanggal;
+    const semua = TD_DATA.pic.every(p => p.poin.every(q => q.perHari <= 0));
+    b2.className = 'focus-card ' + (semua ? 'good' : '');
+    const rows = TD_DATA.pic.map(p => `<button type="button" class="fc-pic" data-pic="${esc(p.namaCO)}"><span class="fc-pn"><b>${esc(tdShort(p.namaCO, p.role))}</b><small>${esc(TD_SHORT_ROLE[p.role] || p.role)}</small></span>${p.poin.map(q => `<span class="fc-pt"><small>${esc(q.judul)}</small><b>${q.perHari > 0 ? tdRp(q.perHari) : 'Aman'}</b>${q.perHari > 0 ? '<em>/ hari</em>' : ''}</span>`).join('')}</button>`).join('');
+    b2.innerHTML = `
+      <div class="fc-head">
+        <div class="fc-badge" aria-hidden="true">${ic(semua ? 'check' : 'target')}</div>
+        <div class="fc-title"><small>Fokus hari ini · sisa ${w.sisaHari} hari (termasuk hari ini)</small><h2>Target daily${TD_DATA.isAdmin ? ' semua PIC' : ''}</h2><p>Jumlah yang perlu tertagih tiap hari supaya Balance dan Flow aman di akhir bulan.</p></div>
+      </div>
+      <div class="fc-pics">${rows}</div>
+      <div class="fc-actions"><button type="button" class="btn primary" id="fcOpenTD">Lihat kontrak potensial</button></div>`;
+    b2.querySelectorAll('.fc-pic').forEach(x => x.onclick = () => { TD_SEL = x.dataset.pic; switchView('targetdaily'); });
+    const open = document.getElementById('fcOpenTD'); if(open) open.onclick = () => { if(TD_DATA.isAdmin) TD_SEL = 'ALL'; switchView('targetdaily'); };
+  };
+  draw();
+  if(!TD_DATA) ensureTD(draw);
+}
+
+function tdKontrakRow(k){
+  const rec = DATA.find(x => x['NO KONTRAK'] === k.noKontrak) || ESCALATIONS.find(x => x['NO KONTRAK'] === k.noKontrak);
+  const wa = rec ? rowWa(rec) : '';
+  const inner = `<span class="td-kn"><b>${esc(k.nama)}</b><small>${esc(fmtBucket(k.bucketAwal))}${k.dpd != null ? ' · DPD ' + esc(k.dpd) : ''}${k.co && TD_DATA.isAdmin ? ' · ' + esc(tdShort(k.co)) : ''}${k.proyeksi ? ' · ' + esc(PROY_LABEL[k.proyeksi] || k.proyeksi) : ''}</small><span class="td-why">${esc(k.alasan)}</span></span><span class="td-amt">${fmtRupiah(k.sipok)}</span>`;
+  return `<li class="td-row">${rec ? `<button type="button" class="td-open" data-k="${esc(k.noKontrak)}">${inner}</button>` : `<div class="td-open static">${inner}</div>`}${wa}</li>`;
+}
+function tdPoinHtml(p, q, idx){
+  const pct = Math.min(100, q.nilaiPct), bt = Math.min(100, q.batasPct);
+  const aman = q.perHari <= 0;
+  const untuk = q.jumlahUntukTarget;
+  const LIM = 8;
+  const pot = q.potensial.map((k, i) => (i === LIM ? '<li class="td-extra-start" hidden></li>' : '') + tdKontrakRow(k).replace('<li class="td-row">', '<li class="td-row' + (i >= LIM ? ' td-extra' : '') + '" ' + (i >= LIM ? 'hidden' : '') + '>') + (untuk && i + 1 === untuk && q.potensial.length > untuk ? '<li class="td-cut' + (i >= LIM ? ' td-extra' : '') + '" role="separator" ' + (i >= LIM ? 'hidden' : '') + '><span>Target harian tercapai sampai di sini</span></li>' : '')).join('');
+  const rek = q.rekomendasi.map(tdKontrakRow).join('');
+  return `
+  <section class="td-poin ${aman ? 'aman' : ''}" data-key="${p.namaCO}|${q.kunci}">
+    <header>
+      <div><span class="td-tag">${q.kunci === 'balance' ? 'Poin 1 · Balance' : 'Poin 2 · Flow'}</span><h3>${esc(q.judul)}</h3></div>
+      <div class="td-big">${aman ? '<b>Aman</b>' : `<b>${tdRp(q.perHari)}</b><em>/ hari</em>`}</div>
+    </header>
+    <p class="td-ket">${esc(q.keterangan)}</p>
+    <div class="td-meter" role="img" aria-label="Sekarang ${fmtDec(q.nilaiPct,1)} persen, batas ${fmtDec(q.batasPct,1)} persen"><i style="width:${pct}%"></i><s style="left:${bt}%"></s></div>
+    <div class="td-stats">
+      <div><small>Sekarang</small><b>${fmtDec(q.nilaiPct,1)}%</b><span>${tdRp(q.nilaiAmt)}</span></div>
+      <div><small>Batas aman</small><b>${fmtDec(q.batasPct,1)}%</b><span>${q.bolehAmt != null ? tdRp(q.bolehAmt) : ''}</span></div>
+      <div><small>Perlu turun</small><b>${aman ? '-' : tdRp(q.perluAmt)}</b><span>${aman ? 'sudah di bawah batas' : 'dalam ' + TD_DATA.tanggal.sisaHari + ' hari'}</span></div>
     </div>
-    ${list ? '<div class="fc-sub">Prioritas kejar</div><ul class="fc-list">' + list + '</ul>' : ''}
-    ${(nLewat || nBelum) ? `<div class="fc-actions">${nLewat ? `<button type="button" class="btn" data-q="lewat">Lihat ${nLewat} janji terlewat</button>` : ''}${nBelum ? `<button type="button" class="btn" data-q="belum">Lihat ${nBelum} belum ada janji</button>` : ''}</div>` : ''}`;
-  box.querySelectorAll('.fc-item').forEach(b => b.onclick = () => openPanel(b.dataset.k));
-  box.querySelectorAll('.fc-actions .btn').forEach(b => b.onclick = () => {
-    state.quick = b.dataset.q;
-    if(VIEW_MODE !== 'dashboard'){ switchView('dashboard'); } else { renderJanjiStrip(); renderTable(); }
-    setTimeout(() => { const t = document.querySelector('.controls'); if(t) t.scrollIntoView({behavior:'smooth', block:'start'}); }, 120);
+    ${aman ? '<p class="td-ok">Sudah di bawah batas, pertahankan. Kontrak di bawah tetap bisa dikejar sebagai cadangan.</p>' : ''}
+    <div class="td-sub"><b>Kontrak potensial</b><small>${q.jumlahPotensial} kontrak · ${tdRp(q.totalPotensial)} · urut: tgl bayar bulan lalu, lalu janji bayar</small></div>
+    ${q.potensial.length ? `<ul class="td-list">${pot}</ul>${q.potensial.length > LIM ? `<button type="button" class="btn td-toggle" data-n="${q.potensial.length - LIM}">Tampilkan ${q.potensial.length - LIM} lainnya</button>` : ''}${q.jumlahPotensial > q.potensial.length ? `<p class="td-more">+ ${q.jumlahPotensial - q.potensial.length} kontrak potensial lainnya</p>` : ''}` : '<p class="td-empty">Belum ada kontrak yang cocok dengan pola tgl bayar atau janji bayar.</p>'}
+    ${!aman && !q.tercukupi ? `<div class="td-warn">Potensial baru ${tdRp(q.totalPotensial)}, masih kurang <b>${tdRp(q.kurang)}</b> dari target harian ${tdRp(q.perHari)}.</div>` : (!aman && q.tercukupi ? `<div class="td-good">Target harian ${tdRp(q.perHari)} tertutup oleh ${untuk} kontrak teratas.</div>` : '')}
+    ${q.rekomendasi.length ? `<div class="td-sub rek"><b>Rekomendasi tambahan</b><small>Paling mungkin ditarik maju untuk menutup kekurangan</small></div><ul class="td-list">${rek}</ul>` : ''}
+  </section>`;
+}
+function tdPicHtml(p){
+  return `<div class="td-pichead"><div><b>${esc(tdShort(p.namaCO, p.role))}</b><small>${esc(TD_SHORT_ROLE[p.role] || p.role)} · ${esc(p.namaCO)}</small></div></div><div class="td-grid">${p.poin.map((q, i) => tdPoinHtml(p, q, i)).join('')}</div>`;
+}
+function renderTargetDaily(){
+  const wrap = document.getElementById('wrap');
+  const head = `<div class="td-intro"><h2>Target daily</h2><p>Target harian = (belum bayar - batas yang boleh flow) ÷ sisa hari, sama seperti REPORT DAILY di Excel. Data adalah kondisi kemarin, jadi hari ini ikut dihitung.</p></div>`;
+  if(!TD_DATA){
+    wrap.innerHTML = head + (TD_ERR ? `<div class="state-box error"><div class="err-icon">${ic('alert')}</div>${esc(TD_ERR)}<br><br><button class="btn" onclick="TD_ERR='';renderTargetDaily()">Coba lagi</button></div>` : `<div class="skeleton-row"><div class="skel"></div><div class="skel"></div></div><div class="skel tall"></div>`);
+    if(!TD_ERR) ensureTD(() => { if(VIEW_MODE === 'targetdaily') renderTargetDaily(); });
+    return;
+  }
+  const w = TD_DATA.tanggal, pics = TD_DATA.pic;
+  if(!pics.length){ wrap.innerHTML = head + '<div class="state-box">Akunmu belum punya target Balance/Flow (khusus FE, MR, dan BCH).</div>'; return; }
+  const multi = TD_DATA.isAdmin && pics.length > 1;
+  if(!multi) TD_SEL = pics[0].namaCO;
+  if(multi && TD_SEL !== 'ALL' && !pics.some(p => p.namaCO === TD_SEL)) TD_SEL = 'ALL';
+  const chips = multi ? `<div class="td-chips" role="tablist" aria-label="Pilih PIC">${['ALL'].concat(pics.map(p => p.namaCO)).map(n => `<button type="button" role="tab" class="td-chip${TD_SEL === n ? ' active' : ''}" aria-selected="${TD_SEL === n}" data-pic="${esc(n)}">${n === 'ALL' ? 'Semua' : esc(tdShort(n, (pics.find(p => p.namaCO === n) || {}).role))}</button>`).join('')}</div>` : '';
+  const meta = `<div class="td-meta"><span>${ic('clock')} Sisa <b>${w.sisaHari} hari</b> sampai ${w.akhirBulan}/${w.bulan} (termasuk hari ini)</span></div>`;
+  let body;
+  if(TD_SEL === 'ALL'){
+    body = `<div class="td-sum">${pics.map(p => `<button type="button" class="td-card" data-pic="${esc(p.namaCO)}"><div class="td-ch"><b>${esc(tdShort(p.namaCO, p.role))}</b><small>${esc(TD_SHORT_ROLE[p.role] || p.role)}</small></div>${p.poin.map(q => `<div class="td-cl"><span><small>${q.kunci === 'balance' ? 'Balance' : 'Flow'}</small>${esc(q.judul.replace(/^(Balance|Flow) /, ''))}</span><span class="td-cv">${q.perHari > 0 ? '<b>' + tdRp(q.perHari) + '</b><em>/ hari</em>' : '<b class="ok">Aman</b>'}<small>${fmtDec(q.nilaiPct,1)}% · batas ${fmtDec(q.batasPct,1)}%</small></span></div>`).join('')}<span class="td-go">Lihat kontrak potensial ›</span></button>`).join('')}</div>`;
+  } else {
+    body = tdPicHtml(pics.find(p => p.namaCO === TD_SEL));
+  }
+  wrap.innerHTML = head + meta + chips + body;
+  wrap.querySelectorAll('.td-chip, .td-card').forEach(x => x.onclick = () => { TD_SEL = x.dataset.pic; renderTargetDaily(); window.scrollTo({top:0, behavior:'smooth'}); });
+  wrap.querySelectorAll('.td-toggle').forEach(b => b.onclick = () => {
+    const ul = b.previousElementSibling, open = b.dataset.open === '1';
+    ul.querySelectorAll('.td-extra').forEach(li => { li.hidden = open; });
+    b.dataset.open = open ? '' : '1'; b.textContent = open ? 'Tampilkan ' + b.dataset.n + ' lainnya' : 'Ringkas daftar';
   });
+  wrap.querySelectorAll('.td-open[data-k]').forEach(x => x.onclick = () => openPanel(x.dataset.k));
 }
 
 function render(){
@@ -4409,14 +4545,14 @@ document.getElementById('overlay').onclick = document.getElementById('panelClose
   const dateEl = document.getElementById('topDate');
   if(!sidebar || !nav) return;
 
-  const HINT = { cms:'Produktivitas collection: balance 1-30 dan 31-60, DKH terbentuk, dikerjakan, bertemu, risk code', ringkasan:'Ringkasan performa cabang: sebaran bucket, flow, dan tren mingguan', dashboard:'Beban awal: daftar kontrak per bucket beserta status bayarnya', nbq:'Kontrak NBQ (new booking quality) dan status bayarnya', feever:'Kontrak limpahan 31+ hari', tglbayar:'Kontrak yang bulan lalu dibayar pada tanggal hari ini', insentif:'Proyeksi insentif mingguan', dekscall:'Daftar tugas deskcall', simulasirapor:'Simulasi nilai rapor jika kontrak tertentu flow/stay/lunas', simulasi:'Simulasi penawaran MotorKu', panduan:'Panduan membaca KPI dan insentif' };
+  const HINT = { targetdaily:'Target daily balance dan flow per PIC, kontrak potensial, dan rekomendasi kejar', cms:'Produktivitas collection: balance 1-30 dan 31-60, DKH terbentuk, dikerjakan, bertemu, risk code', ringkasan:'Ringkasan performa cabang: sebaran bucket, flow, dan tren mingguan', dashboard:'Beban awal: daftar kontrak per bucket beserta status bayarnya', nbq:'Kontrak NBQ (new booking quality) dan status bayarnya', feever:'Kontrak limpahan 31+ hari', tglbayar:'Kontrak yang bulan lalu dibayar pada tanggal hari ini', insentif:'Proyeksi insentif mingguan', dekscall:'Daftar tugas deskcall', simulasirapor:'Simulasi nilai rapor jika kontrak tertentu flow/stay/lunas', simulasi:'Simulasi penawaran MotorKu', panduan:'Panduan membaca KPI dan insentif' };
   sidebar.querySelectorAll('.nav-item[data-view]').forEach(b => { if(HINT[b.dataset.view]) b.title = HINT[b.dataset.view]; });
   function orderFor(){
     if(IS_DESKCALL) return ['dashboard','dekscall','tglbayar','simulasi','panduan'];
-    if(IS_ADMIN) return ['ringkasan','dashboard','cms','nbq','insentif','feever','tglbayar','simulasirapor','simulasi','panduan'];
-    return ['dashboard','nbq','feever','insentif','tglbayar','simulasirapor','simulasi','panduan'];
+    if(IS_ADMIN) return ['ringkasan','targetdaily','dashboard','cms','nbq','insentif','feever','tglbayar','simulasirapor','simulasi','panduan'];
+    return ['dashboard','targetdaily','nbq','insentif','feever','tglbayar','simulasirapor','simulasi','panduan'];
   }
-  const SHORT = { cms:'CMS', ringkasan:'Ringkasan', dashboard:'Beban', nbq:'NBQ', feever:'FE Ever', tglbayar:'Tgl Bayar', insentif:'Insentif', dekscall:'Deskcall', simulasirapor:'Rapor', simulasi:'Simulasi', panduan:'Panduan' };
+  const SHORT = { cms:'CMS', ringkasan:'Ringkasan', dashboard:'Beban', targetdaily:'Target', nbq:'NBQ', feever:'FE Ever', tglbayar:'Tgl Bayar', insentif:'Insentif', dekscall:'Deskcall', simulasirapor:'Rapor', simulasi:'Simulasi', panduan:'Panduan' };
   const MORE_ICON = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/></svg>';
 
   function items(){

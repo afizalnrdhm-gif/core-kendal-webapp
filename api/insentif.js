@@ -247,6 +247,144 @@ function hitungPenyelesaianSemua(masterList, configRows) {
   });
 }
 
+
+// ============================================================
+// TARGET DAILY (menu "Target Daily")
+// Meniru REPORT DAILY di Excel: target harian = (belum bayar - batas flow yang masih boleh) / sisa hari.
+// Dua poin per PIC mengikuti KPI rapor: Balance dan Flow.
+//   FE  : Balance 1-30 (porsi AR) + Flow NOOD   | MR : Balance 31-60 + Flow 1-30 | BCH : Balance 1-60 + Flow 31-60
+// Data MASTER/KA HARIAN adalah kondisi H-1, jadi "hari ini" ikut dihitung sebagai hari yang tersisa.
+// ============================================================
+const TD_BATAS_FLOW = { FE: 2, MR: 6, BCH: 28 };       // % beban awal yang boleh flow (parameter J di Excel REPORT DAILY)
+const TD_BATAS_BALANCE = { FE: 8.5, MR: 1.8, BCH: 9 }; // % AR (batas poin maksimal tiering KPI rapor)
+const TD_LABEL = { NOOD: 'NOOD', P001_030: '1-30', P031_060: '31-60', P061_090: '61-90' };
+const tdLbl = b => TD_LABEL[b] || String(b || '').replace(/^P0*/, '').replace('_', '-');
+
+function tdHariIni() {
+  const t = new Date(Date.now() + 7 * 3600 * 1000);
+  const y = t.getUTCFullYear(), m = t.getUTCMonth(), d = t.getUTCDate();
+  const akhir = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+  return { tahun: y, bulan: m + 1, hari: d, akhirBulan: akhir, sisaHari: Math.max(1, akhir - d + 1) };
+}
+function tdHariDariCell(v) {
+  if (v === '' || v === null || v === undefined) return 0;
+  if (typeof v === 'number') {
+    if (v >= 1 && v <= 31) return Math.floor(v);
+    if (v > 1000) return new Date(Math.floor(v - 25569) * 86400000).getUTCDate();
+    return 0;
+  }
+  const s = String(v).trim();
+  let mt = s.match(/^(\d{4})-(\d{2})-(\d{2})/); if (mt) return parseInt(mt[3], 10);
+  mt = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/); if (mt) return parseInt(mt[1], 10);
+  const n = parseInt(s, 10); return n >= 1 && n <= 31 ? n : 0;
+}
+function tdSudahBayar(m) {
+  const u = (m['STATUS BAYAR'] || '').toString().toUpperCase();
+  return u.includes('LUNAS') || u.includes('SUDAH');
+}
+
+// Susun daftar kontrak potensial (urut: tgl bayar bulan lalu, lalu JB) + rekomendasi tambahan sampai target harian tertutup.
+function tdSusunKontrak(kandidat, perHari, D, akhirBulan) {
+  const jarak = (hari) => { // jarak kalender ke depan (0 = hari ini; negatif = sudah lewat)
+    if (!hari) return null; return hari - D;
+  };
+  const baris = kandidat.map(m => {
+    const tb = tdHariDariCell(m['TANGGAL BAYAR BULAN LALU'] !== undefined && m['TANGGAL BAYAR BULAN LALU'] !== '' ? m['TANGGAL BAYAR BULAN LALU'] : m['TGL BYR']);
+    const jb = tdHariDariCell(m['JANJI BAYAR']);
+    const dTb = jarak(tb), dJb = jarak(jb);
+    let grup = 9, alasan = [];
+    if (dTb === 0) { grup = Math.min(grup, 1); alasan.push('Biasa bayar tgl ' + tb + ' (hari ini)'); }
+    if (dJb === 0) { grup = Math.min(grup, 1); alasan.push('Janji bayar hari ini'); }
+    if (grup > 2 && dTb !== null && dTb < 0) { grup = Math.min(grup, 2); alasan.push('Biasa bayar tgl ' + tb + ' (sudah lewat)'); }
+    if (grup > 2 && dJb !== null && dJb < 0) { grup = Math.min(grup, 2); alasan.push('Janji tgl ' + jb + ' terlewat'); }
+    if (grup > 3 && dTb !== null && dTb > 0 && dTb <= 3) { grup = 3; alasan.push('Biasa bayar tgl ' + tb + ' (' + dTb + ' hari lagi)'); }
+    if (grup > 3 && dJb !== null && dJb > 0 && dJb <= 3) { grup = 3; alasan.push('Janji bayar tgl ' + jb + ' (' + dJb + ' hari lagi)'); }
+    return {
+      noKontrak: m['NO KONTRAK'], nama: m['NAMA KONSUMEN'] || '-', sipok: sipokOf(m), bucketAwal: m['BUCKET AWAL'], bucket: m['BUCKET UPDATE'],
+      dpd: typeof m['DPD'] === 'number' ? m['DPD'] : null, tglBayarLalu: tb || null, jb: jb || null, proyeksi: (m['PROYEKSI'] || '').toString().trim().toUpperCase(),
+      co: m['CO ALL'] || '', grup, alasan: alasan.join(' · '), _dTb: dTb, _dJb: dJb
+    };
+  });
+  const potensial = baris.filter(b => b.grup <= 3).sort((a, b) => a.grup - b.grup || b.sipok - a.sipok);
+  let kum = 0;
+  potensial.forEach(b => { kum += b.sipok; b.kumulatif = kum; });
+  const totalPotensial = kum;
+  const untukTarget = perHari > 0 ? (potensial.findIndex(b => b.kumulatif >= perHari) + 1 || null) : 0;
+  const kurang = Math.max(0, perHari - totalPotensial);
+
+  // Rekomendasi tambahan: yang paling mungkin ditarik maju. Prioritas: janji bayar di depan (konsumen sudah berkomitmen),
+  // lalu kebiasaan bayar terdekat dengan hari ini, lalu sisanya (SIPOK besar dulu supaya sedikit kontak menutup selisih).
+  let rekom = [];
+  if (kurang > 0) {
+    const sisa = baris.filter(b => b.grup > 3).map(b => {
+      let skor, alasan;
+      if (b._dJb !== null && b._dJb > 3) { skor = 1000 + b._dJb; alasan = 'Sudah janji tgl ' + b.jb + ' — minta dipercepat'; }
+      else if (b._dTb !== null && b._dTb > 3) { skor = 2000 + b._dTb; alasan = 'Biasa bayar tgl ' + b.tglBayarLalu + ' — ajak bayar lebih awal'; }
+      else { skor = 3000; alasan = 'Belum ada pola/janji — prioritaskan nominal besar'; }
+      return Object.assign({}, b, { skor, alasan });
+    }).sort((a, b) => a.skor - b.skor || b.sipok - a.sipok);
+    let sisaKurang = kurang;
+    for (const r of sisa) { if (sisaKurang <= 0 || rekom.length >= 10) break; rekom.push(r); sisaKurang -= r.sipok; }
+  }
+  const bersih = b => { const o = Object.assign({}, b); delete o._dTb; delete o._dJb; delete o.skor; return o; };
+  return {
+    potensial: potensial.slice(0, 30).map(bersih), jumlahPotensial: potensial.length, totalPotensial,
+    kurang, jumlahUntukTarget: untukTarget, rekomendasi: rekom.map(bersih), tercukupi: kurang <= 0
+  };
+}
+
+function hitungTargetDaily(masterList, petaKA, configRows) {
+  const w = tdHariIni(); const D = w.hari;
+  const arAll = (filterKA) => { let t = 0; Object.values(petaKA).forEach(ka => { if (!filterKA(ka)) return; const i = bucketIndex(ka['BUCKET UPDATE']); const sisa = typeof ka['SISA PIUTANG'] === 'number' ? ka['SISA PIUTANG'] : 0; if (i !== -1 && i <= bucketIndex('P181_210')) t += sisa; }); return t; };
+  const hasil = configRows.filter(r => ['FE', 'MR', 'BCH'].includes(r['ROLE'])).map(cfg => {
+    const role = cfg['ROLE'], namaCO = cfg['NAMA_CO'];
+    const penyelesaian = (cfg['BUCKET_PENYELESAIAN'] || '').toString().split(',').map(x => x.trim()).filter(Boolean);
+    let asal = (cfg['BUCKET_ASAL_FLOW'] || '').toString().trim();
+    let balBuckets = (cfg['BUCKET_BALANCE'] || '').toString().split(',').map(x => x.trim()).filter(Boolean);
+    if (role === 'BCH') { asal = 'P031_060'; balBuckets = ['P001_030', 'P031_060']; }
+    const incFleet = role === 'BCH';
+    const scopeM = m => (incFleet || m['FLEET/NON FLEET'] !== 'FLEET') && (role !== 'FE' || m['CO ALL'] === namaCO);
+    const scopeKA = ka => (incFleet || ka['FLEET/NON FLEET'] !== 'FLEET') && (role !== 'FE' || ka['NAMA COLLECTOR'] === namaCO);
+
+    // ---- Poin 1: BALANCE (porsi AR bucket terhadap total AR) ----
+    const arTotal = arAll(scopeKA);
+    let arBucket = 0;
+    Object.values(petaKA).forEach(ka => { if (!scopeKA(ka)) return; if (balBuckets.includes(ka['BUCKET UPDATE'])) arBucket += (typeof ka['SISA PIUTANG'] === 'number' ? ka['SISA PIUTANG'] : 0); });
+    const batasBal = TD_BATAS_BALANCE[role];
+    const pctBal = arTotal > 0 ? arBucket / arTotal * 100 : 0;
+    const perluBal = Math.max(0, arBucket - arTotal * batasBal / 100);
+    const kandBal = masterList.filter(m => scopeM(m) && balBuckets.includes(m['BUCKET UPDATE']) && !tdSudahBayar(m));
+    const balance = {
+      kunci: 'balance', judul: 'Balance ' + balBuckets.map(tdLbl).join(' + '),
+      keterangan: 'Porsi AR bucket ' + balBuckets.map(tdLbl).join(' + ') + ' terhadap total AR; batas poin maksimal ' + batasBal + '%',
+      nilaiAmt: arBucket, nilaiPct: pctBal, batasPct: batasBal, perluAmt: perluBal, perHari: perluBal / w.sisaHari,
+      ...tdSusunKontrak(kandBal, perluBal / w.sisaHari, D, w.akhirBulan)
+    };
+
+    // ---- Poin 2: FLOW (belum bayar di bucket asal yang masih bisa flow) ----
+    const bAsal = role === 'BCH' ? 'P031_060' : (role === 'FE' ? (asal || 'NOOD') : (asal || 'P001_030'));
+    let beban = 0, unpaid = 0; const kandFlow = [];
+    masterList.forEach(m => {
+      if (!scopeM(m) || m['BUCKET AWAL'] !== bAsal) return;
+      // MR: flow 1-30 dihitung se-cabang (sama seperti rapor); FE hanya kontrak miliknya
+      beban += sipokOf(m);
+      if (bucketIndex(m['BUCKET UPDATE']) > bucketIndex(m['BUCKET AWAL'])) { unpaid += sipokOf(m); kandFlow.push(m); }
+    });
+    const batasFlow = TD_BATAS_FLOW[role];
+    const boleh = beban * batasFlow / 100;
+    const perluFlow = Math.max(0, unpaid - boleh);
+    const flow = {
+      kunci: 'flow', judul: 'Flow ' + tdLbl(bAsal),
+      keterangan: 'Kontrak bucket ' + tdLbl(bAsal) + ' yang belum bayar (berpotensi flow); yang boleh flow maks ' + batasFlow + '% dari beban awal',
+      bebanAmt: beban, nilaiAmt: unpaid, nilaiPct: beban > 0 ? unpaid / beban * 100 : 0, batasPct: batasFlow, bolehAmt: boleh,
+      perluAmt: perluFlow, perHari: perluFlow / w.sisaHari, jumlahBelumBayar: kandFlow.length,
+      ...tdSusunKontrak(kandFlow, perluFlow / w.sisaHari, D, w.akhirBulan)
+    };
+    return { namaCO, role, poin: [balance, flow] };
+  });
+  return { tanggal: w, pic: hasil };
+}
+
 // ============================================================
 // HANDLER UTAMA
 // ============================================================
@@ -278,6 +416,17 @@ module.exports = async (req, res) => {
     const petaKA = {};
     kaRows.forEach(r => { if (r['NO KONTRAK']) petaKA[r['NO KONTRAK']] = r; });
     const configRows = parseSheetGeneric(roleRaw, 0);
+
+    if (req.query && req.query.target) {
+      const adminList = (process.env.ADMIN_EMAILS || '').split(',').map(x => x.trim().toLowerCase());
+      const admin = adminList.indexOf(email) > -1;
+      const td = hitungTargetDaily(masterList, petaKA, configRows);
+      if (admin) { res.status(200).json(Object.assign({ isAdmin: true }, td)); return; }
+      const rec = masterList.find(m => (m['EMAIL CO'] || '').toString().trim().toLowerCase() === email);
+      const nama = rec ? rec['CO ALL'] : null;
+      res.status(200).json({ isAdmin: false, tanggal: td.tanggal, pic: td.pic.filter(p => p.namaCO === nama) });
+      return;
+    }
 
     const hasilFE = hitungFE(masterList, petaKA, configRows);
     const hasilMR = hitungMR(masterList, petaKA, configRows);
@@ -327,3 +476,5 @@ module.exports = async (req, res) => {
     sendError(res, err);
   }
 };
+
+module.exports.__test = { hitungTargetDaily, tdHariDariCell, tdSusunKontrak };
