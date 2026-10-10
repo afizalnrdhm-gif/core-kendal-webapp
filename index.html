@@ -150,6 +150,11 @@
   .wrap{max-width:1320px;margin:0 auto;padding:24px 28px 72px;}
   .wrap.fade-in{animation:fadeIn .25s ease;}
   @keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+  @keyframes splashRise{from{opacity:0;transform:translateY(10px) scale(.96);}to{opacity:1;transform:none;}}
+  @keyframes splashBar{0%{transform:translateX(-100%);}100%{transform:translateX(250%);}}
+  .splash-bar{width:92px;height:3px;border-radius:3px;background:rgba(255,255,255,.14);overflow:hidden;}
+  .splash-bar i{display:block;width:40%;height:100%;border-radius:3px;background:linear-gradient(90deg,#C88A2E,#F2B54A);animation:splashBar 1.2s ease-in-out infinite;}
+  @media (prefers-reduced-motion:reduce){.splash-bar i{animation:none;width:100%;}}
   @keyframes splashPulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.72;transform:scale(.93);}}
 
   /* ---------- Komponen dasar ---------- */
@@ -1018,8 +1023,10 @@
 <body>
 <a class="skip-link" href="#wrap">Lewati ke konten</a>
 
-<div id="splashScreen" style="position:fixed;inset:0;z-index:999;background:linear-gradient(180deg,#0B3D62 0%,#071F33 100%);display:flex;align-items:center;justify-content:center;transition:opacity .4s ease;">
-  <img src="icon-192.png" alt="" style="width:68px;height:68px;border-radius:15px;animation:splashPulse 1.4s ease-in-out infinite;">
+<div id="splashScreen" style="position:fixed;inset:0;z-index:999;background:radial-gradient(120% 80% at 85% 0%,rgba(200,138,46,.16),transparent 55%),linear-gradient(160deg,#0D4670 0%,#0B3D62 45%,#061C2E 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px;transition:opacity .45s ease;">
+  <img src="logo-core.png" alt="CORE Collection Remedial Division" style="width:min(64vw,280px);height:auto;animation:splashRise .7s cubic-bezier(.2,.8,.2,1) both;">
+  <div class="splash-bar" aria-hidden="true"><i></i></div>
+  <div style="position:absolute;bottom:calc(28px + env(safe-area-inset-bottom));color:rgba(255,255,255,.5);font:600 11px/1 system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;">Monitoring System · CORE Kendal</div>
 </div>
 
 <div id="loginScreen" class="login-wrap">
