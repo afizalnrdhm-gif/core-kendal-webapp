@@ -908,23 +908,34 @@
   .cms-note svg{flex:none;width:16px;height:16px;margin-top:2px;}
   .cms-note.warn{background:var(--warn-bg);border:1px solid color-mix(in srgb,var(--warn) 40%,transparent);} .cms-note.warn svg{color:var(--warn);}
   .cms-note.bad{background:var(--bad-bg);border:1px solid color-mix(in srgb,var(--bad) 40%,transparent);} .cms-note.bad svg{color:var(--bad);}
-  .cms-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-1);margin-bottom:20px;overflow:hidden;}
-  .cms-title{font-size:13px;font-weight:800;letter-spacing:.06em;padding:14px 16px;border-bottom:1px solid var(--line);color:var(--ink);}
-  .cms-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
-  .cms-table{border-collapse:separate;border-spacing:0;font-size:12.5px;width:100%;min-width:1180px;}
-  .cms-table th,.cms-table td{padding:8px 8px;text-align:center;border-bottom:1px solid var(--line);white-space:nowrap;background:var(--surface);}
-  .cms-table th{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);background:var(--surface-sunken);}
-  .cms-table th.cms-g{border-bottom:1px solid var(--line-strong);color:var(--ink);}
-  .cms-table .cms-co{position:sticky;left:0;z-index:2;text-align:left;min-width:120px;font-weight:700;color:var(--ink);box-shadow:1px 0 0 var(--line);}
-  .cms-table th.cms-co{background:var(--surface-sunken);}
-  .cms-table .g-terbentuk{--cg:var(--info);} .cms-table .g-bertemu{--cg:var(--good);} .cms-table .g-tidak{--cg:var(--warn);} .cms-table .g-risk{--cg:var(--gold-ink);} .cms-table .g-tdk{--cg:var(--bad);}
-  .cms-table th[class*="g-"]{box-shadow:inset 0 3px 0 var(--cg);}
-  .cms-table td.cms-pct{color:var(--ink-soft);font-family:var(--mono);font-size:12px;}
-  .cms-table td.cms-n{font-family:var(--mono);font-weight:700;}
-  .cms-table td.zero{color:var(--ink-soft);font-weight:500;opacity:.6;}
+  .cms-sec{margin-bottom:22px;}
+  .cms-title{font-size:13px;font-weight:800;letter-spacing:.08em;color:var(--ink);margin:0 2px 10px;display:flex;align-items:center;gap:10px;}
+  .cms-title::after{content:"";flex:1;height:1px;background:var(--line);}
+  .cms-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr));gap:12px;}
+  .cms-co-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-sm,none);padding:14px;display:flex;flex-direction:column;gap:12px;}
+  .cms-co-card.tot{background:color-mix(in srgb,var(--navy-lighter,var(--info)) 7%,var(--surface));border-color:color-mix(in srgb,var(--navy-lighter,var(--info)) 35%,var(--line));}
+  .cms-ch{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+  .cms-cn{font-size:15px;font-weight:800;color:var(--ink);line-height:1.25;}
+  .cms-act{text-align:right;display:flex;flex-direction:column;align-items:flex-end;line-height:1;}
+  .cms-al{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:4px;}
+  .cms-act b{font-size:28px;font-weight:800;font-family:var(--mono);}
+  .cms-tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+  .cms-tile{background:var(--surface-sunken);border-radius:12px;padding:10px 6px;text-align:center;}
+  .cms-tl{font-size:10.5px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.03em;line-height:1.2;min-height:25px;display:flex;align-items:center;justify-content:center;}
+  .cms-tv{font-size:22px;font-weight:800;font-family:var(--mono);margin:2px 0;}
+  .cms-tp{font-size:12px;font-family:var(--mono);color:var(--ink-soft);}
+  .cms-grp{border-left:3px solid var(--cg,var(--line-strong));padding-left:10px;}
+  .cms-grp.g-bertemu{--cg:var(--good);} .cms-grp.g-tidak{--cg:var(--warn);} .cms-grp.g-risk{--cg:var(--info);} .cms-grp.g-tdk{--cg:var(--bad);}
+  .cms-gh{display:flex;justify-content:space-between;align-items:baseline;font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--ink);margin-bottom:6px;}
+  .cms-gp{font-family:var(--mono);font-size:12.5px;color:var(--ink-soft);letter-spacing:0;}
+  .cms-chips{display:grid;grid-template-columns:repeat(auto-fit,minmax(44px,1fr));gap:6px;}
+  .cms-chip{background:var(--surface-sunken);border-radius:10px;padding:6px 2px;text-align:center;}
+  .cms-chip.z{opacity:.55;}
+  .cms-cl{font-size:10.5px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.03em;}
+  .cms-cv{font-size:17px;font-weight:800;font-family:var(--mono);line-height:1.35;}
+  .cms-zero{color:var(--ink-soft);font-weight:500;}
   .cms-hit{font:inherit;font-weight:800;color:var(--link);background:none;border:none;padding:4px 8px;border-radius:8px;cursor:pointer;min-width:30px;}
   .cms-hit:hover{background:color-mix(in srgb,var(--navy-lighter) 16%,transparent);} .cms-hit:active{transform:scale(.94);}
-  .cms-table tr.cms-total td{background:var(--surface-sunken);font-weight:800;}
   .cms-foot{font-size:12px;color:var(--ink-soft);line-height:1.6;margin:4px 2px 0;}
   .cms-drill{position:fixed;inset:0;z-index:60;display:none;align-items:flex-end;justify-content:center;}
   .cms-drill.show{display:flex;}
@@ -942,12 +953,12 @@
   @media (max-width:900px){ .cms-meta .btn{margin-left:0;} }
 
   /* tabel CMS tidak ikut diubah jadi kartu di HP */
-  .cms-table,.cms-drill-body table{display:table !important;}
-  .cms-table thead,.cms-drill-body thead{display:table-header-group !important;}
-  .cms-table tbody,.cms-drill-body tbody{display:table-row-group !important;}
-  .cms-table tr,.cms-drill-body tr{display:table-row !important;margin:0 !important;border:none !important;border-radius:0 !important;box-shadow:none !important;background:none !important;}
-  .cms-table td,.cms-table th,.cms-drill-body td,.cms-drill-body th{display:table-cell !important;}
-  .cms-table td::before,.cms-drill-body td::before{content:none !important;}
+  .cms-drill-body table{display:table !important;}
+  .cms-drill-body thead{display:table-header-group !important;}
+  .cms-drill-body tbody{display:table-row-group !important;}
+  .cms-drill-body tr{display:table-row !important;margin:0 !important;border:none !important;border-radius:0 !important;}
+  .cms-drill-body td,.cms-drill-body th{display:table-cell !important;}
+  .cms-drill-body td::before{content:none !important;}
   .cms-drill-body td{max-width:240px;overflow:hidden;text-overflow:ellipsis;}
 </style>
 </head>
@@ -4062,18 +4073,28 @@ function renderCms(){
   if(M.kolomHilang && M.kolomHilang.length) notes.push('<div class="cms-note bad">'+ic('alert')+'<span><b>Kolom belum ditemukan:</b> '+esc(M.kolomHilang.join('; '))+'. Angka di bawah bisa belum lengkap.</span></div>');
   (M.peringatan || []).forEach(p => notes.push('<div class="cms-note warn">'+ic('alert')+'<span>'+esc(p)+'</span></div>'));
   const status = `<div class="cms-meta"><span><b>${M.masterBaris||0}</b> kontrak MASTER</span><span><b>${M.prodKontrak||0}</b> kontrak di PRODUCTIVITY (${M.prodBaris||0} tugas)</span><span>Tgl tagihan terbaru <b>${esc(M.tglTagihanTerbaru||'-')}</b></span><span>OD dari <b>${esc(M.odSumber||'-')}</b></span><button class="btn" id="cmsRefresh">${ic('refresh')} Muat ulang</button></div>`;
-  const head = '<tr><th rowspan="2" class="cms-co">CO</th>' + CMS_COLS.map((g, gi) => (g.g ? `<th colspan="${g.cols.length}" class="cms-g ${CMS_CLS[gi]}">${esc(g.g)}</th>` : `<th colspan="${g.cols.length}" class="cms-g"></th>`)).join('') + '</tr><tr>' +
-    CMS_COLS.map((g, gi) => g.cols.map(c => `<th class="cms-sub ${CMS_CLS[gi]}"${c.tip ? ' title="'+esc(c.tip)+'"' : ''}>${esc(c.l)}</th>`).join('')).join('') + '</tr>';
-  const rowHtml = (bal, co, label, isTotal) => '<tr' + (isTotal ? ' class="cms-total"' : '') + `><td class="cms-co">${esc(label)}</td>` +
-    CMS_COLS.map((g, gi) => g.cols.map(c => {
-      if(c.pct){ const n = get(bal, co, c.pct[0]), d = get(bal, co, c.pct[1]); return `<td class="cms-pct ${CMS_CLS[gi]}">${cmsPct(n, d)}</td>`; }
-      const v = get(bal, co, c.m);
-      return v > 0 ? `<td class="cms-n ${CMS_CLS[gi]}"><button type="button" class="cms-hit" data-b="${bal}" data-co="${esc(co)}" data-m="${c.m}" data-l="${esc(c.l)}" data-r="${esc(label)}" aria-label="${esc(label)} ${esc(c.l)}: ${v} kontrak. Lihat daftar">${v}</button></td>` : `<td class="cms-n zero ${CMS_CLS[gi]}">0</td>`;
-    }).join('')).join('') + '</tr>';
+  const hit = (bal, co, c, label, v) => v > 0
+    ? `<button type="button" class="cms-hit" data-b="${bal}" data-co="${esc(co)}" data-m="${c.m}" data-l="${esc(c.l)}" data-r="${esc(label)}" aria-label="${esc(label)} ${esc(c.l)}: ${v} kontrak. Lihat daftar">${v}</button>`
+    : `<span class="cms-zero">0</span>`;
+  const card = (bal, co, label, isTotal) => {
+    const act = CMS_COLS[0].cols[0];
+    const tiles = []; const g1 = CMS_COLS[1].cols;
+    for(let i = 0; i < g1.length; i += 2){
+      const c = g1[i], pc = g1[i+1]; const v = get(bal, co, c.m);
+      tiles.push(`<div class="cms-tile"><div class="cms-tl">${esc(c.l)}</div><div class="cms-tv">${hit(bal, co, c, label, v)}</div><div class="cms-tp">${cmsPct(get(bal, co, pc.pct[0]), get(bal, co, pc.pct[1]))}</div></div>`);
+    }
+    const groups = CMS_COLS.slice(2).map((g, i) => {
+      const gi = i + 2; const pc = g.cols.find(c => c.pct); const cs = g.cols.filter(c => !c.pct);
+      const chips = cs.map(c => { const v = get(bal, co, c.m); return `<div class="cms-chip${v ? '' : ' z'}"><div class="cms-cl">${esc(c.l)}</div><div class="cms-cv">${hit(bal, co, c, label, v)}</div></div>`; }).join('');
+      const ptxt = pc ? `<span class="cms-gp">${cmsPct(get(bal, co, pc.pct[0]), get(bal, co, pc.pct[1]))}</span>` : '';
+      return `<div class="cms-grp ${CMS_CLS[gi]}"><div class="cms-gh"><span>${esc(g.g)}</span>${ptxt}</div><div class="cms-chips">${chips}</div></div>`;
+    }).join('');
+    return `<article class="cms-co-card${isTotal ? ' tot' : ''}"><header class="cms-ch"><div class="cms-cn">${esc(label)}</div><div class="cms-act"><span class="cms-al">Actual</span><b>${hit(bal, co, act, label, get(bal, co, 'actual'))}</b></div></header><div class="cms-tiles">${tiles.join('')}</div>${groups}</article>`;
+  };
   const fe = D.urutan.fe.filter(c => D.items.some(it => it.co === c));
   const tbl = (b) => {
-    const rows = b.id === 'b1' ? fe.map(c => rowHtml(b.id, c, nm(c), false)).join('') + rowHtml(b.id, '*', 'JATARA', true) : rowHtml(b.id, '*', nm(D.urutan.mr), true);
-    return `<section class="cms-card"><div class="cms-title">${esc(b.judul)}</div><div class="cms-scroll"><table class="cms-table"><thead>${head}</thead><tbody>${rows}</tbody></table></div></section>`;
+    const cards = b.id === 'b1' ? fe.map(c => card(b.id, c, nm(c), false)).join('') + card(b.id, '*', 'JATARA', true) : card(b.id, '*', nm(D.urutan.mr), true);
+    return `<section class="cms-sec"><div class="cms-title">${esc(b.judul)}</div><div class="cms-cards">${cards}</div></section>`;
   };
   wrap.innerHTML = notes.join('') + status + D.balances.map(tbl).join('') +
     '<p class="cms-foot">Klik angka untuk melihat daftar kontraknya. DKH terbentuk: bucket 1-30 dibentuk oleh FE (DPD tugas ≤ 30), bucket 31-60 oleh MR (DPD tugas > 30). Kontrak yang punya beberapa tugas memakai tugas dengan tanggal tagihan terbaru.</p>';
