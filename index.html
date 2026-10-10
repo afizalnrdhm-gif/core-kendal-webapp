@@ -1284,7 +1284,7 @@ function startUpdateWatcher(){
 }
 
 function checkForUpdate(isBaseline){
-  fetch('/api/check-update', { headers: { Authorization: 'Bearer ' + ID_TOKEN } })
+  fetch('/api/data?check=1', { headers: { Authorization: 'Bearer ' + ID_TOKEN } })
     .then(r => r.json().then(body => ({ ok: r.ok, body })))
     .then(({ok, body}) => {
       if(!ok || !body.modifiedTime) return;
@@ -1961,13 +1961,13 @@ function renderPanduan(){
 
   // 1. Rapor
   html += `<div class="pg-card"><h3>1. Rapor harian — ${PANDUAN_ROLE_NAMA[role]}</h3>
-    <p>Nilai rapor = jumlah poin dari <b>3 metrik</b> (maksimal <b>5.00</b>). Semua metrik ini <b>makin kecil makin bagus</b>.</p>`;
+    <p>Nilai rapor = jumlah poin dari <b>3 metrik</b> (maksimal <b>5,00</b>). Semua metrik ini <b>makin kecil makin bagus</b>.</p>`;
   PANDUAN_TIER[role].forEach(m => {
     const info = PANDUAN_INFO[m.key];
-    html += `<div class="pg-metric" id="pg-${m.key}"><div class="pg-title">${esc(m.nama)} <span style="font-weight:500;color:var(--ink-soft);">· maks ${m.maks.toFixed(2)} poin</span></div>
+    html += `<div class="pg-metric" id="pg-${m.key}"><div class="pg-title">${esc(m.nama)} <span style="font-weight:500;color:var(--ink-soft);">· maks ${fmtDec(m.maks,2)} poin</span></div>
       <p style="margin-top:4px;">${info ? info.isi : ''}</p>
       <div class="pg-scroll"><table class="pg-table"><thead><tr><th>Hasil</th><th class="r">Poin</th></tr></thead><tbody>
-      ${m.tiers.map(t => `<tr><td>${t[0]}</td><td class="r">${t[1].toFixed(2)}</td></tr>`).join('')}
+      ${m.tiers.map(t => `<tr><td>${String(t[0]).replace(/(\d)\.(\d)/g,'$1,$2')}</td><td class="r">${fmtDec(t[1],2)}</td></tr>`).join('')}
       </tbody></table></div></div>`;
   });
   html += `</div>`;
@@ -2015,7 +2015,8 @@ function renderPanduan(){
   }
 }
 
-function fmtPct(n){ return (typeof n==='number' ? n.toFixed(2) : '0.00') + '%'; }
+function fmtDec(n,d){ return (Number(n)||0).toFixed(d).replace('.', ','); }
+function fmtPct(n){ return (typeof n==='number' ? fmtDec(n,2) : '0,00') + '%'; }
 function katClass(k){ return 'kat-' + (k||'').replace(/\s+/g,'_'); }
 
 function loadInsentif(){
@@ -2038,7 +2039,7 @@ function achievementCard(h, extraLabel, extraKey){
       <div><div class="iname">${esc(h.namaCO)}</div><div class="irole">${esc(h.role)}</div></div>
       <span class="kategori-pill ${katClass(h.kategori)}">${h.kategori}</span>
     </div>
-    <div class="ins-nilai">${h.totalNilai.toFixed(2)} <span style="font-size:12px;color:var(--ink-soft);font-weight:500;">/ 5.00</span></div>
+    <div class="ins-nilai">${fmtDec(h.totalNilai,2)} <span style="font-size:12px;color:var(--ink-soft);font-weight:500;">/ 5,00</span></div>
     <div class="ins-insentif">${fmtRupiah(h.insentif)}</div>
     <div class="ins-metric"><span class="mlabel">Balance${infoTip_('balance')}</span><span class="mval">${fmtPct(h.balancePct)}</span></div>
     <div class="ins-metric"><span class="mlabel">Flow Ever (${h.flowEverEscaped}/${h.totalAwal})${infoTip_('flowever')}</span><span class="mval">${fmtPct(h.flowEverPct)}</span></div>
@@ -2048,12 +2049,12 @@ function achievementCard(h, extraLabel, extraKey){
 
 function penyelesaianCard(p){
   const gapHtml = p.gapPct !== null
-    ? `<div class="ins-gap">${ic('target')}Butuh naik <b>${p.gapPct.toFixed(2)}%</b> lagi ke tier berikutnya ${infoTip_('penyelesaian')}<br>(± <b>${fmtRupiah(p.gapRupiah)}</b> SIPOK yang perlu diselesaikan)</div>`
+    ? `<div class="ins-gap">${ic('target')}Butuh naik <b>${fmtDec(p.gapPct,2)}%</b> lagi ke tier berikutnya ${infoTip_('penyelesaian')}<br>(± <b>${fmtRupiah(p.gapRupiah)}</b> SIPOK yang perlu diselesaikan)</div>`
     : `<div class="ins-gap">${ic('trophy')}Sudah di tier tertinggi minggu ini</div>`;
   const rekomHtml = p.rekomendasi && p.rekomendasi.length
     ? `<div class="ins-rekom">
         <div style="font-size:11px;text-transform:uppercase;color:var(--ink-soft);margin-bottom:4px;">Rekomendasi dikejar (SIPOK terbesar)</div>
-        ${p.rekomendasi.map(r => `<div class="ins-rekom-item"><span class="rname">${esc(r.namaKonsumen)}</span><span class="rval">${fmtRupiah(r.sipok)} (+${r.pengaruhPct.toFixed(2)}%)</span></div>`).join('')}
+        ${p.rekomendasi.map(r => `<div class="ins-rekom-item"><span class="rname">${esc(r.namaKonsumen)}</span><span class="rval">${fmtRupiah(r.sipok)} (+${fmtDec(r.pengaruhPct,2)}%)</span></div>`).join('')}
       </div>` : '';
   return `
   <div class="ins-card">
@@ -2168,7 +2169,7 @@ function simMetricLabel_(role){
 // jelas berapa kontribusi poin dari tiap metric ke total nilai, bukan cuma persentase mentah yang
 // susah dibayangin lagi dekat/jauhnya ke ambang tier berikutnya.
 function simMetricRow_(label, pct, poin, highlight){
-  return `<div class="ins-metric"><span class="mlabel">${label}${infoTipByLabel_(label)}</span><span class="mval">${fmtPct(pct)} <span class="ins-poin" style="opacity:.65;font-weight:500;">(${(typeof poin==='number'?poin.toFixed(2):'-')} poin)</span></span></div>`;
+  return `<div class="ins-metric"><span class="mlabel">${label}${infoTipByLabel_(label)}</span><span class="mval">${fmtPct(pct)} <span class="ins-poin" style="opacity:.65;font-weight:500;">(${(typeof poin==='number'?fmtDec(poin,2):'-')} poin)</span></span></div>`;
 }
 
 function simResultCard_(title, h, highlight){
@@ -2179,7 +2180,7 @@ function simResultCard_(title, h, highlight){
       <div><div class="iname">${title}</div><div class="irole">${esc(h.role)}</div></div>
       <span class="kategori-pill ${katClass(h.kategori)}">${h.kategori}</span>
     </div>
-    <div class="ins-nilai">${h.totalNilai.toFixed(2)} <span style="font-size:12px;color:${highlight?'#BFD2E0':'var(--ink-soft)'};font-weight:500;">/ 5.00</span></div>
+    <div class="ins-nilai">${fmtDec(h.totalNilai,2)} <span style="font-size:12px;color:${highlight?'#BFD2E0':'var(--ink-soft)'};font-weight:500;">/ 5,00</span></div>
     <div class="ins-insentif">${fmtRupiah(h.insentif)}</div>
     ${simMetricRow_('Balance', h.balancePct, h.nilaiBalance, highlight)}
     ${simMetricRow_('Flow Ever', h.flowEverPct, h.nilaiFlowEver, highlight)}
@@ -2243,7 +2244,7 @@ function renderSimulasiRapor(){
         ${simResultCard_('Simulasi', r.simulasi, true)}
       </div>
       <div class="ins-gap" style="margin-top:14px;">
-        Selisih nilai: <b>${r.delta.totalNilai>=0?'+':''}${r.delta.totalNilai.toFixed(2)}</b> ·
+        Selisih nilai: <b>${r.delta.totalNilai>=0?'+':''}${fmtDec(r.delta.totalNilai,2)}</b> ·
         Selisih insentif rapor: <b>${r.delta.insentif>=0?'+':''}${fmtRupiah(r.delta.insentif)}</b>
       </div>
     </div>`;
@@ -2262,14 +2263,14 @@ function renderSimulasiRapor(){
           Simulasi kamu masih <b>di bawah ON TARGET</b>. Ini kontrak-kontrak yang paling ngefek buat dikejar
           duluan (diurutin dari SIPOK terbesar, dicoba beneran disimulasikan bertahap) — kalau ke-${rk.daftar.length}
           kontrak ini semua berhasil dikejar sesuai aksi yang disaranin di bawah, proyeksi nilai totalnya jadi
-          <b>${rk.proyeksiGabungan.totalNilai.toFixed(2)}</b> (${rk.proyeksiGabungan.kategori})${rk.proyeksiGabungan.tercapai ? ' — udah ON TARGET' : ' — masih perlu usaha tambahan di luar daftar ini (populasi kontrak yang berpengaruh mungkin udah abis atau butuh dikejar lebih banyak lagi)'}.
+          <b>${fmtDec(rk.proyeksiGabungan.totalNilai,2)}</b> (${rk.proyeksiGabungan.kategori})${rk.proyeksiGabungan.tercapai ? ' — udah ON TARGET' : ' — masih perlu usaha tambahan di luar daftar ini (populasi kontrak yang berpengaruh mungkin udah abis atau butuh dikejar lebih banyak lagi)'}.
         </div>
         <div class="sim-kontrak-list">
           ${rk.daftar.map(x => `
             <div class="sim-kontrak-item">
               <div class="sim-kontrak-info">
                 <div class="sim-kontrak-name">${esc(x.namaKonsumen||'-')} <span class="sim-kontrak-kontrak">${esc(x.noKontrak)}</span></div>
-                <div class="sim-kontrak-meta">Disaranin: <b>${aksiLabel[x.aksi]||x.aksi}</b> · setelah kontrak ini nilai jadi ${x.totalNilaiSetelah.toFixed(2)} (${x.poinGain>=0?'+':''}${x.poinGain.toFixed(2)})</div>
+                <div class="sim-kontrak-meta">Disaranin: <b>${aksiLabel[x.aksi]||x.aksi}</b> · setelah kontrak ini nilai jadi ${fmtDec(x.totalNilaiSetelah,2)} (${x.poinGain>=0?'+':''}${fmtDec(x.poinGain,2)})</div>
               </div>
               <div class="sim-kontrak-sipok">${fmtRupiah(x.sisaPiutang)}</div>
             </div>`).join('')}
@@ -3372,7 +3373,7 @@ function barListSection(title, rows, opts){
             <div class="bar-row-right">
               <span class="bar-row-meta">${r.count.toLocaleString('id-ID')} akun</span>
               <span class="bar-row-amount">${fmtRupiah(r.amount)}</span>
-              <span class="bar-row-pct">${r.pct.toFixed(2)}%</span>
+              <span class="bar-row-pct">${fmtDec(r.pct,2)}%</span>
             </div>
           </div>
           <div class="bar-track"><div class="bar-fill ${opts.gold?'gold':''}" style="width:${Math.min(r.pct/maxPct*100,100)}%"></div></div>
@@ -3462,7 +3463,7 @@ function renderTren(){
     series.forEach((s, i) => {
       const v = get(w, s); if(v === null) return;
       const x = gx + i * (bw + 2), top = y(v), h = (H - pb) - top, t = tgt(w, s);
-      const tip = `${s.label} · W${w}: ${v.toFixed(1)}%` + (t !== null ? ` (target ${t}%)` : '');
+      const tip = `${s.label} · W${w}: ${fmtDec(v,1)}%` + (t !== null ? ` (target ${t}%)` : '');
       g += `<path class="tbar" tabindex="0" data-tip="${esc(tip)}" aria-label="${esc(tip)}" fill="${s.color}" d="M${x},${H-pb} V${top+Math.min(4,h)} Q${x},${top} ${x+Math.min(4,bw/2)},${top} H${x+bw-Math.min(4,bw/2)} Q${x+bw},${top} ${x+bw},${top+Math.min(4,h)} V${H-pb} Z"/>`;
       if(t !== null) g += `<line class="tg-target" x1="${x-2}" x2="${x+bw+2}" y1="${y(t)}" y2="${y(t)}"/>`;
       if(w === lastW) g += `<text x="${x+bw/2}" y="${top-5}" class="tg-val" text-anchor="middle">${v.toFixed(0)}</text>`;
@@ -3471,7 +3472,7 @@ function renderTren(){
   const uniqBad = [...new Set(bad)];
   const legend = series.map(s => `<span class="tg-leg"><i style="background:${s.color}"></i>${esc(s.label)}</span>`).join('') + '<span class="tg-leg"><i class="tg-leg-line"></i>Target tier 1 insentif</span>';
   const table = '<div class="pg-scroll"><table class="pg-table"><thead><tr><th>Penyelesaian</th>' + [1,2,3,4].map(w => '<th class="r">W' + w + '</th>').join('') + '</tr></thead><tbody>' +
-    series.map(s => '<tr><td>' + esc(s.label) + '</td>' + [1,2,3,4].map(w => { const v = get(w, s), t = tgt(w, s); return '<td class="r">' + (v === null ? '-' : v.toFixed(1) + '%') + (t !== null ? ' <span class="muted">/ ' + t + '%</span>' : '') + '</td>'; }).join('') + '</tr>').join('') + '</tbody></table></div>';
+    series.map(s => '<tr><td>' + esc(s.label) + '</td>' + [1,2,3,4].map(w => { const v = get(w, s), t = tgt(w, s); return '<td class="r">' + (v === null ? '-' : fmtDec(v,1) + '%') + (t !== null ? ' <span class="muted">/ ' + t + '%</span>' : '') + '</td>'; }).join('') + '</tr>').join('') + '</tbody></table></div>';
   card.innerHTML = trenShell(`<div class="tren-head">${toggle}<span class="tren-month">${esc(monthLabel)}</span></div>
     <div class="tren-wrap"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Grafik batang penyelesaian mingguan ${esc(monthLabel)} per CO dan cabang">${g}</svg><div class="tren-tip" id="trenTip" role="tooltip" hidden></div></div>
     <div class="tg-legend">${legend}</div>
@@ -3964,14 +3965,14 @@ function flowDenom_(){
 }
 function pengaruhFlowText_(r){
   if(r['FLEET/NON FLEET'] === 'FLEET') return '-';
-  if(typeof r['PENGARUH FLOW'] === 'number') return r['PENGARUH FLOW'].toFixed(2) + '%';
+  if(typeof r['PENGARUH FLOW'] === 'number') return fmtDec(r['PENGARUH FLOW'],2) + '%';
   const v = typeof r['SIPOK']==='number' ? r['SIPOK'] : 0;
   const d = flowDenom_();
   // Penyebut mengikuti CO pemilik kontrak (sama dengan Insentif Penyelesaian): FE = per CO, selain itu se-cabang.
   const isFE = (CO_META[r['CO ALL']] || {}).role === 'Front End';
   const den = isFE ? d.perCO[r['BUCKET AWAL']+'|'+r['CO ALL']] : d.org[r['BUCKET AWAL']];
   if(!den) return '-';
-  return (v/den*100).toFixed(2) + '%';
+  return fmtDec(v/den*100,2) + '%';
 }
 
 function renderTable(){
@@ -4063,7 +4064,7 @@ const CMS_COLS = [
   { g:'Tdk terbentuk DKH', cols:[ { l:'Fresh flow', m:'flow' }, { l:'Stay', m:'stay' }, { l:'Roll back', m:'rollback' }, { l:'TTL', m:'ttl' }, { l:'%', pct:['ttl','actual'] } ] }
 ];
 const CMS_CLS = ['', 'g-terbentuk', 'g-bertemu', 'g-tidak', 'g-risk', 'g-tdk'];
-function cmsPct(n, d){ return d > 0 ? (n / d * 100).toFixed(2).replace('.', ',') + '%' : '-'; }
+function cmsPct(n, d){ return d > 0 ? fmtDec(n / d * 100, 2) + '%' : '-'; }
 function cmsMetricItems(items, bal, co, m){
   const has = (it, t) => it.t.indexOf(bal + '|' + co + '|' + t) > -1;
   if(m === 'tdk') return items.filter(it => has(it, 'terbentuk') && !has(it, 'dikerjakan'));

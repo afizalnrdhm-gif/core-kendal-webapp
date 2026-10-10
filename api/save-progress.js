@@ -1,61 +1,5 @@
-const crypto = require('crypto');
 const { appendLog } = require('./_tl');
-
-function base64url(input) {
-  return Buffer.from(input)
-    .toString('base64')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/, '');
-}
-
-async function getAccessToken() {
-  const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-  const privateKey = (process.env.GOOGLE_PRIVATE_KEY || '').replace(/\\n/g, '\n');
-
-  const header = { alg: 'RS256', typ: 'JWT' };
-  const now = Math.floor(Date.now() / 1000);
-  const claimSet = {
-    iss: email,
-    scope: 'https://www.googleapis.com/auth/spreadsheets',
-    aud: 'https://oauth2.googleapis.com/token',
-    iat: now,
-    exp: now + 3600
-  };
-
-  const unsigned = base64url(JSON.stringify(header)) + '.' + base64url(JSON.stringify(claimSet));
-  const signer = crypto.createSign('RSA-SHA256');
-  signer.update(unsigned);
-  signer.end();
-  const signature = signer.sign(privateKey)
-    .toString('base64')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/, '');
-
-  const jwt = unsigned + '.' + signature;
-
-  const res = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: 'grant_type=' + encodeURIComponent('urn:ietf:params:oauth:grant-type:jwt-bearer') + '&assertion=' + jwt
-  });
-  const data = await res.json();
-  if (!data.access_token) throw new Error('Gagal ambil access token: ' + JSON.stringify(data));
-  return data.access_token;
-}
-
-async function verifyIdToken(idToken) {
-  const res = await fetch('https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(idToken));
-  const data = await res.json();
-  if (!data.email || data.aud !== process.env.GOOGLE_CLIENT_ID) {
-    throw new Error('Token login tidak valid.');
-  }
-  if (data.email_verified !== 'true' && data.email_verified !== true) {
-    throw new Error('Email belum terverifikasi Google.');
-  }
-  return data.email.toLowerCase();
-}
+const { getAccessToken, sendError, verifyIdToken } = require('./_auth');
 
 // Ubah index kolom (0-based) jadi huruf kolom A1 notation (0->A, 1->B, ..., 26->AA, dst)
 function colLetter(index) {
@@ -221,6 +165,6 @@ module.exports = async (req, res) => {
   } catch (err) {
     console.error('Error save-progress:', err && err.message);
     const m = (err && err.message) || '';
-    res.status(500).json({ error: /Token login|Email belum/.test(m) ? m : 'Gagal menyimpan. Coba lagi, atau hubungi admin.' });
+    sendError(res, err, 'Gagal menyimpan. Coba lagi, atau hubungi admin.');
   }
 };
