@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const { appendLog } = require('./_tl');
 
 function base64url(input) {
   return Buffer.from(input)
@@ -87,11 +88,25 @@ module.exports = async (req, res) => {
     if (typeof body === 'string') {
       try { body = JSON.parse(body); } catch (e) { body = {}; }
     }
-    const { noKontrak, rowNumber, janjiBayar, kronologis } = body || {};
-    if (!noKontrak || !rowNumber) {
+    const { noKontrak, rowNumber } = body || {};
+    if (!noKontrak || !rowNumber || !Number.isInteger(Number(rowNumber)) || Number(rowNumber) < 2) {
       res.status(400).json({ error: 'Data tidak lengkap (noKontrak/rowNumber kosong).' });
       return;
     }
+    // Validasi isi: Janji Bayar = tanggal 1-31 (atau kosong), Kronologis dibatasi panjangnya
+    const janjiRaw = body.janjiBayar == null ? '' : String(body.janjiBayar).trim();
+    if (janjiRaw !== '' && !(/^\d{1,2}$/.test(janjiRaw) && Number(janjiRaw) >= 1 && Number(janjiRaw) <= 31)) {
+      res.status(400).json({ error: 'Janji Bayar harus berupa tanggal 1–31 (misal 07), atau dikosongkan.' });
+      return;
+    }
+    const janjiBayar = janjiRaw;
+    let kronologis = body.kronologis == null ? '' : String(body.kronologis).trim();
+    if (kronologis.length > 1000) {
+      res.status(400).json({ error: 'Kronologis terlalu panjang (maksimal 1000 karakter).' });
+      return;
+    }
+    // Cegah isi yang dibaca Sheets sebagai rumus (=, +, -, @ di awal) — simpan sebagai teks.
+    if (/^[=+\-@]/.test(kronologis)) kronologis = "'" + kronologis;
 
     const accessToken = await getAccessToken();
     const sheetId = process.env.GOOGLE_SHEET_ID;
@@ -113,6 +128,7 @@ module.exports = async (req, res) => {
     const idxEmailCo = header.findIndex(h => (h || '').toString().trim() === 'EMAIL CO');
     const idxJanji = header.findIndex(h => (h || '').toString().trim() === 'JANJI BAYAR');
     const idxKron = header.findIndex(h => (h || '').toString().trim() === 'KRONOLOGIS');
+    const idxNama = header.findIndex(h => (h || '').toString().trim() === 'NAMA KONSUMEN');
 
     if (idxNoKontrak === -1 || idxJanji === -1 || idxKron === -1) {
       res.status(500).json({ error: 'Kolom NO KONTRAK / JANJI BAYAR / KRONOLOGIS tidak ditemukan di sheet MASTER.' });
@@ -133,6 +149,8 @@ module.exports = async (req, res) => {
       }
     }
 
+    const janjiLama = (targetRow[idxJanji] == null ? '' : targetRow[idxJanji]).toString();
+    const kronLama = (targetRow[idxKron] || '').toString();
     const janjiCol = colLetter(idxJanji);
     const kronCol = colLetter(idxKron);
 
@@ -144,20 +162,33 @@ module.exports = async (req, res) => {
         body: JSON.stringify({
           valueInputOption: 'USER_ENTERED',
           data: [
-            { range: `MASTER!${janjiCol}${rowNumber}`, values: [[janjiBayar != null ? String(janjiBayar) : '']] },
-            { range: `MASTER!${kronCol}${rowNumber}`, values: [[kronologis != null ? String(kronologis) : '']] }
+            { range: `MASTER!${janjiCol}${rowNumber}`, values: [[janjiBayar]] },
+            { range: `MASTER!${kronCol}${rowNumber}`, values: [[kronologis]] }
           ]
         })
       }
     );
     const updateJson = await updateRes.json();
     if (!updateRes.ok || updateJson.error) {
-      res.status(500).json({ error: 'Gagal menyimpan ke sheet: ' + JSON.stringify(updateJson.error || updateJson) });
+      console.error('Gagal menyimpan ke sheet:', JSON.stringify(updateJson.error || updateJson));
+      res.status(500).json({ error: 'Gagal menyimpan ke spreadsheet. Coba lagi, atau hubungi admin.' });
       return;
     }
 
-    res.status(200).json({ success: true });
+    // Catat riwayat perubahan. Kegagalan mencatat tidak boleh membatalkan simpan.
+    let logged = false;
+    try {
+      const kronBersih = kronologis.replace(/^'/, '');
+      logged = await appendLog(accessToken, sheetId, [
+        new Date(Date.now() + 7 * 3600 * 1000).toISOString().replace('T', ' ').slice(0, 19), email, noKontrak.toString().trim(),
+        idxNama > -1 ? (targetRow[idxNama] || '') : '', janjiBayar, kronBersih, janjiLama, kronLama
+      ]);
+    } catch (e) { console.error('Gagal catat log tindak lanjut:', e && e.message); }
+
+    res.status(200).json({ success: true, logged });
   } catch (err) {
-    res.status(500).json({ error: err.message || String(err) });
+    console.error('Error save-progress:', err && err.message);
+    const m = (err && err.message) || '';
+    res.status(500).json({ error: /Token login|Email belum/.test(m) ? m : 'Gagal menyimpan. Coba lagi, atau hubungi admin.' });
   }
 };

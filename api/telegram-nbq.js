@@ -746,12 +746,21 @@ async function renderRaporImage(title, subtitle, sections, weeklySection) {
 module.exports = async (req, res) => {
   try {
     if (req.method !== 'POST') { res.status(200).json({ ok: true }); return; }
+    // Pengaman (opsional, aktif kalau env var diisi di Vercel):
+    // TELEGRAM_WEBHOOK_SECRET = secret_token yang didaftarkan di setWebhook
+    // TELEGRAM_ALLOWED_CHAT_IDS = daftar chat id yang boleh memakai bot, pisahkan koma
+    const whSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
+    if (whSecret && req.headers['x-telegram-bot-api-secret-token'] !== whSecret) {
+      res.status(401).json({ ok: false }); return;
+    }
+    const allowed = (process.env.TELEGRAM_ALLOWED_CHAT_IDS || '').split(',').map(x => x.trim()).filter(Boolean);
     let update = req.body;
     if (typeof update === 'string') { try { update = JSON.parse(update); } catch (e) { res.status(200).json({ ok: true }); return; } }
 
     const msg = update && update.message;
     if (!msg || !msg.text) { res.status(200).json({ ok: true }); return; }
     const chatId = msg.chat.id;
+    if (allowed.length && !allowed.includes(String(chatId))) { res.status(200).json({ ok: true }); return; }
 
     const parsed = parseCommand(msg.text);
     if (!parsed) { res.status(200).json({ ok: true }); return; }

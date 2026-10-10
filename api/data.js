@@ -72,6 +72,18 @@ function serialToDateStr(serial) {
   return `${y}-${m}-${d}`;
 }
 
+// Kolom yang TIDAK dikirim ke akun non-admin (tidak dipakai layar mereka / data internal).
+// DESKCALL ditambah kolom identitas yang tidak dibutuhkan untuk telepon (alamat, email CO).
+const HIDE_NON_ADMIN = ['CMO', 'CO TAMBAHAN', 'PEKERJAAN KONSUMEN'];
+const HIDE_DESKCALL = HIDE_NON_ADMIN.concat(['EMAIL CO', 'ALAMAT', 'KELURAHAN']);
+function stripFields(records, hideList) {
+  return records.map(r => {
+    const c = Object.assign({}, r);
+    hideList.forEach(k => { delete c[k]; });
+    return c;
+  });
+}
+
 const DATE_FIELDS = new Set(['JATUH TEMPO', 'TANGGAL BAYAR BULAN LALU']);
 
 function parseSheetValues(values, headerRowIndex) {
@@ -106,6 +118,14 @@ function parseSheetValues(values, headerRowIndex) {
   return rows;
 }
 
+// Pesan error untuk browser: pesan yang memang ditulis untuk user diteruskan,
+// detail teknis (token, respons Google) cukup di log server.
+function publicError(err) {
+  const m = (err && err.message) || '';
+  if (/Token login|Email belum|Gagal membaca data/.test(m)) return m;
+  return 'Terjadi kendala di server. Coba muat ulang, atau hubungi admin kalau terus berulang.';
+}
+
 module.exports = async (req, res) => {
   try {
     const authHeader = req.headers['authorization'] || '';
@@ -135,7 +155,8 @@ module.exports = async (req, res) => {
     const kaJson = await kaRes.json();
 
     if (!masterJson.values) {
-      throw new Error('Gagal baca sheet MASTER: ' + JSON.stringify(masterJson));
+      console.error('Gagal baca sheet MASTER:', JSON.stringify(masterJson));
+      throw new Error('Gagal membaca data dari spreadsheet. Coba lagi sebentar, atau hubungi admin.');
     }
 
     const allRecords = parseSheetValues(masterJson.values).filter(r => r['NO KONTRAK']);
@@ -201,7 +222,7 @@ module.exports = async (req, res) => {
     const emailRoleCfg = roleByEmail[email];
     if (emailRoleCfg && (emailRoleCfg.role || '').toString().trim().toUpperCase() === 'DESKCALL') {
       res.status(200).json({
-        email, isAdmin: false, records: allRecords, roleInfo: emailRoleCfg, escalations: [],
+        email, isAdmin: false, records: stripFields(allRecords, HIDE_DESKCALL), roleInfo: emailRoleCfg, escalations: [],
         generatedAt: new Date().toISOString()
       });
       return;
@@ -214,10 +235,11 @@ module.exports = async (req, res) => {
     const escalations = (roleCfg && roleCfg.role === 'MR') ? computeEscalations() : [];
 
     res.status(200).json({
-      email, isAdmin: false, records: myRecords, roleInfo: roleCfg, escalations,
+      email, isAdmin: false, records: stripFields(myRecords, HIDE_NON_ADMIN), roleInfo: roleCfg, escalations: stripFields(escalations, HIDE_DESKCALL),
       generatedAt: new Date().toISOString()
     });
   } catch (err) {
-    res.status(500).json({ error: err.message || String(err) });
+    console.error('Error data:', err && err.message);
+    res.status(500).json({ error: publicError(err) });
   }
 };
