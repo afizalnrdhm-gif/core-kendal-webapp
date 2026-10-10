@@ -1,4 +1,4 @@
-const { pastikanBaseline, terapkanProgres } = require('./_tdsnap');
+const { pastikanBaseline, terapkanProgres, finalkanKemarin, bacaHasil, hitungStreak } = require('./_tdsnap');
 const { getAccessToken, sendError, verifyIdToken } = require('./_auth');
 const { cleanCell } = require('./_sheet');
 
@@ -452,10 +452,11 @@ module.exports = async (req, res) => {
       try { const { base } = await pastikanBaseline(accessToken, sheetId, td); terapkanProgres(td, base); }
       catch (e) { adaBaseline = false; console.error('Baseline target harian gagal:', e.message); terapkanProgres(td, {}); }
       td.adaBaseline = adaBaseline;
+      try { td.streak = hitungStreak(await bacaHasil(accessToken, sheetId)); } catch (e) { td.streak = { daftar: [], riwayatHari: 0 }; }
       if (admin) { res.status(200).json(Object.assign({ isAdmin: true }, td)); return; }
       const rec = masterList.find(m => (m['EMAIL CO'] || '').toString().trim().toLowerCase() === email);
       const nama = rec ? rec['CO ALL'] : null;
-      res.status(200).json({ isAdmin: false, tanggal: td.tanggal, pic: td.pic.filter(p => p.namaCO === nama) });
+      res.status(200).json({ isAdmin: false, tanggal: td.tanggal, adaBaseline: td.adaBaseline, streak: { daftar: td.streak.daftar.filter(x => x.pic === nama), riwayatHari: td.streak.riwayatHari }, pic: td.pic.filter(p => p.namaCO === nama) });
       return;
     }
 
@@ -518,6 +519,9 @@ module.exports.bekukanTargetHariIni = async (accessToken, sheetId) => {
   const masterList = parseSheetGeneric(masterRaw, 0).filter(m => m['NO KONTRAK']);
   const petaKA = {}; parseSheetGeneric(kaRaw, 15).forEach(r => { if (r['NO KONTRAK']) petaKA[r['NO KONTRAK']] = r; });
   const td = hitungTargetDaily(masterList, petaKA, parseSheetGeneric(roleRaw, 0));
+  // Catat hasil final kemarin DULU (pakai salinan), baru bekukan baseline hari ini.
+  let hasilKemarin = 0;
+  try { hasilKemarin = await finalkanKemarin(accessToken, sheetId, td); } catch (e) { console.error('Gagal catat hasil kemarin:', e.message); }
   const { baru } = await pastikanBaseline(accessToken, sheetId, td);
-  return { baru, pic: td.pic.length };
+  return { baru, pic: td.pic.length, hasilKemarin };
 };

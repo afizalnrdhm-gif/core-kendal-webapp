@@ -1099,6 +1099,16 @@
   .st-low .td-pill{background:var(--bad-bg);color:var(--bad);} .st-mid .td-pill{background:var(--warn-bg);color:var(--warn);} .st-good .td-pill{background:var(--good-bg);color:var(--good);}
   .td-prog.st-low .td-prog-h b{color:var(--bad);} .td-prog.st-mid .td-prog-h b{color:var(--warn);} .td-prog.st-good .td-prog-h b{color:var(--good);}
   .fc-st.st-low{color:var(--bad);} .fc-st.st-mid{color:var(--warn);} .fc-st.st-good{color:var(--good);}
+  .achv-card{background:var(--surface);border:1px solid color-mix(in srgb,var(--line) 70%,transparent);border-radius:var(--radius);padding:16px;margin-bottom:20px;box-shadow:var(--shadow-1);}
+  .achv-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;} .achv-head small{font-size:12px;color:var(--ink-soft);font-weight:600;} .achv-head h2{margin:2px 0 0;font-size:17px;color:var(--ink);}
+  .achv-list{display:grid;gap:12px;} .achv-pic{display:grid;grid-template-columns:96px 1fr;gap:12px;align-items:center;padding-top:10px;border-top:1px dashed var(--line);} .achv-pn{display:grid;} .achv-pn b{font-size:14px;} .achv-pn small{font-size:11.5px;color:var(--ink-soft);}
+  .achv-bars{display:grid;gap:8px;} .achv-b{display:grid;grid-template-columns:minmax(70px,110px) 1fr 44px;align-items:center;gap:8px;} .achv-l{font-size:12px;color:var(--ink-soft);font-weight:600;}
+  .achv-track{height:10px;border-radius:99px;background:color-mix(in srgb,var(--line) 80%,transparent);overflow:hidden;} .achv-track i{display:block;height:100%;border-radius:99px;background:var(--ink-soft);transition:width .6s ease;} .achv-v{font-size:13px;text-align:right;font-variant-numeric:tabular-nums;}
+  .achv-b.st-low .achv-track i{background:var(--bad);} .achv-b.st-low .achv-v{color:var(--bad);} .achv-b.st-mid .achv-track i{background:var(--gold);} .achv-b.st-mid .achv-v{color:var(--warn);} .achv-b.st-good .achv-track i{background:var(--good);} .achv-b.st-good .achv-v{color:var(--good);} .achv-b.st-none .achv-track i{background:var(--good);opacity:.35;} .achv-b.st-none .achv-v{color:var(--good);}
+  .achv-sub{margin:16px 0 8px;padding-top:12px;border-top:1px solid var(--line);font-size:14px;}
+  .achv-streak{list-style:none;margin:0;padding:0;display:grid;gap:6px;} .achv-streak li{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px 12px;border-radius:10px;background:var(--bad-bg);color:var(--bad);font-size:13px;} .achv-streak li span{font-weight:700;color:var(--ink);} .achv-streak li b{white-space:nowrap;}
+  .achv-ok{margin:0;padding:10px 12px;border-radius:10px;background:var(--good-bg);color:var(--good);font-size:13px;font-weight:600;} .achv-note{margin:8px 0 0;font-size:12.5px;color:var(--ink-soft);}
+  @media (max-width:680px){ .achv-pic{grid-template-columns:1fr;gap:6px;} .achv-pn{display:flex;gap:8px;align-items:baseline;} .achv-head .btn{width:100%;} }
 </style>
 </head>
 <body>
@@ -1705,7 +1715,7 @@ function buildLayout(){
   const isMR = ROLE_INFO && ROLE_INFO.role === 'MR';
   const isFE = ROLE_INFO && ROLE_INFO.role === 'FE';
 
-  let html = '<section class="focus-card" id="focusCard" aria-label="Fokus hari ini"></section>';
+  let html = '';
 
   if(IS_ADMIN || IS_DESKCALL){
     html += `<div class="panel-title">Total Beban Awal (Semua PIC)</div>
@@ -3643,7 +3653,7 @@ function renderRingkasanView(){
   const todayStr = new Date().toLocaleDateString('id-ID', {day:'2-digit', month:'long', year:'numeric'});
 
   document.getElementById('wrap').innerHTML = `
-    <section class="focus-card" id="focusCard" aria-label="Fokus hari ini"></section>
+    <section class="achv-card" id="achvCard" aria-label="Pencapaian terhadap target hari ini"></section>
     <div class="rk-header">
       <div class="pill-toggle" id="rkFleetToggle">
         <button type="button" data-mode="nonfleet">Non-Fleet</button>
@@ -3671,7 +3681,7 @@ function renderRingkasanView(){
     <div class="rk-report-card" id="trenCard" style="margin-top:16px;"></div>
   `;
 
-  renderFocus();
+  renderAchv();
   loadTren();
   animateCount(document.getElementById('rkValCount'), d.enrCount, false);
   animateCount(document.getElementById('rkValAmt'), d.enr, true);
@@ -3970,30 +3980,49 @@ function ensureTD(cb){
 }
 function tdPerHariTotal(p){ return p.poin.reduce((s, q) => s + (q.perHari||0), 0); }
 
-function renderFocus(){
-  const box = document.getElementById('focusCard'); if(!box) return;
+function renderAchv(){
+  const box = document.getElementById('achvCard'); if(!box) return;
   const draw = () => {
-    const b2 = document.getElementById('focusCard'); if(!b2) return;
-    if(!TD_DATA || !TD_DATA.pic || !TD_DATA.pic.length){
-      b2.className = 'focus-card'; b2.innerHTML = TD_ERR ? '' : '';
-      if(!TD_DATA && !TD_ERR) b2.innerHTML = '<div class="fc-skel"></div>';
-      if(TD_ERR || (TD_DATA && !TD_DATA.pic.length)) b2.style.display = 'none';
+    const b2 = document.getElementById('achvCard'); if(!b2) return;
+    if(!TD_DATA){ b2.innerHTML = TD_ERR ? '' : '<div class="fc-skel"></div>'; if(TD_ERR) b2.style.display = 'none'; return; }
+    if(!TD_DATA.pic.length){ b2.style.display = 'none'; return; }
+    b2.style.display = '';
+    const pics = TD_DATA.pic.filter(p => p.poin.some(q => q.progres));
+    const open = '<button type="button" class="btn" id="achvOpen">Buka Target Daily</button>';
+    const goTD = () => { TD_SEL = 'ALL'; switchView('targetdaily'); };
+    if(!pics.length){
+      b2.innerHTML = `<div class="achv-head"><div><small>Pencapaian vs target hari ini</small><h2>Belum ada progres</h2></div>${open}</div><p class="achv-note">Target hari ini belum dibekukan. Progres muncul setelah target pagi tersimpan dan admin update data bayar.</p>`;
+      document.getElementById('achvOpen').onclick = goTD;
       return;
     }
-    b2.style.display = '';
-    const w = TD_DATA.tanggal;
-    const semua = TD_DATA.pic.every(p => p.poin.every(q => tdTarget(q) <= 0 || (q.progres && q.progres.tuntas)));
-    b2.className = 'focus-card ' + (semua ? 'good' : '');
-    const rows = TD_DATA.pic.map(p => `<button type="button" class="fc-pic" data-pic="${esc(p.namaCO)}"><span class="fc-pn"><b>${esc(tdShort(p.namaCO, p.role))}</b><small>${esc(TD_SHORT_ROLE[p.role] || p.role)}</small></span>${p.poin.map(q => `<span class="fc-pt"><small>${esc(q.judul)}</small><b>${tdTarget(q) > 0 ? tdRp(tdTarget(q)) : 'Aman'}</b>${tdTarget(q) > 0 ? '<em class="fc-st st-' + tdStat(q) + '">' + (q.progres ? 'tercapai ' + fmtDec(q.progres.persen, 0) + '%' : '/ hari') + '</em>' : ''}</span>`).join('')}</button>`).join('');
+    // urut: PIC dengan poin paling tertinggal tampil paling atas
+    const minPct = p => Math.min.apply(null, p.poin.filter(q => q.progres && q.progres.targetHari > 0).map(q => q.progres.persen).concat([999]));
+    const urut = pics.slice().sort((a, c) => minPct(a) - minPct(c));
+    let tuntas = 0, total = 0;
+    pics.forEach(p => p.poin.forEach(q => { if(!q.progres || q.progres.targetHari <= 0) return; total++; if(q.progres.tuntas) tuntas++; }));
+    const rows = urut.map(p => `<div class="achv-pic"><div class="achv-pn"><b>${esc(tdShort(p.namaCO, p.role))}</b><small>${esc(TD_SHORT_ROLE[p.role] || p.role)}</small></div><div class="achv-bars">${p.poin.map(q => {
+      const g = q.progres, st = tdStat(q);
+      if(!g || g.targetHari <= 0) return `<div class="achv-b st-none"><span class="achv-l">${esc(q.judul)}</span><div class="achv-track"><i style="width:100%"></i></div><b class="achv-v">Aman</b></div>`;
+      return `<div class="achv-b st-${st}"><span class="achv-l">${esc(q.judul)}</span><div class="achv-track" role="img" aria-label="${esc(q.judul)} tercapai ${fmtDec(g.persen,0)} persen dari target"><i style="width:${Math.max(0, Math.min(100, g.persen))}%"></i></div><b class="achv-v">${fmtDec(g.persen,0)}%</b></div>`;
+    }).join('')}</div></div>`).join('');
+    const st = TD_DATA.streak || { daftar: [], riwayatHari: 0 };
+    const nama = (pic, kunci) => { const p = TD_DATA.pic.find(x => x.namaCO === pic); const q = p && p.poin.find(x => x.kunci === kunci); return (p ? tdShort(p.namaCO, p.role) : pic) + ' · ' + (q ? q.judul : kunci); };
+    const merah = st.daftar.filter(x => x.hari >= 3), kuning = st.daftar.filter(x => x.hari > 0 && x.hari < 3);
+    let streakHtml;
+    if(merah.length){
+      streakHtml = `<ul class="achv-streak">${merah.map(x => `<li><span>${esc(nama(x.pic, x.kunci))}</span><b>${x.hari} hari berturut-turut</b></li>`).join('')}</ul>`;
+    } else if(st.riwayatHari >= 3){
+      streakHtml = '<p class="achv-ok">Tidak ada PIC yang tidak target 3 hari berturut-turut.</p>';
+    } else {
+      streakHtml = `<p class="achv-note">Riwayat baru ${st.riwayatHari} hari. Pengecekan 3 hari berturut-turut aktif setelah ada 3 hari data.</p>`;
+    }
+    if(kuning.length && !merah.length) streakHtml += `<p class="achv-note">Waspada: ${kuning.map(x => esc(nama(x.pic, x.kunci)) + ' (' + x.hari + ' hari)').join(', ')}.</p>`;
     b2.innerHTML = `
-      <div class="fc-head">
-        <div class="fc-badge" aria-hidden="true">${ic(semua ? 'check' : 'target')}</div>
-        <div class="fc-title"><small>Fokus hari ini · sisa ${w.sisaHari} hari (termasuk hari ini)</small><h2>Target daily${TD_DATA.isAdmin ? ' semua PIC' : ''}</h2><p>Jumlah yang perlu tertagih tiap hari supaya Balance dan Flow aman di akhir bulan.</p></div>
-      </div>
-      <div class="fc-pics">${rows}</div>
-      <div class="fc-actions"><button type="button" class="btn primary" id="fcOpenTD">Lihat kontrak potensial</button></div>`;
-    b2.querySelectorAll('.fc-pic').forEach(x => x.onclick = () => { TD_SEL = x.dataset.pic; switchView('targetdaily'); });
-    const open = document.getElementById('fcOpenTD'); if(open) open.onclick = () => { if(TD_DATA.isAdmin) TD_SEL = 'ALL'; switchView('targetdaily'); };
+      <div class="achv-head"><div><small>Pencapaian vs target hari ini</small><h2>${tuntas} dari ${total} target sudah tercapai</h2></div>${open}</div>
+      <div class="achv-list">${rows}</div>
+      <div class="achv-sub"><b>Tidak target 3 hari berturut-turut</b></div>
+      ${streakHtml}`;
+    document.getElementById('achvOpen').onclick = goTD;
   };
   draw();
   if(!TD_DATA) ensureTD(draw);
@@ -4093,7 +4122,6 @@ function render(){
     document.getElementById('wrap').innerHTML = '<div class="state-box">Belum ada kontrak yang terdaftar untuk akun <b>' + esc(USER_EMAIL) + '</b>. Hubungi admin kalau ini seharusnya ada datanya.</div>';
     return;
   }
-  renderFocus();
   renderGrandTotal();
   if(IS_ADMIN) renderStatusCards('statusRowAdmin', DATA, MONITOR_BUCKETS);
   if(ROLE_INFO){

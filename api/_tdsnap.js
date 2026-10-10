@@ -85,4 +85,55 @@ function terapkanProgres(td, base) {
   return td;
 }
 
-module.exports = { TAB, kunciTanggal, bacaBaseline, pastikanBaseline, terapkanProgres, barisBaseline };
+// ---- Hasil harian (untuk riwayat & streak "tidak target") ----
+const HASIL_TAB = 'LOG_TARGET_HASIL';
+const HASIL_HEADER = ['TANGGAL', 'PIC', 'KUNCI', 'TARGET', 'TERCAPAI', 'PERSEN', 'TUNTAS'];
+
+function kemarin(w) { const d = new Date(Date.UTC(w.tahun, w.bulan - 1, w.hari - 1)); return { tahun: d.getUTCFullYear(), bulan: d.getUTCMonth() + 1, hari: d.getUTCDate() }; }
+
+async function bacaHasil(token, sheetId) {
+  const r = await sf('https://sheets.googleapis.com/v4/spreadsheets/' + sheetId + '/values/' + encodeURIComponent(HASIL_TAB) + '?valueRenderOption=UNFORMATTED_VALUE', token);
+  if (!r.ok || !r.json.values) return [];
+  return r.json.values.slice(1).filter(x => x[0]).map(x => ({ tanggal: String(x[0]), pic: String(x[1] || ''), kunci: String(x[2] || ''), target: Number(x[3]) || 0, tercapai: Number(x[4]) || 0, persen: Number(x[5]) || 0, tuntas: x[6] === true || String(x[6]).toUpperCase() === 'TRUE' || x[6] === 1 }));
+}
+
+// Catat hasil final kemarin. Dipanggil cron pagi: data pagi = kondisi akhir kemarin, jadi progres kemarin dihitung dari baseline kemarin vs data ini.
+// Mengembalikan jumlah baris yang ditulis (0 kalau kemarin tidak punya baseline atau sudah pernah dicatat).
+async function finalkanKemarin(token, sheetId, td) {
+  const kTgl = kunciTanggal(kemarin(td.tanggal));
+  const baseKemarin = await bacaBaseline(token, sheetId, kTgl);
+  if (!Object.keys(baseKemarin).length) return 0;
+  const sudah = await bacaHasil(token, sheetId);
+  if (sudah.some(x => x.tanggal === kTgl)) return 0;
+  const salinan = JSON.parse(JSON.stringify(td));
+  terapkanProgres(salinan, baseKemarin);
+  const rows = [];
+  salinan.pic.forEach(p => p.poin.forEach(q => {
+    const g = q.progres; if (!g) return;
+    rows.push([kTgl, safe(p.namaCO), q.kunci, Math.round(g.targetHari), Math.round(g.tercapai), Math.round(g.persen * 10) / 10, (g.targetHari <= 0 || g.tuntas) ? 'TRUE' : 'FALSE']);
+  }));
+  if (!rows.length) return 0;
+  const base = 'https://sheets.googleapis.com/v4/spreadsheets/' + sheetId;
+  const add = await sf(base + ':batchUpdate', token, { method: 'POST', body: JSON.stringify({ requests: [{ addSheet: { properties: { title: HASIL_TAB } } }] }) });
+  if (add.ok) await sf(base + '/values/' + encodeURIComponent(HASIL_TAB + '!A1') + '?valueInputOption=RAW', token, { method: 'PUT', body: JSON.stringify({ values: [HASIL_HEADER] }) });
+  const ap = await sf(base + '/values/' + encodeURIComponent(HASIL_TAB + '!A:G') + ':append?valueInputOption=RAW&insertDataOption=INSERT_ROWS', token, { method: 'POST', body: JSON.stringify({ values: rows }) });
+  if (!ap.ok) throw new Error('Gagal menyimpan hasil harian.');
+  return rows.length;
+}
+
+// Streak hari berturut-turut TIDAK mencapai target, per PIC + poin, dihitung dari hari terbaru mundur. Hari target 0 dihitung tercapai.
+function hitungStreak(hasil) {
+  const per = {};
+  hasil.forEach(x => { const k = x.pic + '|' + x.kunci; (per[k] = per[k] || []).push(x); });
+  const out = [];
+  Object.keys(per).forEach(k => {
+    const arr = per[k].sort((a, b) => b.tanggal.localeCompare(a.tanggal));
+    let n = 0; for (const x of arr) { if (x.tuntas) break; n++; }
+    const [pic, kunci] = k.split('|');
+    out.push({ pic, kunci, hari: n, sejak: n ? arr[n - 1].tanggal : null, terakhirPersen: arr[0] ? arr[0].persen : 0 });
+  });
+  const tanggal = Array.from(new Set(hasil.map(x => x.tanggal))).sort();
+  return { daftar: out.filter(x => x.hari > 0).sort((a, b) => b.hari - a.hari), riwayatHari: tanggal.length };
+}
+
+module.exports = { TAB, HASIL_TAB, kemarin, bacaHasil, finalkanKemarin, hitungStreak, kunciTanggal, bacaBaseline, pastikanBaseline, terapkanProgres, barisBaseline };
