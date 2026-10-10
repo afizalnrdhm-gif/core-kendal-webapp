@@ -3990,7 +3990,7 @@ function tdKontrakRow(k){
 }
 function tdPoinHtml(p, q, idx){
   const pct = Math.min(100, q.nilaiPct), bt = Math.min(100, q.batasPct);
-  const aman = q.perHari <= 0;
+  const aman = q.perHari <= 0, naik = q.arah === 'naik';
   const untuk = q.jumlahUntukTarget;
   const LIM = 8;
   const pot = q.potensial.map((k, i) => (i === LIM ? '<li class="td-extra-start" hidden></li>' : '') + tdKontrakRow(k).replace('<li class="td-row">', '<li class="td-row' + (i >= LIM ? ' td-extra' : '') + '" ' + (i >= LIM ? 'hidden' : '') + '>') + (untuk && i + 1 === untuk && q.potensial.length > untuk ? '<li class="td-cut' + (i >= LIM ? ' td-extra' : '') + '" role="separator" ' + (i >= LIM ? 'hidden' : '') + '><span>Target harian tercapai sampai di sini</span></li>' : '')).join('');
@@ -4004,11 +4004,13 @@ function tdPoinHtml(p, q, idx){
     <p class="td-ket">${esc(q.keterangan)}</p>
     <div class="td-meter" role="img" aria-label="Sekarang ${fmtDec(q.nilaiPct,1)} persen, batas ${fmtDec(q.batasPct,1)} persen"><i style="width:${pct}%"></i><s style="left:${bt}%"></s></div>
     <div class="td-stats">
-      <div><small>Sekarang</small><b>${fmtDec(q.nilaiPct,1)}%</b><span>${tdRp(q.nilaiAmt)}</span></div>
+      ${naik ? `<div><small>Cabang sekarang</small><b>${fmtDec(q.nilaiPct,1)}%</b><span>${tdRp(q.nilaiAmt)}</span></div>
+      <div><small>Target cabang</small><b>${fmtDec(q.batasPct,1)}%</b><span>${tdRp(q.bolehAmt)}</span></div>
+      <div><small>Bagian ${esc(tdShort(p.namaCO, p.role))} (${fmtDec(q.porsiPct,1)}%)</small><b>${aman ? '-' : tdRp(q.perluAmt)}</b><span>${aman ? 'target tercapai' : 'dalam ' + TD_DATA.tanggal.sisaHari + ' hari'}</span></div>` : `<div><small>Sekarang</small><b>${fmtDec(q.nilaiPct,1)}%</b><span>${tdRp(q.nilaiAmt)}</span></div>
       <div><small>Batas aman</small><b>${fmtDec(q.batasPct,1)}%</b><span>${q.bolehAmt != null ? tdRp(q.bolehAmt) : ''}</span></div>
-      <div><small>Perlu turun</small><b>${aman ? '-' : tdRp(q.perluAmt)}</b><span>${aman ? 'sudah di bawah batas' : 'dalam ' + TD_DATA.tanggal.sisaHari + ' hari'}</span></div>
+      <div><small>Perlu turun</small><b>${aman ? '-' : tdRp(q.perluAmt)}</b><span>${aman ? 'sudah di bawah batas' : 'dalam ' + TD_DATA.tanggal.sisaHari + ' hari'}</span></div>`}
     </div>
-    ${aman ? '<p class="td-ok">Sudah di bawah batas, pertahankan. Kontrak di bawah tetap bisa dikejar sebagai cadangan.</p>' : ''}
+    ${aman ? '<p class="td-ok">' + (naik ? 'Target porsi NOOD sudah tercapai, pertahankan.' : 'Sudah di bawah batas, pertahankan.') + ' Kontrak di bawah tetap bisa dikejar sebagai cadangan.</p>' : ''}
     <div class="td-sub"><b>Kontrak potensial</b><small>${q.jumlahPotensial} kontrak · ${tdRp(q.totalPotensial)} · urut: tgl bayar bulan lalu, lalu janji bayar</small></div>
     ${q.potensial.length ? `<ul class="td-list">${pot}</ul>${q.potensial.length > LIM ? `<button type="button" class="btn td-toggle" data-n="${q.potensial.length - LIM}">Tampilkan ${q.potensial.length - LIM} lainnya</button>` : ''}${q.jumlahPotensial > q.potensial.length ? `<p class="td-more">+ ${q.jumlahPotensial - q.potensial.length} kontrak potensial lainnya</p>` : ''}` : '<p class="td-empty">Belum ada kontrak yang cocok dengan pola tgl bayar atau janji bayar.</p>'}
     ${!aman && !q.tercukupi ? `<div class="td-warn">Potensial baru ${tdRp(q.totalPotensial)}, masih kurang <b>${tdRp(q.kurang)}</b> dari target harian ${tdRp(q.perHari)}.</div>` : (!aman && q.tercukupi ? `<div class="td-good">Target harian ${tdRp(q.perHari)} tertutup oleh ${untuk} kontrak teratas.</div>` : '')}
@@ -4020,7 +4022,7 @@ function tdPicHtml(p){
 }
 function renderTargetDaily(){
   const wrap = document.getElementById('wrap');
-  const head = `<div class="td-intro"><h2>Target daily</h2><p>Target harian = (belum bayar - batas yang boleh flow) ÷ sisa hari, sama seperti REPORT DAILY di Excel. Data adalah kondisi kemarin, jadi hari ini ikut dihitung.</p></div>`;
+  const head = `<div class="td-intro"><h2>Target daily</h2><p>Target harian = (belum bayar - batas yang boleh flow) ÷ sisa hari, sama seperti REPORT DAILY di Excel. Balance FE = target NOOD cabang, dibagi sesuai beban awal. Data adalah kondisi kemarin, jadi hari ini ikut dihitung.</p></div>`;
   if(!TD_DATA){
     wrap.innerHTML = head + (TD_ERR ? `<div class="state-box error"><div class="err-icon">${ic('alert')}</div>${esc(TD_ERR)}<br><br><button class="btn" onclick="TD_ERR='';renderTargetDaily()">Coba lagi</button></div>` : `<div class="skeleton-row"><div class="skel"></div><div class="skel"></div></div><div class="skel tall"></div>`);
     if(!TD_ERR) ensureTD(() => { if(VIEW_MODE === 'targetdaily') renderTargetDaily(); });
@@ -4035,7 +4037,7 @@ function renderTargetDaily(){
   const meta = `<div class="td-meta"><span>${ic('clock')} Sisa <b>${w.sisaHari} hari</b> sampai ${w.akhirBulan}/${w.bulan} (termasuk hari ini)</span></div>`;
   let body;
   if(TD_SEL === 'ALL'){
-    body = `<div class="td-sum">${pics.map(p => `<button type="button" class="td-card" data-pic="${esc(p.namaCO)}"><div class="td-ch"><b>${esc(tdShort(p.namaCO, p.role))}</b><small>${esc(TD_SHORT_ROLE[p.role] || p.role)}</small></div>${p.poin.map(q => `<div class="td-cl"><span><small>${q.kunci === 'balance' ? 'Balance' : 'Flow'}</small>${esc(q.judul.replace(/^(Balance|Flow) /, ''))}</span><span class="td-cv">${q.perHari > 0 ? '<b>' + tdRp(q.perHari) + '</b><em>/ hari</em>' : '<b class="ok">Aman</b>'}<small>${fmtDec(q.nilaiPct,1)}% · batas ${fmtDec(q.batasPct,1)}%</small></span></div>`).join('')}<span class="td-go">Lihat kontrak potensial ›</span></button>`).join('')}</div>`;
+    body = `<div class="td-sum">${pics.map(p => `<button type="button" class="td-card" data-pic="${esc(p.namaCO)}"><div class="td-ch"><b>${esc(tdShort(p.namaCO, p.role))}</b><small>${esc(TD_SHORT_ROLE[p.role] || p.role)}</small></div>${p.poin.map(q => `<div class="td-cl"><span><small>${q.kunci === 'balance' ? 'Balance' : 'Flow'}</small>${esc(q.judul.replace(/^(Balance|Flow) /, ''))}</span><span class="td-cv">${q.perHari > 0 ? '<b>' + tdRp(q.perHari) + '</b><em>/ hari</em>' : '<b class="ok">Aman</b>'}<small>${fmtDec(q.nilaiPct,1)}% · ${q.arah === 'naik' ? 'target' : 'batas'} ${fmtDec(q.batasPct,1)}%</small></span></div>`).join('')}<span class="td-go">Lihat kontrak potensial ›</span></button>`).join('')}</div>`;
   } else {
     body = tdPicHtml(pics.find(p => p.namaCO === TD_SEL));
   }

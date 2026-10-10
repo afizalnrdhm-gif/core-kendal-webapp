@@ -252,11 +252,12 @@ function hitungPenyelesaianSemua(masterList, configRows) {
 // TARGET DAILY (menu "Target Daily")
 // Meniru REPORT DAILY di Excel: target harian = (belum bayar - batas flow yang masih boleh) / sisa hari.
 // Dua poin per PIC mengikuti KPI rapor: Balance dan Flow.
-//   FE  : Balance 1-30 (porsi AR) + Flow NOOD   | MR : Balance 31-60 + Flow 1-30 | BCH : Balance 1-60 + Flow 31-60
+//   FE  : Balance NOOD (target cabang 88%, dibagi sesuai beban) + Flow NOOD   | MR : Balance 31-60 + Flow 1-30 | BCH : Balance 1-60 + Flow 31-60
 // Data MASTER/KA HARIAN adalah kondisi H-1, jadi "hari ini" ikut dihitung sebagai hari yang tersisa.
 // ============================================================
 const TD_BATAS_FLOW = { FE: 2, MR: 6, BCH: 28 };       // % beban awal yang boleh flow (parameter J di Excel REPORT DAILY)
-const TD_BATAS_BALANCE = { FE: 8.5, MR: 1.8, BCH: 9 }; // % AR (batas poin maksimal tiering KPI rapor)
+const TD_BATAS_BALANCE = { MR: 1.8, BCH: 9 };       // % AR (batas poin maksimal tiering KPI rapor)
+const TD_TARGET_NOOD = 88;                          // FE: target porsi NOOD cabang terhadap total AR (bukan KPI rapor), dibagi ke FE sesuai beban awal
 const TD_LABEL = { NOOD: 'NOOD', P001_030: '1-30', P031_060: '31-60', P061_090: '61-90' };
 const tdLbl = b => TD_LABEL[b] || String(b || '').replace(/^P0*/, '').replace('_', '-');
 
@@ -336,6 +337,15 @@ function tdSusunKontrak(kandidat, perHari, D, akhirBulan) {
 function hitungTargetDaily(masterList, petaKA, configRows) {
   const w = tdHariIni(); const D = w.hari;
   const arAll = (filterKA) => { let t = 0; Object.values(petaKA).forEach(ka => { if (!filterKA(ka)) return; const i = bucketIndex(ka['BUCKET UPDATE']); const sisa = typeof ka['SISA PIUTANG'] === 'number' ? ka['SISA PIUTANG'] : 0; if (i !== -1 && i <= bucketIndex('P181_210')) t += sisa; }); return t; };
+  // Balance NOOD cabang (non-fleet): target 88% dari total AR, selisihnya dibagi ke FE sesuai beban awal masing-masing
+  const nonFleet = ka => ka['FLEET/NON FLEET'] !== 'FLEET';
+  const arCab = arAll(nonFleet);
+  let noodCab = 0;
+  Object.values(petaKA).forEach(ka => { if (nonFleet(ka) && ka['BUCKET UPDATE'] === 'NOOD') noodCab += (typeof ka['SISA PIUTANG'] === 'number' ? ka['SISA PIUTANG'] : 0); });
+  const gapNood = Math.max(0, arCab * TD_TARGET_NOOD / 100 - noodCab);
+  const feList = configRows.filter(r => r['ROLE'] === 'FE').map(r => r['NAMA_CO']);
+  const bebanFE = {}; let bebanFETotal = 0;
+  feList.forEach(n => { bebanFE[n] = masterList.filter(m => m['CO ALL'] === n && m['FLEET/NON FLEET'] !== 'FLEET').reduce((t, m) => t + sipokOf(m), 0); bebanFETotal += bebanFE[n]; });
   const hasil = configRows.filter(r => ['FE', 'MR', 'BCH'].includes(r['ROLE'])).map(cfg => {
     const role = cfg['ROLE'], namaCO = cfg['NAMA_CO'];
     const penyelesaian = (cfg['BUCKET_PENYELESAIAN'] || '').toString().split(',').map(x => x.trim()).filter(Boolean);
@@ -350,16 +360,29 @@ function hitungTargetDaily(masterList, petaKA, configRows) {
     const arTotal = arAll(scopeKA);
     let arBucket = 0;
     Object.values(petaKA).forEach(ka => { if (!scopeKA(ka)) return; if (balBuckets.includes(ka['BUCKET UPDATE'])) arBucket += (typeof ka['SISA PIUTANG'] === 'number' ? ka['SISA PIUTANG'] : 0); });
-    const batasBal = TD_BATAS_BALANCE[role];
+    const batasBal = TD_BATAS_BALANCE[role] || 0;
     const pctBal = arTotal > 0 ? arBucket / arTotal * 100 : 0;
     const perluBal = Math.max(0, arBucket - arTotal * batasBal / 100);
-    const kandBal = masterList.filter(m => scopeM(m) && balBuckets.includes(m['BUCKET UPDATE']) && !tdSudahBayar(m));
-    const balance = {
-      kunci: 'balance', judul: 'Balance ' + balBuckets.map(tdLbl).join(' + '),
-      keterangan: 'Porsi AR bucket ' + balBuckets.map(tdLbl).join(' + ') + ' terhadap total AR; batas poin maksimal ' + batasBal + '%',
-      nilaiAmt: arBucket, nilaiPct: pctBal, batasPct: batasBal, perluAmt: perluBal, perHari: perluBal / w.sisaHari,
-      ...tdSusunKontrak(kandBal, perluBal / w.sisaHari, D, w.akhirBulan)
-    };
+    const kandBal = masterList.filter(m => scopeM(m) && (role === 'FE' ? m['BUCKET UPDATE'] === 'P001_030' : balBuckets.includes(m['BUCKET UPDATE'])) && !tdSudahBayar(m));
+    let balance;
+    if (role === 'FE') {
+      const porsi = bebanFETotal > 0 ? bebanFE[namaCO] / bebanFETotal : 0;
+      const perlu = gapNood * porsi;
+      balance = {
+        kunci: 'balance', arah: 'naik', judul: 'Balance NOOD',
+        keterangan: 'Target porsi NOOD cabang ' + TD_TARGET_NOOD + '% dari total AR. Kekurangannya dibagi ke FE sesuai beban awal (porsi ' + Math.round(porsi * 1000) / 10 + '%)',
+        nilaiAmt: noodCab, nilaiPct: arCab > 0 ? noodCab / arCab * 100 : 0, batasPct: TD_TARGET_NOOD, bolehAmt: arCab * TD_TARGET_NOOD / 100,
+        porsiPct: porsi * 100, bebanAmt: bebanFE[namaCO], gapCabang: gapNood, perluAmt: perlu, perHari: perlu / w.sisaHari,
+        ...tdSusunKontrak(kandBal, perlu / w.sisaHari, D, w.akhirBulan)
+      };
+    } else {
+      balance = {
+        kunci: 'balance', judul: 'Balance ' + balBuckets.map(tdLbl).join(' + '),
+        keterangan: 'Porsi AR bucket ' + balBuckets.map(tdLbl).join(' + ') + ' terhadap total AR; batas poin maksimal ' + batasBal + '%',
+        nilaiAmt: arBucket, nilaiPct: pctBal, batasPct: batasBal, perluAmt: perluBal, perHari: perluBal / w.sisaHari,
+        ...tdSusunKontrak(kandBal, perluBal / w.sisaHari, D, w.akhirBulan)
+      };
+    }
 
     // ---- Poin 2: FLOW (belum bayar di bucket asal yang masih bisa flow) ----
     const bAsal = role === 'BCH' ? 'P031_060' : (role === 'FE' ? (asal || 'NOOD') : (asal || 'P001_030'));

@@ -43,3 +43,21 @@ test('flow: target harian = (belum bayar - batas) / sisa hari', () => {
   assert.strictEqual(flow.bolehAmt, 20); // 2% FE
   assert.ok(Math.abs(flow.perHari - 580 / t.tanggal.sisaHari) < 1e-9);
 });
+
+test('FE balance NOOD: target 88% cabang dibagi sesuai beban awal FE', () => {
+  const master = [
+    { 'NO KONTRAK': '1', 'CO ALL': 'A', 'BUCKET AWAL': 'NOOD', 'BUCKET UPDATE': 'P001_030', SIPOK: 600, 'FLEET/NON FLEET': 'NON FLEET' },
+    { 'NO KONTRAK': '2', 'CO ALL': 'B', 'BUCKET AWAL': 'NOOD', 'BUCKET UPDATE': 'P001_030', SIPOK: 200, 'FLEET/NON FLEET': 'NON FLEET' }
+  ];
+  const ka = { '1': { 'BUCKET UPDATE': 'P001_030', 'SISA PIUTANG': 600, 'NAMA COLLECTOR': 'A', 'FLEET/NON FLEET': 'NON FLEET' },
+               '2': { 'BUCKET UPDATE': 'P001_030', 'SISA PIUTANG': 200, 'NAMA COLLECTOR': 'B', 'FLEET/NON FLEET': 'NON FLEET' },
+               '3': { 'BUCKET UPDATE': 'NOOD', 'SISA PIUTANG': 200, 'NAMA COLLECTOR': 'A', 'FLEET/NON FLEET': 'NON FLEET' } };
+  const cfg = [{ NAMA_CO: 'A', ROLE: 'FE', BUCKET_PENYELESAIAN: 'P001_030', BUCKET_ASAL_FLOW: 'NOOD', BUCKET_BALANCE: 'P001_030' },
+               { NAMA_CO: 'B', ROLE: 'FE', BUCKET_PENYELESAIAN: 'P001_030', BUCKET_ASAL_FLOW: 'NOOD', BUCKET_BALANCE: 'P001_030' }];
+  const t = hitungTargetDaily(master, ka, cfg);
+  const a = t.pic[0].poin[0], b = t.pic[1].poin[0];
+  assert.strictEqual(a.judul, 'Balance NOOD');
+  // total AR 1000, NOOD 200 -> perlu 880-200 = 680; A beban 600 (75%), B 200 (25%)
+  assert.ok(Math.abs(a.perluAmt - 510) < 1e-9);
+  assert.ok(Math.abs(b.perluAmt - 170) < 1e-9);
+});
