@@ -85,3 +85,14 @@ test('streak tidak target: hitung hari berturut-turut dari yang terbaru', () => 
   assert.equal(r.riwayatHari, 4);
   assert.deepEqual(kemarin({ tahun: 2026, bulan: 11, hari: 1 }), { tahun: 2026, bulan: 10, hari: 31 });
 });
+
+test('progres: kontrak REALISASI > 0 ikut dihitung walau tidak ada di baseline, tanpa dobel', () => {
+  const { terapkanProgres } = require('../api/_tdsnap');
+  const td = { pic: [{ namaCO: 'A', poin: [{ kunci: 'flow', perHari: 100, semuaKandidat: [['K3', 30, 'Tiga']], bayarHariIni: [['K1', 60, 'Satu'], ['K9', 20, 'Sembilan']] }] }] };
+  const base = { 'A|flow': { targetHari: 100, baseNilai: 0, kontrak: [['K1', 60, 'Satu'], ['K3', 30, 'Tiga']] } };
+  terapkanProgres(td, base);
+  const q = td.pic[0].poin[0];
+  assert.equal(q.progres.tercapai, 80); // K1 (60, tidak dobel) + K9 (20)
+  assert.equal(q.progres.jumlahBayar, 2);
+  assert.equal(q.bayarHariIni, undefined);
+});

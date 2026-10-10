@@ -406,6 +406,13 @@ function hitungTargetDaily(masterList, petaKA, configRows) {
       perluAmt: perluFlow, perHari: perluFlow / w.sisaHari, jumlahBelumBayar: kandFlow.length,
       ...tdSusunKontrak(kandFlow, perluFlow / w.sisaHari, D, w.akhirBulan)
     };
+    // Kontrak yang BAYAR hari ini menurut KA HARIAN (kolom REALISASI > 0, sama dengan command /realisasi di Telegram).
+    // Dipakai untuk progres supaya tetap akurat walau baseline pagi terlambat dibekukan.
+    const bayarList = (awalSet) => masterList
+      .filter(m => scopeM(m) && awalSet.includes(m['BUCKET AWAL']) && petaKA[m['NO KONTRAK']] && Number(petaKA[m['NO KONTRAK']]['REALISASI']) > 0)
+      .map(m => [m['NO KONTRAK'], sipokOf(m), m['NAMA KONSUMEN'] || '-']);
+    balance.bayarHariIni = bayarList(role === 'FE' ? ['P001_030'] : balBuckets);
+    flow.bayarHariIni = bayarList([bAsal]);
     return { namaCO, role, poin: [balance, flow] };
   });
   return { tanggal: w, pic: hasil };
