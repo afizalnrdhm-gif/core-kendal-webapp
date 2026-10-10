@@ -100,6 +100,14 @@ module.exports = async (req, res) => {
       return;
     }
     const janjiBayar = janjiRaw;
+    // Proyeksi: salah satu dari daftar (atau kosong). Hanya diubah kalau dikirim dari browser.
+    const PROYEKSI_OK = ['STAY', 'BTC', 'ROLLBACK', 'FLOW', 'LUNAS'];
+    const kirimProyeksi = body.proyeksi !== undefined;
+    const proyeksi = body.proyeksi == null ? '' : String(body.proyeksi).trim().toUpperCase();
+    if (proyeksi !== '' && PROYEKSI_OK.indexOf(proyeksi) === -1) {
+      res.status(400).json({ error: 'Proyeksi harus salah satu dari: ' + PROYEKSI_OK.join(', ') + '.' });
+      return;
+    }
     let kronologis = body.kronologis == null ? '' : String(body.kronologis).trim();
     if (kronologis.length > 1000) {
       res.status(400).json({ error: 'Kronologis terlalu panjang (maksimal 1000 karakter).' });
@@ -128,6 +136,7 @@ module.exports = async (req, res) => {
     const idxEmailCo = header.findIndex(h => (h || '').toString().trim() === 'EMAIL CO');
     const idxJanji = header.findIndex(h => (h || '').toString().trim() === 'JANJI BAYAR');
     const idxKron = header.findIndex(h => (h || '').toString().trim() === 'KRONOLOGIS');
+    const idxProy = header.findIndex(h => (h || '').toString().trim() === 'PROYEKSI');
     const idxNama = header.findIndex(h => (h || '').toString().trim() === 'NAMA KONSUMEN');
 
     if (idxNoKontrak === -1 || idxJanji === -1 || idxKron === -1) {
@@ -151,8 +160,14 @@ module.exports = async (req, res) => {
 
     const janjiLama = (targetRow[idxJanji] == null ? '' : targetRow[idxJanji]).toString();
     const kronLama = (targetRow[idxKron] || '').toString();
+    const proyLama = idxProy > -1 ? (targetRow[idxProy] || '').toString() : '';
     const janjiCol = colLetter(idxJanji);
     const kronCol = colLetter(idxKron);
+
+    // Kolom PROYEKSI di MASTER dibuat otomatis (judul di baris 1) kalau belum ada.
+    const proyCol = colLetter(idxProy > -1 ? idxProy : header.length);
+    const proyeksiWrites = [{ range: `MASTER!${proyCol}${rowNumber}`, values: [[proyeksi]] }];
+    if (idxProy === -1) proyeksiWrites.push({ range: `MASTER!${proyCol}1`, values: [['PROYEKSI']] });
 
     const updateRes = await fetch(
       `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values:batchUpdate`,
@@ -164,7 +179,7 @@ module.exports = async (req, res) => {
           data: [
             { range: `MASTER!${janjiCol}${rowNumber}`, values: [[janjiBayar]] },
             { range: `MASTER!${kronCol}${rowNumber}`, values: [[kronologis]] }
-          ]
+          ].concat(kirimProyeksi ? proyeksiWrites : [])
         })
       }
     );
@@ -181,7 +196,8 @@ module.exports = async (req, res) => {
       const kronBersih = kronologis.replace(/^'/, '');
       logged = await appendLog(accessToken, sheetId, [
         new Date(Date.now() + 7 * 3600 * 1000).toISOString().replace('T', ' ').slice(0, 19), email, noKontrak.toString().trim(),
-        idxNama > -1 ? (targetRow[idxNama] || '') : '', janjiBayar, kronBersih, janjiLama, kronLama
+        idxNama > -1 ? (targetRow[idxNama] || '') : '', janjiBayar, kronBersih, janjiLama, kronLama,
+        kirimProyeksi ? proyeksi : proyLama, proyLama
       ]);
     } catch (e) { console.error('Gagal catat log tindak lanjut:', e && e.message); }
 
