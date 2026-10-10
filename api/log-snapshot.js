@@ -128,6 +128,7 @@ module.exports = async (req, res) => {
     // mau jalan kalau dipanggil pakai secret itu (Vercel Cron otomatis kirim
     // header ini kalau CRON_SECRET di-set). Kalau env var-nya kosong, dilewati.
     const cronSecret = process.env.CRON_SECRET;
+    if (!cronSecret) console.log('PERINGATAN: CRON_SECRET belum diisi — endpoint ini terbuka untuk umum.');
     if (cronSecret) {
       const authHeader = req.headers['authorization'] || '';
       if (authHeader !== `Bearer ${cronSecret}`) {
@@ -155,14 +156,14 @@ module.exports = async (req, res) => {
     const logJson = await logRes.json();
 
     if (!masterJson.values || !roleJson.values) {
-      res.status(500).json({ ok: false, error: 'Gagal baca sheet MASTER/CONFIG_ROLE: ' + JSON.stringify({ masterJson, roleJson }) });
+      console.log('Gagal baca MASTER/CONFIG_ROLE:', JSON.stringify({ masterJson, roleJson }));
+      res.status(500).json({ ok: false, error: 'Gagal baca sheet MASTER/CONFIG_ROLE (detail ada di log Vercel).' });
       return;
     }
     if (!logJson.values) {
       res.status(500).json({
         ok: false,
-        error: `Sheet "${LOG_SHEET}" belum ada atau gagal dibaca. Buat dulu sheet baru bernama persis "${LOG_SHEET}" dengan header baris pertama: TAHUN, BULAN, MINGGU, ROLE, NAMA_CO, PCT, SIPOK_TOTAL, NILAI, UPDATE_TERAKHIR`,
-        detail: logJson
+        error: `Sheet "${LOG_SHEET}" belum ada atau gagal dibaca. Buat dulu sheet baru bernama persis "${LOG_SHEET}" dengan header baris pertama: TAHUN, BULAN, MINGGU, ROLE, NAMA_CO, PCT, SIPOK_TOTAL, NILAI, UPDATE_TERAKHIR`
       });
       return;
     }
@@ -227,6 +228,6 @@ module.exports = async (req, res) => {
     });
   } catch (err) {
     console.log('Error log-snapshot:', err.message);
-    res.status(500).json({ ok: false, error: err.message || String(err) });
+    res.status(500).json({ ok: false, error: 'Gagal menjalankan snapshot (detail ada di log Vercel).' });
   }
 };

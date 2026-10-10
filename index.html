@@ -716,9 +716,113 @@
     .gsi-wrap{padding:16px 12px;background:var(--surface-alt);border-radius:18px;box-shadow:none;}
     .lc-foot{display:none;}
   }
+
+  /* =====================================================================
+     V4 — hasil audit: halaman tabel, ekspor, janji, riwayat, tren, status kosong
+     ===================================================================== */
+  :root{--s1:#1B78B0;--s2:#B9791A;--s3:#8B5CA8;--s4:#1F8A5B;}
+  :root[data-theme="dark"]{--s1:#3A8FCC;--s2:#BF8226;--s3:#A070C8;--s4:#2E9E6E;}
+  @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--s1:#3A8FCC;--s2:#BF8226;--s3:#A070C8;--s4:#2E9E6E;}}
+  .skip-link{position:absolute;left:12px;top:-64px;z-index:200;background:#0B3D62;color:#fff;padding:10px 16px;border-radius:10px;font-weight:700;text-decoration:none;transition:top .15s ease;}
+  .skip-link:focus{top:10px;outline:2px solid #fff;}
+  #wrap:focus{outline:none;}
+
+  .top-meta{display:flex;align-items:center;gap:8px;min-width:0;}
+  #topFresh{font-size:12.5px;font-weight:600;color:var(--ink-soft);background:var(--surface-sunken);border:1px solid var(--line);border-radius:99px;padding:6px 14px;white-space:nowrap;}
+  #topFresh b{color:var(--ink);font-weight:700;}
+  #topFresh[hidden]{display:none;}
+  .mobile-topbar #topFresh span{font-size:inherit;font-weight:inherit;letter-spacing:inherit;color:inherit;max-width:none;overflow:visible;}
+  #topFresh .short{display:none;}
+  .top-meta{overflow:hidden;white-space:nowrap;}
+
+  /* tabel: kolom ringkas, halaman, kosong */
+  .table-compact [data-opt]{display:none !important;}
+  .load-more{display:flex;justify-content:center;margin:14px 0 4px;}
+  .load-more:empty{display:none;}
+  .load-note{color:var(--ink-soft);font-weight:500;margin-left:4px;}
+  .row-wa{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;margin-left:8px;border-radius:50%;background:color-mix(in srgb, var(--wa) 14%, transparent);color:var(--wa);vertical-align:middle;flex:none;transition:background .15s ease,transform .15s ease;}
+  .row-wa:hover{background:color-mix(in srgb, var(--wa) 26%, transparent);transform:scale(1.08);}
+  .row-wa .ic{width:15px;height:15px;}
+  .empty-state{display:flex;flex-direction:column;align-items:center;gap:6px;padding:34px 16px;color:var(--ink-soft);text-align:center;}
+  .empty-state .ic{width:30px;height:30px;color:var(--ink-soft);opacity:.7;margin-bottom:4px;}
+  .empty-state b{color:var(--ink);font-size:14.5px;}
+  .empty-state .btn{margin-top:10px;}
+  tbody tr.empty-row:hover td{background:transparent;}
+
+  /* pantauan janji bayar */
+  .alert-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;}
+  .alert-tile{display:flex;align-items:center;gap:12px;text-align:left;background:var(--surface);border:1px solid color-mix(in srgb, var(--line) 70%, transparent);border-radius:var(--radius);padding:12px 16px;cursor:pointer;box-shadow:var(--shadow-1);border-left:4px solid var(--c, var(--navy-lighter));transition:transform .2s var(--ease),box-shadow .2s var(--ease);color:var(--ink);}
+  .alert-tile:hover{transform:translateY(-2px);box-shadow:0 14px 28px -14px rgba(15,30,45,.3);}
+  .alert-tile.info{--c:var(--navy-lighter);} .alert-tile.bad{--c:var(--bad);} .alert-tile.warn{--c:var(--warn);}
+  .alert-tile.active{box-shadow:0 0 0 2px var(--c), var(--shadow-1);}
+  .at-n{font-size:24px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1;}
+  .at-l{font-size:12.5px;font-weight:600;color:var(--ink-soft);line-height:1.25;}
+
+  /* lipat sebaran */
+  details.fold{margin-bottom:22px;}
+  details.fold > summary{display:flex;align-items:baseline;gap:10px;cursor:pointer;list-style:none;font-size:12px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-soft);padding:6px 0 12px;}
+  details.fold > summary::-webkit-details-marker{display:none;}
+  details.fold > summary::before{content:'';width:8px;height:8px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .2s ease;flex:none;align-self:center;}
+  details.fold[open] > summary::before{transform:rotate(45deg);}
+  details.fold > summary small{font-size:11.5px;font-weight:500;letter-spacing:0;text-transform:none;opacity:.9;}
+
+  /* riwayat tindak lanjut */
+  .hist{display:flex;flex-direction:column;}
+  .hist-item{position:relative;border-left:2px solid var(--line-strong);padding:0 0 14px 14px;margin-left:5px;}
+  .hist-item::before{content:'';position:absolute;left:-6px;top:3px;width:10px;height:10px;border-radius:50%;background:var(--navy-lighter);box-shadow:0 0 0 3px var(--surface);}
+  .hist-item:last-child{border-left-color:transparent;padding-bottom:0;}
+  .hist-meta{font-size:11.5px;color:var(--ink-soft);margin-bottom:3px;font-variant-numeric:tabular-nums;}
+  .hist-text{font-size:13.5px;line-height:1.5;white-space:pre-wrap;word-break:break-word;}
+  .hist-empty{font-size:12.5px;color:var(--ink-soft);line-height:1.5;}
+  .muted{color:var(--ink-soft);}
+
+  /* tren */
+  .tren-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px;}
+  .tren-month{font-size:13px;font-weight:700;color:var(--ink-soft);}
+  .tren-wrap{position:relative;}
+  .tren-wrap svg{width:100%;height:auto;display:block;}
+  .tg-grid{stroke:var(--line);stroke-width:1;}
+  .tg-ax{fill:var(--ink-soft);font-size:11px;font-family:var(--sans);}
+  .tg-val{fill:var(--ink);font-size:11px;font-weight:700;font-family:var(--sans);}
+  .tg-target{stroke:var(--ink);stroke-width:2;pointer-events:none;}
+  .tbar{cursor:pointer;transition:opacity .15s ease;}
+  .tbar:hover,.tbar:focus{opacity:.8;outline:none;stroke:var(--ink);stroke-width:1.5;}
+  .tren-tip{position:absolute;z-index:3;background:var(--sb-bg);color:#fff;font-size:12px;font-weight:600;padding:6px 10px;border-radius:8px;white-space:nowrap;pointer-events:none;box-shadow:var(--shadow-2);}
+  .tren-tip[hidden]{display:none;}
+  .tg-legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin:10px 0 6px;font-size:12.5px;color:var(--ink-soft);}
+  .tg-leg{display:inline-flex;align-items:center;gap:7px;}
+  .tg-leg i{width:12px;height:12px;border-radius:4px;display:inline-block;}
+  .tg-leg i.tg-leg-line{height:0;width:16px;border-radius:0;border-top:2px solid var(--ink);}
+  .tren-table{margin-top:10px;}
+  .tren-table summary{cursor:pointer;font-size:12.5px;font-weight:700;color:var(--link);padding:6px 0;}
+  .tren-note{padding:24px 8px;text-align:center;color:var(--ink-soft);font-size:13.5px;}
+  .tren-foot{font-size:12px;color:var(--ink-soft);margin:10px 0 0;line-height:1.5;}
+
+  @media (max-width: 900px){
+    #topFresh{background:none;border:none;padding:0;font-size:12px;font-weight:500;color:#BBD5E8;}
+    #topFresh b{color:#fff;font-weight:600;}
+    #topFresh .long{display:none;}
+    #topFresh .short{display:inline;}
+    #topFresh::before{content:'·';margin-right:6px;}
+  }
+  @media (max-width: 680px){
+    .alert-row{gap:8px;}
+    .alert-tile{flex-direction:column;align-items:flex-start;gap:4px;padding:10px 12px;}
+    .at-n{font-size:21px;} .at-l{font-size:11.5px;}
+    .row-wa{width:36px;height:36px;margin-left:10px;}
+    /* kartu kontrak lebih ringkas: nama, kontrak | sisa piutang, bucket, lalu sisanya 2 kolom */
+    tbody td{padding:7px 14px;}
+    tbody td[data-label="Nama"], tbody td[data-label="Nama Konsumen"]{order:-6;display:flex;flex-direction:row;align-items:center;justify-content:space-between;}
+    tbody td[data-label="No Kontrak"]{grid-column:1 / 2;order:-5;}
+    tbody td[data-label="Sisa Piutang"]{grid-column:2 / 3;order:-5;}
+    tbody td[data-label="Bucket"]{grid-column:1 / 2;order:-4;}
+    tbody td[data-label="Status"]{grid-column:2 / 3;order:-4;}
+    .tren-head{flex-direction:column;align-items:flex-start;}
+  }
 </style>
 </head>
 <body>
+<a class="skip-link" href="#wrap">Lewati ke konten</a>
 
 <div id="splashScreen" style="position:fixed;inset:0;z-index:999;background:linear-gradient(180deg,#0B3D62 0%,#071F33 100%);display:flex;align-items:center;justify-content:center;transition:opacity .4s ease;">
   <img src="icon-192.png" alt="" style="width:68px;height:68px;border-radius:15px;animation:splashPulse 1.4s ease-in-out infinite;">
@@ -770,7 +874,7 @@
       <nav class="sidebar-nav">
         <button class="nav-item nav-hidden" data-view="ringkasan" id="navRingkasan">
           <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
-          <span>Dashboard</span>
+          <span>Ringkasan Cabang</span>
         </button>
         <button class="nav-item active" data-view="dashboard" id="navDashboard">
           <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="20" x2="6" y2="12"/><line x1="12" y1="20" x2="12" y2="6"/><line x1="18" y1="20" x2="18" y2="14"/></svg>
@@ -786,7 +890,7 @@
         </button>
         <button class="nav-item nav-hidden" data-view="tglbayar" id="navTglBayar">
           <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M9 16l2 2 4-4"/></svg>
-          <span>Tanggal Bayar Bulan Lalu</span>
+          <span>Tgl Bayar Bulan Lalu</span>
         </button>
         <button class="nav-item" data-view="insentif" id="navInsentif">
           <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 9.3c0-1 1-1.7 3-1.7s3 .7 3 1.7-1.1 1.4-3 1.7-3 .7-3 1.7 1.2 1.8 3 1.8 3-.7 3-1.8"/><line x1="12" y1="6" x2="12" y2="7.1"/><line x1="12" y1="16.9" x2="12" y2="18"/></svg>
@@ -821,10 +925,10 @@
       <div class="mobile-topbar">
         <img class="top-logo" src="icon-192.png" alt="">
         <button id="menuToggle" type="button" aria-label="Buka menu" aria-controls="sidebar" aria-expanded="false"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg></button>
-        <div class="top-text"><span id="mobilePageTitle">Beban Awal</span><small id="topDate"></small></div>
+        <div class="top-text"><span id="mobilePageTitle">Beban Awal</span><div class="top-meta"><small id="topDate"></small><small id="topFresh" hidden><span class="long">Sheet diperbarui </span><span class="short">Sheet </span><b id="topFreshVal"></b></small></div></div>
         <button id="topAvatar" type="button" aria-label="Buka menu akun dan semua halaman" aria-controls="sidebar" aria-expanded="false">?</button>
       </div>
-      <div class="wrap" id="wrap">
+      <div class="wrap" id="wrap" tabindex="-1">
         <div class="state-box" id="stateBox"><div class="spinner"></div>Memuat data dari sheet…</div>
       </div>
     </div>
@@ -866,8 +970,85 @@ const ICONS = {
   x:'<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
   sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
   moon:'<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
+  search:'<circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>',
+  download:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
+  wa:'<path d="M21 11.5a8.5 8.5 0 0 1-12.6 7.4L3 20.5l1.6-5.2A8.5 8.5 0 1 1 21 11.5z"/>',
+  clock:'<circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/>',
   monitor:'<rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>'
 };
+// Escape teks dari Sheet/server sebelum disisipkan ke HTML (cegah injeksi lewat nama, kronologis, dll).
+
+// ---------- Helper tabel: bagi halaman, ekspor CSV, status kosong, aksi cepat ----------
+const PAGE_STEP = 50;
+const PAGE_STATE = {};
+let EXPORT_CTX = null;
+function rowWa(r){
+  const w = waLink(r['WHATSAPP'] || r['NO HP']);
+  return w ? `<a class="row-wa" href="${esc(w)}" target="_blank" rel="noopener" aria-label="Chat WhatsApp ${esc(r['NAMA KONSUMEN']||'')}" title="Chat WhatsApp">${ic('wa')}</a>` : '';
+}
+function emptyRowHtml(cols, tbody){
+  const lm = tbody && tbody.closest('.table-scroll') && tbody.closest('.table-scroll').nextElementSibling;
+  if(lm && lm.classList.contains('load-more')) lm.innerHTML = '';
+  EXPORT_CTX = EXPORT_CTX ? Object.assign({}, EXPORT_CTX, { rows: [] }) : null;
+  const filtered = document.querySelector('#activeChips .chip, #nbqActiveChips .chip, .controls input[type=text]:not(:placeholder-shown)');
+  return '<tr class="empty-row"><td colspan="' + cols + '"><div class="empty-state">' + ic('search') +
+    '<b>Tidak ada kontrak yang cocok</b><span>' + (filtered ? 'Coba ubah atau hapus filter dan kata pencarian.' : 'Belum ada data untuk tampilan ini.') + '</span>' +
+    (filtered ? '<button type="button" class="btn" onclick="document.getElementById(\'resetBtn\')&&document.getElementById(\'resetBtn\').click()">Reset filter</button>' : '') +
+    '</div></td></tr>';
+}
+function pageRows(key, rows, tbody, rerender){
+  const sig = rows.length + '|' + (rows[0] && rows[0]['NO KONTRAK']) + '|' + (rows[rows.length-1] && rows[rows.length-1]['NO KONTRAK']);
+  let st = PAGE_STATE[key];
+  if(!st || st.sig !== sig) st = PAGE_STATE[key] = { sig: sig, limit: PAGE_STEP };
+  EXPORT_CTX = { key: key, rows: rows };
+  ensureExportBtn();
+  const cn = document.querySelector('#wrap .count-note'); if(cn) cn.setAttribute('aria-live', 'polite');
+  const host = tbody.closest('.table-scroll');
+  if(host){
+    let more = host.nextElementSibling;
+    if(!more || !more.classList.contains('load-more')){ more = document.createElement('div'); more.className = 'load-more'; host.after(more); }
+    if(rows.length > st.limit){
+      const sisa = rows.length - st.limit;
+      more.innerHTML = '<button type="button" class="btn">Tampilkan ' + Math.min(PAGE_STEP, sisa) + ' lagi <span class="load-note">(' + st.limit + ' dari ' + rows.length + ')</span></button>';
+      more.firstChild.onclick = () => { st.limit += PAGE_STEP; rerender(); };
+    } else { more.innerHTML = ''; }
+  }
+  return rows.slice(0, st.limit);
+}
+function ensureExportBtn(){
+  if(document.getElementById('exportBtn')) return;
+  const controls = document.querySelector('#wrap .controls'); if(!controls) return;
+  const b = document.createElement('button');
+  b.type = 'button'; b.className = 'btn'; b.id = 'exportBtn'; b.innerHTML = ic('download') + ' Ekspor';
+  b.title = 'Unduh daftar yang sedang tampil (sesuai filter) sebagai CSV untuk Excel';
+  b.addEventListener('click', exportCsv);
+  const primary = controls.querySelector('.btn.primary');
+  if(primary) controls.insertBefore(b, primary); else controls.appendChild(b);
+}
+function exportCsv(){
+  const c = EXPORT_CTX; if(!c || !c.rows.length){ return; }
+  const defs = [['CO ALL','CO'],['NO KONTRAK','No Kontrak'],['NAMA KONSUMEN','Nama Konsumen'],['BUCKET AWAL','Bucket Awal'],['BUCKET UPDATE','Bucket Update'],
+    ['STATUS BAYAR','Status Bayar'],['SIPOK','Sisa Piutang'],['ANGSURAN','Angsuran'],['DPD','DPD'],['STATUS EVER','Status Ever'],['JATUH TEMPO','Jatuh Tempo'],
+    ['TANGGAL BAYAR BULAN LALU','Tgl Bayar Bulan Lalu'],['NBQ','NBQ'],['STATUS NBQ','Status NBQ'],['STATUS BAYAR NBQ','Status Bayar NBQ'],['JANJI BAYAR','Janji Bayar'],['KRONOLOGIS','Kronologis']];
+  const cols = defs.filter(d => c.rows.some(r => r[d[0]] !== undefined && r[d[0]] !== ''));
+  const cell = v => {
+    let t = v == null ? '' : String(v);
+    if(/^[=+\-@\t\r]/.test(t)) t = "'" + t; // cegah dibaca sebagai rumus di Excel
+    return '"' + t.replace(/"/g, '""') + '"';
+  };
+  const lines = ['sep=;', cols.map(d => cell(d[1])).join(';')];
+  c.rows.forEach(r => lines.push(cols.map(d => (typeof r[d[0]] === 'number' ? String(r[d[0]]) : cell(r[d[0]]))).join(';')));
+  const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  const d = new Date(Date.now() + 7*3600*1000).toISOString().slice(0,10);
+  a.href = URL.createObjectURL(blob); a.download = 'core-kendal-' + c.key + '-' + d + '.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+
+function esc(v){
+  return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
 function ic(name){ return '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (ICONS[name] || '') + '</svg>'; }
 
 const BUCKET_ORDER = ['NOOD','P001_030','P031_060','P061_090','P091_120','P121_150','P151_180','P181_210','P211_240'];
@@ -882,10 +1063,10 @@ const CO_META = {
   'SIGIT KURNIAWAN': {short:'Sigit', role:'Mid Range'}
 };
 const FIELD_GROUPS = [
-  { title:'Identitas & Alamat', fields:['KELURAHAN','KECAMATAN','ALAMAT','NO HP','WHATSAPP'] },
+  { title:'Identitas & Alamat', fields:['KELURAHAN','KECAMATAN','ALAMAT','KONTAK'] },
   { title:'Kontrak & Unit', fields:['TYPE BARANG','NOPOL','TYPE UNIT','GROUP PRODUCT','FLEET/NON FLEET','KRITERIA ACCT'] },
   { title:'Keuangan', fields:['SIPOK','ANGSURAN','ANGS KE','TENOR','JATUH TEMPO','TANGGAL BAYAR BULAN LALU'] },
-  { title:'Tim & Status', fields:['CO FE','CO TAMBAHAN','CMO','EMAIL CO','FLAG TARGET BULAN INI','BUCKET EVER','PEKERJAAN KONSUMEN'] },
+  { title:'Tim & Status', fields:['CO FE','CO TAMBAHAN','CMO','FLAG TARGET BULAN INI','BUCKET EVER','PEKERJAAN KONSUMEN'] },
 ];
 
 let DATA = [];
@@ -895,7 +1076,7 @@ let IS_ADMIN = false;
 let IS_DESKCALL = false;
 let USER_EMAIL = '';
 let ID_TOKEN = null;
-let state = { search:'', co:'ALL', bucket:'ALL', kriteria:'ALL', tipe:'ALL', kecamatan:'ALL', ever:'ALL', janjiList:[], sortKey:'JATUH TEMPO', sortDir:1, tab:'own' };
+let state = { quick:'', search:'', co:'ALL', bucket:'ALL', kriteria:'ALL', tipe:'ALL', kecamatan:'ALL', ever:'ALL', janjiList:[], sortKey:'JATUH TEMPO', sortDir:1, tab:'own' };
 
 function fmtBucket(b){ return (b||'-').replace('_','-'); }
 function fmtRupiah(n){ if(typeof n !== 'number') return '-'; return 'Rp' + Math.round(n).toLocaleString('id-ID'); }
@@ -955,6 +1136,7 @@ function checkForUpdate(isBaseline){
       if(!ok || !body.modifiedTime) return;
       if(isBaseline || !LAST_KNOWN_MODIFIED){
         LAST_KNOWN_MODIFIED = body.modifiedTime;
+        setFresh('Sheet diperbarui', body.modifiedTime);
         return;
       }
       if(body.modifiedTime !== LAST_KNOWN_MODIFIED){
@@ -1063,12 +1245,28 @@ function loadData(){
 }
 
 function onLoadError(err){
+  const raw = String((err && err.error) || '');
+  let msg = raw || 'Terjadi kesalahan.', extra = '';
+  if(typeof navigator !== 'undefined' && navigator.onLine === false){ msg = 'Kamu sedang offline. Sambungkan internet lalu coba lagi.'; }
+  else if(/Token login|login ulang|Failed to fetch|NetworkError/i.test(raw)){
+    msg = /Token login|login ulang/i.test(raw) ? 'Sesi login kamu sudah berakhir.' : 'Tidak bisa terhubung ke server. Cek koneksi internet kamu.';
+    if(/Token login|login ulang/i.test(raw)) extra = ' <button class="btn" onclick="doLogout()">Masuk ulang</button>';
+  }
   document.getElementById('wrap').innerHTML =
-    '<div class="state-box error"><div class="err-icon">'+ic('alert')+'</div>' + (err.error || 'Terjadi kesalahan.') + '<br><br>' +
-    '<button class="btn" onclick="loadData()">Coba lagi</button></div>';
+    '<div class="state-box error"><div class="err-icon">'+ic('alert')+'</div>' + esc(msg) + '<br><br>' +
+    '<button class="btn primary" onclick="loadData()">Coba lagi</button>' + extra + '</div>';
 }
 
+function setFresh(prefix, iso){
+  const el = document.getElementById('topFresh'), v = document.getElementById('topFreshVal');
+  if(!el || !v) return;
+  const d = new Date(iso); if(isNaN(d)) return;
+  el.querySelector('.long').textContent = prefix + ' '; el.querySelector('.short').textContent = (prefix === 'Dimuat' ? 'Dimuat' : 'Sheet') + ' ';
+  v.textContent = d.toLocaleString('id-ID', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }).replace(',', '');
+  el.hidden = false;
+}
 function onDataLoaded(res){
+  if(res.generatedAt && !LAST_KNOWN_MODIFIED) setFresh('Dimuat', res.generatedAt);
   DATA = res.records; IS_ADMIN = res.isAdmin; USER_EMAIL = res.email;
   ESCALATIONS = res.escalations || []; ROLE_INFO = res.roleInfo || null;
   IS_DESKCALL = !!(ROLE_INFO && ROLE_INFO.role === 'DESKCALL');
@@ -1080,7 +1278,7 @@ function onDataLoaded(res){
   }
 
   document.getElementById('whoBox').innerHTML =
-    '<span class="who-email">Masuk sebagai <b>' + (USER_EMAIL || '-') + '</b></span>' +
+    '<span class="who-email">Masuk sebagai <b>' + esc(USER_EMAIL || '-') + '</b></span>' +
     '<span class="badge">' + (IS_ADMIN ? 'ADMIN' : (IS_DESKCALL ? 'DESKCALL' : 'CO')) + '</span>';
 
   const isMR = ROLE_INFO && ROLE_INFO.role === 'MR';
@@ -1120,7 +1318,7 @@ function onDataLoaded(res){
       VIEW_MODE = 'ringkasan';
       document.getElementById('navRingkasan').classList.add('active');
       document.getElementById('navDashboard').classList.remove('active');
-      document.getElementById('mobilePageTitle').textContent = 'Dashboard';
+      document.getElementById('mobilePageTitle').textContent = 'Ringkasan Cabang';
       loadRingkasan();
     } else {
       buildLayout();
@@ -1223,10 +1421,13 @@ function buildLayout(){
   }
 
   html += `
-    <div class="panel-title">Sebaran bucket (klik untuk filter)</div>
-    <div class="bucket-bar" id="bucketBar"></div>
-    <div class="bucket-legend" id="bucketLegend"></div>
-    <div class="co-row" id="coRow" style="${IS_ADMIN ? '' : 'display:none;'}"></div>
+    <div class="alert-row" id="janjiStrip" role="group" aria-label="Pantauan janji bayar"></div>
+    <details class="fold" id="foldSebaran" open>
+      <summary><span>Sebaran bucket${IS_ADMIN ? ' &amp; per CO' : ''}</span><small>klik untuk memfilter tabel</small></summary>
+      <div class="bucket-bar" id="bucketBar"></div>
+      <div class="bucket-legend" id="bucketLegend"></div>
+      <div class="co-row" id="coRow" style="${IS_ADMIN ? '' : 'display:none;'}"></div>
+    </details>
   `;
 
   html += `
@@ -1271,7 +1472,7 @@ function buildLayout(){
             <label class="edit-label">Kecamatan</label>
             <select class="filter-select" id="kecamatanSelect" style="width:100%;">
               <option value="ALL">Semua Kecamatan</option>
-              ${[...new Set(DATA.map(r=>r['KECAMATAN']).filter(Boolean))].sort().map(k => `<option value="${k}">${k}</option>`).join('')}
+              ${[...new Set(DATA.map(r=>r['KECAMATAN']).filter(Boolean))].sort().map(k => `<option value="${esc(k)}">${esc(k)}</option>`).join('')}
             </select>
           </div>
           <div class="fd-field">
@@ -1294,13 +1495,14 @@ function buildLayout(){
           </div>
         </div>
       </div>
+      <button class="btn" id="colsBtn" type="button" aria-pressed="false" title="Tampilkan kolom tambahan: % Flow, Angsuran, Status Ever">Kolom lengkap</button>
       <button class="btn" id="resetBtn">Reset filter</button>
       <button class="btn primary" id="refreshBtn">${ic('refresh')} Muat ulang</button>
     </div>
     <div class="count-note" id="countNote"></div>
     <div class="active-chips" id="activeChips" style="display:none;"></div>
     <div class="table-scroll">
-      <table>
+      <table id="mainTable" class="table-compact">
         <thead>
           <tr>
             <th data-key="CO ALL" id="thCO">CO</th>
@@ -1309,10 +1511,10 @@ function buildLayout(){
             <th>Bucket</th>
             <th data-key="STATUS BAYAR">Status</th>
             <th data-key="SIPOK" class="num">Sisa Piutang</th>
-            <th class="num" title="Porsi SIPOK kontrak ini terhadap total SIPOK bucket awal yang sama. Kalau kontrak ini flow, persentase Flow bucket itu naik sebesar angka ini.">% Flow</th>
-            <th data-key="ANGSURAN" class="num">Angsuran</th>
+            <th class="num" data-opt title="Porsi SIPOK kontrak ini terhadap total SIPOK bucket awal yang sama. Kalau kontrak ini flow, persentase Flow bucket itu naik sebesar angka ini.">% Flow</th>
+            <th data-key="ANGSURAN" class="num" data-opt>Angsuran</th>
             <th data-key="DPD" class="num">DPD</th>
-            <th data-key="STATUS EVER">Status Ever</th>
+            <th data-key="STATUS EVER" data-opt>Status Ever</th>
             <th data-key="JATUH TEMPO">Jatuh Tempo</th>
           </tr>
         </thead>
@@ -1333,7 +1535,7 @@ function buildLayout(){
   document.getElementById('searchInput').addEventListener('input', e => { state.search = e.target.value; renderTable(); });
   document.getElementById('resetBtn').addEventListener('click', () => {
     const keepTab = state.tab;
-    state = { search:'', co:'ALL', bucket:'ALL', kriteria:'ALL', tipe:'ALL', kecamatan:'ALL', ever:'ALL', janjiList:[], sortKey:'JATUH TEMPO', sortDir:1, tab:keepTab };
+    state = { quick:'', search:'', co:'ALL', bucket:'ALL', kriteria:'ALL', tipe:'ALL', kecamatan:'ALL', ever:'ALL', janjiList:[], sortKey:'JATUH TEMPO', sortDir:1, tab:keepTab };
     buildLayout();
     render();
   });
@@ -1346,7 +1548,7 @@ function buildLayout(){
 
   const janjiValues = [...new Set(DATA.map(r=>(r['JANJI BAYAR']||'').toString().trim()).filter(Boolean))].sort();
   const janjiGrid = document.getElementById('janjiGrid');
-  janjiGrid.innerHTML = janjiValues.map(v => `<label class="ms-option"><input type="checkbox" value="${v}"> ${v}</label>`).join('') || '<div style="font-size:12px;color:var(--ink-soft);padding:4px;">Belum ada data</div>';
+  janjiGrid.innerHTML = janjiValues.map(v => `<label class="ms-option"><input type="checkbox" value="${esc(v)}"> ${esc(v)}</label>`).join('') || '<div style="font-size:12px;color:var(--ink-soft);padding:4px;">Belum ada data</div>';
   janjiGrid.querySelectorAll('input[type=checkbox]').forEach(cb => {
     cb.checked = state.janjiList.includes(cb.value);
     cb.addEventListener('change', () => {
@@ -1379,6 +1581,45 @@ function buildLayout(){
     document.getElementById(id).addEventListener('change', updateFilterBadge);
   });
   updateFilterBadge();
+
+  // Kolom ringkas / lengkap (pilihan diingat di perangkat ini)
+  const colsBtn = document.getElementById('colsBtn'), mainTable = document.getElementById('mainTable');
+  let full = false; try{ full = localStorage.getItem('ck-cols') === 'full'; }catch(e){}
+  const applyCols = () => { mainTable.classList.toggle('table-compact', !full); colsBtn.setAttribute('aria-pressed', String(full)); colsBtn.textContent = full ? 'Kolom ringkas' : 'Kolom lengkap'; };
+  applyCols();
+  colsBtn.addEventListener('click', () => { full = !full; try{ localStorage.setItem('ck-cols', full ? 'full' : 'compact'); }catch(e){} applyCols(); });
+  // Di HP, bagian sebaran dilipat dulu supaya tabel lebih cepat terjangkau
+  if(window.matchMedia && window.matchMedia('(max-width: 680px)').matches){ const f = document.getElementById('foldSebaran'); if(f) f.removeAttribute('open'); }
+}
+
+// ---------- Pantauan janji bayar ----------
+function isPaidRow(r){ const u = (r['STATUS BAYAR']||'').toString().toUpperCase(); return u.includes('LUNAS') || u.includes('SUDAH'); }
+function janjiDay(r){ const j = parseInt((r['JANJI BAYAR']||'').toString(), 10); return (j >= 1 && j <= 31) ? j : 0; }
+function quickMatch(r, q){
+  if(!q) return true;
+  if(isPaidRow(r)) return false;
+  const j = janjiDay(r), D = new Date().getDate();
+  if(q === 'today') return j === D;
+  if(q === 'lewat') return j > 0 && j < D;
+  if(q === 'belum') return j === 0;
+  return true;
+}
+const QUICK_LABEL = { today:'Janji hari ini', lewat:'Janji terlewat', belum:'Belum ada janji' };
+function renderJanjiStrip(){
+  const box = document.getElementById('janjiStrip'); if(!box) return;
+  const src = currentSourceRecords();
+  const cnt = q => src.filter(r => quickMatch(r, q)).length;
+  const defs = [
+    ['today', 'Janji hari ini', 'Kontrak belum bayar yang berjanji bayar hari ini. Data H-1, jadi yang bayar hari ini baru terlihat besok.', 'info'],
+    ['lewat', 'Janji terlewat', 'Janji bayar tanggal sebelum hari ini, tapi belum tercatat bayar.', 'bad'],
+    ['belum', 'Belum ada janji', 'Kontrak belum bayar yang belum punya tanggal janji bayar.', 'warn']
+  ];
+  box.innerHTML = defs.map(d => `<button type="button" class="alert-tile ${d[3]}${state.quick===d[0]?' active':''}" data-q="${d[0]}" title="${esc(d[2])}" aria-pressed="${state.quick===d[0]}"><span class="at-n">${cnt(d[0])}</span><span class="at-l">${d[1]}</span></button>`).join('');
+  box.querySelectorAll('.alert-tile').forEach(b => b.onclick = () => {
+    state.quick = state.quick === b.dataset.q ? '' : b.dataset.q;
+    renderJanjiStrip(); renderTable();
+    if(state.quick){ const t = document.querySelector('.controls'); if(t) t.scrollIntoView({behavior:'smooth', block:'start'}); }
+  });
 }
 
 function updateFilterBadge(){
@@ -1397,7 +1638,7 @@ function updateFilterBadge(){
 let VIEW_MODE = 'dashboard';
 let INSENTIF_DATA = null;
 
-const VIEW_TITLES = { ringkasan: 'Dashboard', dashboard: 'Beban Awal', nbq: 'NBQ', feever: 'FE Ever', tglbayar: 'Tanggal Bayar Bulan Lalu', insentif: 'Insentif', dekscall: 'Dekscall', simulasi: 'Simulasi Penawaran', simulasirapor: 'Simulasi Rapor', panduan: 'Panduan KPI & Insentif' };
+const VIEW_TITLES = { ringkasan: 'Ringkasan Cabang', dashboard: 'Beban Awal', nbq: 'NBQ', feever: 'FE Ever', tglbayar: 'Tgl Bayar Bulan Lalu', insentif: 'Insentif', dekscall: 'Dekscall', simulasi: 'Simulasi Penawaran', simulasirapor: 'Simulasi Rapor', panduan: 'Panduan KPI' };
 
 function triggerFadeIn(){
   const el = document.getElementById('wrap');
@@ -1543,7 +1784,7 @@ function renderPanduan(){
     <p>Nilai rapor = jumlah poin dari <b>3 metrik</b> (maksimal <b>5.00</b>). Semua metrik ini <b>makin kecil makin bagus</b>.</p>`;
   PANDUAN_TIER[role].forEach(m => {
     const info = PANDUAN_INFO[m.key];
-    html += `<div class="pg-metric" id="pg-${m.key}"><div class="pg-title">${m.nama} <span style="font-weight:500;color:var(--ink-soft);">· maks ${m.maks.toFixed(2)} poin</span></div>
+    html += `<div class="pg-metric" id="pg-${m.key}"><div class="pg-title">${esc(m.nama)} <span style="font-weight:500;color:var(--ink-soft);">· maks ${m.maks.toFixed(2)} poin</span></div>
       <p style="margin-top:4px;">${info ? info.isi : ''}</p>
       <div class="pg-scroll"><table class="pg-table"><thead><tr><th>Hasil</th><th class="r">Poin</th></tr></thead><tbody>
       ${m.tiers.map(t => `<tr><td>${t[0]}</td><td class="r">${t[1].toFixed(2)}</td></tr>`).join('')}
@@ -1602,19 +1843,19 @@ function loadInsentif(){
   fetch('/api/insentif', { headers: { Authorization: 'Bearer ' + ID_TOKEN } })
     .then(r => r.json().then(body => ({ ok: r.ok, body })))
     .then(({ok, body}) => {
-      if(!ok){ document.getElementById('wrap').innerHTML = '<div class="state-box error"><div class="err-icon">'+ic('alert')+'</div>'+(body.error||'Gagal memuat data insentif.')+'<br><br><button class="btn" onclick="loadInsentif()">Coba lagi</button></div>'; return; }
+      if(!ok){ document.getElementById('wrap').innerHTML = '<div class="state-box error"><div class="err-icon">'+ic('alert')+'</div>'+esc(body.error||'Gagal memuat data insentif.')+'<br><br><button class="btn" onclick="loadInsentif()">Coba lagi</button></div>'; return; }
       INSENTIF_DATA = body;
       renderInsentifView();
       triggerFadeIn();
     })
-    .catch(err => { document.getElementById('wrap').innerHTML = '<div class="state-box error"><div class="err-icon">'+ic('alert')+'</div>'+err.message+'<br><br><button class="btn" onclick="loadInsentif()">Coba lagi</button></div>'; });
+    .catch(err => { document.getElementById('wrap').innerHTML = '<div class="state-box error"><div class="err-icon">'+ic('alert')+'</div>'+esc(err.message)+'<br><br><button class="btn" onclick="loadInsentif()">Coba lagi</button></div>'; });
 }
 
 function achievementCard(h, extraLabel, extraKey){
   return `
   <div class="ins-card">
     <div class="ihead">
-      <div><div class="iname">${h.namaCO}</div><div class="irole">${h.role}</div></div>
+      <div><div class="iname">${esc(h.namaCO)}</div><div class="irole">${esc(h.role)}</div></div>
       <span class="kategori-pill ${katClass(h.kategori)}">${h.kategori}</span>
     </div>
     <div class="ins-nilai">${h.totalNilai.toFixed(2)} <span style="font-size:12px;color:var(--ink-soft);font-weight:500;">/ 5.00</span></div>
@@ -1632,12 +1873,12 @@ function penyelesaianCard(p){
   const rekomHtml = p.rekomendasi && p.rekomendasi.length
     ? `<div class="ins-rekom">
         <div style="font-size:11px;text-transform:uppercase;color:var(--ink-soft);margin-bottom:4px;">Rekomendasi dikejar (SIPOK terbesar)</div>
-        ${p.rekomendasi.map(r => `<div class="ins-rekom-item"><span class="rname">${r.namaKonsumen}</span><span class="rval">${fmtRupiah(r.sipok)} (+${r.pengaruhPct.toFixed(2)}%)</span></div>`).join('')}
+        ${p.rekomendasi.map(r => `<div class="ins-rekom-item"><span class="rname">${esc(r.namaKonsumen)}</span><span class="rval">${fmtRupiah(r.sipok)} (+${r.pengaruhPct.toFixed(2)}%)</span></div>`).join('')}
       </div>` : '';
   return `
   <div class="ins-card">
     <div class="ihead">
-      <div><div class="iname">${p.namaCO}</div><div class="irole">${p.role} · Minggu ${p.minggu}</div></div>
+      <div><div class="iname">${esc(p.namaCO)}</div><div class="irole">${esc(p.role)} · Minggu ${p.minggu}</div></div>
     </div>
     <div class="ins-nilai">${fmtPct(p.pct)}</div>
     <div class="ins-insentif">${fmtRupiah(p.nilai)}</div>
@@ -1650,7 +1891,7 @@ function totalInsentifCard(t){
   return `
   <div class="ins-card ins-total-card">
     <div class="ihead">
-      <div><div class="iname">${t.namaCO}</div><div class="irole">${t.role} · Minggu ${t.minggu}</div></div>
+      <div><div class="iname">${esc(t.namaCO)}</div><div class="irole">${esc(t.role)} · Minggu ${t.minggu}</div></div>
     </div>
     <div class="ins-metric"><span class="mlabel">Insentif Rapor</span><span class="mval">${fmtRupiah(t.insentifRapor)}</span></div>
     <div class="ins-metric"><span class="mlabel">Insentif Penyelesaian (W1-W${t.minggu})</span><span class="mval">${fmtRupiah(t.insentifWeekly)}</span></div>
@@ -1709,15 +1950,15 @@ function loadSimulasiRapor(namaCO){
   fetch('/api/simulasi-rapor' + qs, { headers: { Authorization: 'Bearer ' + ID_TOKEN } })
     .then(r => r.json().then(body => ({ ok: r.ok, body })))
     .then(({ok, body}) => {
-      if(!ok){ document.getElementById('wrap').innerHTML = '<div class="state-box error"><div class="err-icon">'+ic('alert')+'</div>'+(body.error||'Gagal memuat simulasi rapor.')+'<br><br><button class="btn" onclick="loadSimulasiRapor()">Coba lagi</button></div>'; return; }
-      if(body.error){ document.getElementById('wrap').innerHTML = '<div class="state-box">'+body.error+'</div>'; return; }
+      if(!ok){ document.getElementById('wrap').innerHTML = '<div class="state-box error"><div class="err-icon">'+ic('alert')+'</div>'+esc(body.error||'Gagal memuat simulasi rapor.')+'<br><br><button class="btn" onclick="loadSimulasiRapor()">Coba lagi</button></div>'; return; }
+      if(body.error){ document.getElementById('wrap').innerHTML = '<div class="state-box">'+esc(body.error)+'</div>'; return; }
       SIMULASI_RAPOR_DATA = body;
       SIMULASI_RAPOR_RESULT = null;
       simulasiRaporState = { search:'', proyeksi: new Map() };
       renderSimulasiRapor();
       triggerFadeIn();
     })
-    .catch(err => { document.getElementById('wrap').innerHTML = '<div class="state-box error"><div class="err-icon">'+ic('alert')+'</div>'+err.message+'<br><br><button class="btn" onclick="loadSimulasiRapor()">Coba lagi</button></div>'; });
+    .catch(err => { document.getElementById('wrap').innerHTML = '<div class="state-box error"><div class="err-icon">'+ic('alert')+'</div>'+esc(err.message)+'<br><br><button class="btn" onclick="loadSimulasiRapor()">Coba lagi</button></div>'; });
 }
 
 function runSimulasiRapor(){
@@ -1755,7 +1996,7 @@ function simResultCard_(title, h, highlight){
   return `
   <div class="ins-card ${highlight ? 'ins-total-card' : ''}">
     <div class="ihead">
-      <div><div class="iname">${title}</div><div class="irole">${h.role}</div></div>
+      <div><div class="iname">${title}</div><div class="irole">${esc(h.role)}</div></div>
       <span class="kategori-pill ${katClass(h.kategori)}">${h.kategori}</span>
     </div>
     <div class="ins-nilai">${h.totalNilai.toFixed(2)} <span style="font-size:12px;color:${highlight?'#BFD2E0':'var(--ink-soft)'};font-weight:500;">/ 5.00</span></div>
@@ -1802,7 +2043,7 @@ function renderSimulasiRapor(){
     html += `<div class="sim-co-select">
       <label class="edit-label">Simulasikan untuk CO</label>
       <select class="filter-select" id="simCoSelect" style="width:100%;max-width:360px;">
-        ${d.coList.map(c => `<option value="${c.namaCO}" ${c.namaCO===d.namaCO?'selected':''}>${c.namaCO} (${c.role})</option>`).join('')}
+        ${d.coList.map(c => `<option value="${esc(c.namaCO)}" ${c.namaCO===d.namaCO?'selected':''}>${esc(c.namaCO)} (${esc(c.role)})</option>`).join('')}
       </select>
     </div>`;
   }
@@ -1847,7 +2088,7 @@ function renderSimulasiRapor(){
           ${rk.daftar.map(x => `
             <div class="sim-kontrak-item">
               <div class="sim-kontrak-info">
-                <div class="sim-kontrak-name">${x.namaKonsumen||'-'} <span class="sim-kontrak-kontrak">${x.noKontrak}</span></div>
+                <div class="sim-kontrak-name">${esc(x.namaKonsumen||'-')} <span class="sim-kontrak-kontrak">${esc(x.noKontrak)}</span></div>
                 <div class="sim-kontrak-meta">Disaranin: <b>${aksiLabel[x.aksi]||x.aksi}</b> · setelah kontrak ini nilai jadi ${x.totalNilaiSetelah.toFixed(2)} (${x.poinGain>=0?'+':''}${x.poinGain.toFixed(2)})</div>
               </div>
               <div class="sim-kontrak-sipok">${fmtRupiah(x.sisaPiutang)}</div>
@@ -1919,18 +2160,18 @@ function renderSimKontrakList_(){
     // Buat MR/BCH, populasi Flow 1-30 & Balance itu org-wide (bukan cuma kontrak milik CO ini
     // sendiri) — jadi kalau kontraknya kebetulan bukan punya CO yang lagi disimulasikan, kasih
     // tau pemilik aslinya biar gak bingung "kok kontrak orang lain muncul di daftarku".
-    const pemilikBadge = (k.coAll && k.coAll !== SIMULASI_RAPOR_DATA.namaCO) ? `<span class="sim-owner-badge">${ic('user')} ${k.coAll}</span>` : '';
+    const pemilikBadge = (k.coAll && k.coAll !== SIMULASI_RAPOR_DATA.namaCO) ? `<span class="sim-owner-badge">${ic('user')} ${esc(k.coAll)}</span>` : '';
     return `
     <div class="sim-kontrak-item">
       <div class="sim-kontrak-info">
-        <div class="sim-kontrak-name">${k.namaKonsumen||'-'} <span class="sim-kontrak-kontrak">${k.noKontrak}</span>${k.kriteriaAcct ? ' <span class="sim-kriteria-badge sim-kriteria-'+k.kriteriaAcct+'">'+k.kriteriaAcct+'</span>' : ''}${balanceBadge}${pemilikBadge}</div>
+        <div class="sim-kontrak-name">${esc(k.namaKonsumen||'-')} <span class="sim-kontrak-kontrak">${esc(k.noKontrak)}</span>${k.kriteriaAcct ? ' <span class="sim-kriteria-badge sim-kriteria-'+esc(k.kriteriaAcct)+'">'+esc(k.kriteriaAcct)+'</span>' : ''}${balanceBadge}${pemilikBadge}</div>
         <div class="sim-kontrak-meta">Bucket Awal ${fmtBucket(k.bucketAwal)} → Sekarang ${fmtBucket(bucketSekarang)}${k.flowEver && k.flowEver!==k.bucketUpdateKA ? ' · Flow Ever '+fmtBucket(k.flowEver) : ''}</div>
       </div>
       <div class="sim-kontrak-sipok">${fmtRupiah(k.sisaPiutang)}</div>
       <div class="sim-proyeksi-group">
-        ${showStayBtn ? `<button type="button" class="sim-proyeksi-btn sim-proyeksi-stay ${current==='stay'?'active':''}" data-nokontrak="${k.noKontrak}" data-val="stay">${current==='stay'?'✓ ':''}Proyeksi Stay <span class="sim-proyeksi-target">→ ${fmtBucket(k.bucketAwal)}</span></button>` : ''}
-        ${showBtcBtn ? `<button type="button" class="sim-proyeksi-btn sim-proyeksi-btc ${current==='btc'?'active':''}" data-nokontrak="${k.noKontrak}" data-val="btc">${current==='btc'?'✓ ':''}Proyeksi BTC <span class="sim-proyeksi-target">→ NOOD</span></button>` : ''}
-        <button type="button" class="sim-proyeksi-btn sim-proyeksi-lunas ${current==='lunas'?'active':''}" data-nokontrak="${k.noKontrak}" data-val="lunas">${current==='lunas'?'✓ ':''}Proyeksi Lunas</button>
+        ${showStayBtn ? `<button type="button" class="sim-proyeksi-btn sim-proyeksi-stay ${current==='stay'?'active':''}" data-nokontrak="${esc(k.noKontrak)}" data-val="stay">${current==='stay'?ic('check')+' ':''}Proyeksi Stay <span class="sim-proyeksi-target">→ ${fmtBucket(k.bucketAwal)}</span></button>` : ''}
+        ${showBtcBtn ? `<button type="button" class="sim-proyeksi-btn sim-proyeksi-btc ${current==='btc'?'active':''}" data-nokontrak="${esc(k.noKontrak)}" data-val="btc">${current==='btc'?ic('check')+' ':''}Proyeksi BTC <span class="sim-proyeksi-target">→ NOOD</span></button>` : ''}
+        <button type="button" class="sim-proyeksi-btn sim-proyeksi-lunas ${current==='lunas'?'active':''}" data-nokontrak="${esc(k.noKontrak)}" data-val="lunas">${current==='lunas'?ic('check')+' ':''}Proyeksi Lunas</button>
       </div>
     </div>`;
   }).join('');
@@ -2037,21 +2278,21 @@ function renderFEEverTable(){
   const rows = getFEEverFiltered();
   document.getElementById('feeverCountNote').innerHTML = `Menampilkan <b>${rows.length}</b> dari <b>${ESCALATIONS.length}</b> kontrak`;
   const tbody = document.getElementById('feeverTbody');
-  if(rows.length===0){ tbody.innerHTML = '<tr class="empty-row"><td colspan="8">Tidak ada kontrak yang cocok.</td></tr>'; return; }
-  tbody.innerHTML = rows.map(r => {
+  if(rows.length===0){ tbody.innerHTML = emptyRowHtml(8, tbody); return; }
+  tbody.innerHTML = pageRows('feever', rows, tbody, renderFEEverTable).map(r => {
     const meta = CO_META[r['CO ALL']] || {short:r['CO ALL']||'-'};
-    return `<tr data-kontrak="${r['NO KONTRAK']}">
-      <td data-label="CO Asal" class="mono">${meta.short}</td>
-      <td data-label="No Kontrak" class="mono">${r['NO KONTRAK']||'-'}</td>
-      <td data-label="Nama">${r['NAMA KONSUMEN']||'-'}</td>
+    return `<tr data-kontrak="${esc(r['NO KONTRAK'])}">
+      <td data-label="CO Asal" class="mono">${esc(meta.short)}</td>
+      <td data-label="No Kontrak" class="mono">${esc(r['NO KONTRAK']||'-')}</td>
+      <td data-label="Nama">${esc(r['NAMA KONSUMEN']||'-')}${rowWa(r)}</td>
       <td data-label="Bucket"><div class="bucket-flow"><span class="bpill" style="--c:${BUCKET_COLOR[r['BUCKET AWAL']]||'#999'}">${fmtBucket(r['BUCKET AWAL'])}</span> → <span class="bpill" style="--c:${BUCKET_COLOR[r['BUCKET UPDATE']]||'#999'}">${fmtBucket(r['BUCKET UPDATE'])}</span></div></td>
-      <td data-label="Status"><span class="status-pill ${statusClass(r['STATUS BAYAR'])}">${r['STATUS BAYAR']||'-'}</span></td>
+      <td data-label="Status"><span class="status-pill ${statusClass(r['STATUS BAYAR'])}">${esc(r['STATUS BAYAR']||'-')}</span></td>
       <td data-label="Sisa Piutang" class="num">${fmtRupiah(r['SIPOK'])}</td>
-      <td data-label="DPD" class="num">${r['DPD'] ?? '-'}</td>
+      <td data-label="DPD" class="num">${esc(r['DPD'] ?? '-')}</td>
       <td data-label="Jatuh Tempo" class="mono">${fmtDate(r['JATUH TEMPO'])}</td>
     </tr>`;
   }).join('');
-  tbody.querySelectorAll('tr[data-kontrak]').forEach(tr => tr.onclick = () => openPanel(tr.getAttribute('data-kontrak')));
+  tbody.querySelectorAll('tr[data-kontrak]').forEach(tr => tr.onclick = (ev) => { if(ev && ev.target.closest && ev.target.closest('a.row-wa')) return; openPanel(tr.getAttribute('data-kontrak')); });
 }
 
 // ============================================================
@@ -2148,20 +2389,20 @@ function renderDekscallTable(){
   const base = getDekscallBase();
   document.getElementById('dekscallCountNote').innerHTML = `Menampilkan <b>${rows.length}</b> dari <b>${base.length}</b> kontrak`;
   const tbody = document.getElementById('dekscallTbody');
-  if(rows.length===0){ tbody.innerHTML = '<tr class="empty-row"><td colspan="7">Tidak ada kontrak yang cocok.</td></tr>'; return; }
-  tbody.innerHTML = rows.map(r => {
+  if(rows.length===0){ tbody.innerHTML = emptyRowHtml(7, tbody); return; }
+  tbody.innerHTML = pageRows('dekscall', rows, tbody, renderDekscallTable).map(r => {
     const meta = CO_META[r['CO ALL']] || {short:r['CO ALL']||'-'};
-    return `<tr data-kontrak="${r['NO KONTRAK']}">
-      <td data-label="CO" class="mono">${meta.short}</td>
-      <td data-label="No Kontrak" class="mono">${r['NO KONTRAK']||'-'}</td>
-      <td data-label="Nama">${r['NAMA KONSUMEN']||'-'}</td>
-      <td data-label="Status"><span class="status-pill ${statusClass(r['STATUS BAYAR'])}">${r['STATUS BAYAR']||'-'}</span></td>
+    return `<tr data-kontrak="${esc(r['NO KONTRAK'])}">
+      <td data-label="CO" class="mono">${esc(meta.short)}</td>
+      <td data-label="No Kontrak" class="mono">${esc(r['NO KONTRAK']||'-')}</td>
+      <td data-label="Nama">${esc(r['NAMA KONSUMEN']||'-')}${rowWa(r)}</td>
+      <td data-label="Status"><span class="status-pill ${statusClass(r['STATUS BAYAR'])}">${esc(r['STATUS BAYAR']||'-')}</span></td>
       <td data-label="Sisa Piutang" class="num">${fmtRupiah(r['SIPOK'])}</td>
-      <td data-label="DPD" class="num">${r['DPD'] ?? '-'}</td>
+      <td data-label="DPD" class="num">${esc(r['DPD'] ?? '-')}</td>
       <td data-label="Jatuh Tempo" class="mono">${fmtDate(r['JATUH TEMPO'])}</td>
     </tr>`;
   }).join('');
-  tbody.querySelectorAll('tr[data-kontrak]').forEach(tr => tr.onclick = () => openPanel(tr.getAttribute('data-kontrak')));
+  tbody.querySelectorAll('tr[data-kontrak]').forEach(tr => tr.onclick = (ev) => { if(ev && ev.target.closest && ev.target.closest('a.row-wa')) return; openPanel(tr.getAttribute('data-kontrak')); });
 }
 
 // ============================================================
@@ -2288,21 +2529,21 @@ function renderTglBayarTable(){
   }
   document.getElementById('tglBayarCountNote').innerHTML = `Menampilkan <b>${rows.length}</b> dari <b>${total}</b> kontrak`;
   const tbody = document.getElementById('tglBayarTbody');
-  if(rows.length===0){ tbody.innerHTML = '<tr class="empty-row"><td colspan="8">Tidak ada kontrak yang cocok.</td></tr>'; return; }
-  tbody.innerHTML = rows.map(r => {
+  if(rows.length===0){ tbody.innerHTML = emptyRowHtml(8, tbody); return; }
+  tbody.innerHTML = pageRows('tglbayar', rows, tbody, renderTglBayarTable).map(r => {
     const meta = CO_META[r['CO ALL']] || {short:r['CO ALL']||'-'};
-    return `<tr data-kontrak="${r['NO KONTRAK']}">
-      <td data-label="CO" class="mono">${meta.short}</td>
-      <td data-label="No Kontrak" class="mono">${r['NO KONTRAK']||'-'}</td>
-      <td data-label="Nama">${r['NAMA KONSUMEN']||'-'}</td>
+    return `<tr data-kontrak="${esc(r['NO KONTRAK'])}">
+      <td data-label="CO" class="mono">${esc(meta.short)}</td>
+      <td data-label="No Kontrak" class="mono">${esc(r['NO KONTRAK']||'-')}</td>
+      <td data-label="Nama">${esc(r['NAMA KONSUMEN']||'-')}${rowWa(r)}</td>
       <td data-label="Bucket"><span class="bpill" style="--c:${BUCKET_COLOR[r['BUCKET AWAL']]||'#999'}">${fmtBucket(r['BUCKET AWAL'])}</span></td>
-      <td data-label="Status"><span class="status-pill ${statusClass(r['STATUS BAYAR'])}">${r['STATUS BAYAR']||'-'}</span></td>
+      <td data-label="Status"><span class="status-pill ${statusClass(r['STATUS BAYAR'])}">${esc(r['STATUS BAYAR']||'-')}</span></td>
       <td data-label="Sisa Piutang" class="num">${fmtRupiah(r['SIPOK'])}</td>
-      <td data-label="DPD" class="num">${r['DPD'] ?? '-'}</td>
+      <td data-label="DPD" class="num">${esc(r['DPD'] ?? '-')}</td>
       <td data-label="Tgl Bayar Bulan Lalu" class="mono">${fmtDate(r['TANGGAL BAYAR BULAN LALU'])}</td>
     </tr>`;
   }).join('');
-  tbody.querySelectorAll('tr[data-kontrak]').forEach(tr => tr.onclick = () => openPanel(tr.getAttribute('data-kontrak')));
+  tbody.querySelectorAll('tr[data-kontrak]').forEach(tr => tr.onclick = (ev) => { if(ev && ev.target.closest && ev.target.closest('a.row-wa')) return; openPanel(tr.getAttribute('data-kontrak')); });
 }
 
 // ============================================================
@@ -2927,12 +3168,12 @@ function loadRingkasan(){
   fetch('/api/dashboard', { headers: { Authorization: 'Bearer ' + ID_TOKEN } })
     .then(r => r.json().then(body => ({ ok: r.ok, body })))
     .then(({ok, body}) => {
-      if(!ok){ document.getElementById('wrap').innerHTML = '<div class="state-box error"><div class="err-icon">'+ic('alert')+'</div>'+(body.error||'Gagal memuat dashboard.')+'<br><br><button class="btn" onclick="loadRingkasan()">Coba lagi</button></div>'; return; }
+      if(!ok){ document.getElementById('wrap').innerHTML = '<div class="state-box error"><div class="err-icon">'+ic('alert')+'</div>'+esc(body.error||'Gagal memuat dashboard.')+'<br><br><button class="btn" onclick="loadRingkasan()">Coba lagi</button></div>'; return; }
       RINGKASAN_DATA = body;
       renderRingkasanView();
       triggerFadeIn();
     })
-    .catch(err => { document.getElementById('wrap').innerHTML = '<div class="state-box error"><div class="err-icon">'+ic('alert')+'</div>'+err.message+'</div>'; });
+    .catch(err => { document.getElementById('wrap').innerHTML = '<div class="state-box error"><div class="err-icon">'+ic('alert')+'</div>'+esc(err.message)+'</div>'; });
 }
 
 function barListSection(title, rows, opts){
@@ -2945,7 +3186,7 @@ function barListSection(title, rows, opts){
       ${rows.map(r => `
         <div class="bar-row ${opts.emphasisLast && r === rows[rows.length-1] ? 'emphasis' : ''}">
           <div class="bar-row-top">
-            <span class="bar-row-label">${r.label}</span>
+            <span class="bar-row-label">${esc(r.label)}</span>
             <div class="bar-row-right">
               <span class="bar-row-meta">${r.count.toLocaleString('id-ID')} akun</span>
               <span class="bar-row-amount">${fmtRupiah(r.amount)}</span>
@@ -2965,7 +3206,7 @@ function bigCustSection(bigCust){
     ${bigCust.map(b => `
       <div class="bigcust-card">
         <div class="bigcust-head">
-          <span class="bname">${b.label}</span>
+          <span class="bname">${esc(b.label)}</span>
           <span class="btotal">${b.total.count} akun · ${fmtRupiah(b.total.amount)}</span>
         </div>
         <div class="bigcust-stats">
@@ -2980,7 +3221,7 @@ function bigCustSection(bigCust){
         <div class="bigcust-detail-list">
           ${b.detailBelum.map(d => `
             <div class="bigcust-detail-row">
-              <span class="bigcust-detail-name">${d.nama}</span>
+              <span class="bigcust-detail-name">${esc(d.nama)}</span>
               <span class="bigcust-detail-co">${(CO_META[d.co]||{short:d.co}).short}</span>
               <span class="bigcust-detail-sipok">${fmtRupiah(d.sipok)}</span>
             </div>`).join('')}
@@ -2988,6 +3229,76 @@ function bigCustSection(bigCust){
         </div>` : ''}
       </div>`).join('')}
   </div>`;
+}
+
+
+// ---------- Tren penyelesaian mingguan (admin) ----------
+let TREN_DATA = null, TREN_MONTH = 'cur';
+function trenShell(inner){ return '<div class="rk-report-header"><div class="rk-report-title">' + ic('chart') + ' TREN PENYELESAIAN MINGGUAN</div></div>' + inner; }
+function loadTren(){
+  const card = document.getElementById('trenCard'); if(!card) return;
+  if(TREN_DATA){ renderTren(); return; }
+  card.innerHTML = trenShell('<div class="tren-note"><div class="spinner"></div>Memuat tren…</div>');
+  fetch('/api/tren', { headers: { Authorization: 'Bearer ' + ID_TOKEN } })
+    .then(r => r.json().then(b => ({ ok: r.ok, b })))
+    .then(({ok, b}) => {
+      const c = document.getElementById('trenCard'); if(!c) return;
+      if(!ok || !b.rows){ c.innerHTML = trenShell('<div class="tren-note">' + esc((b && b.error) || 'Tren belum bisa dimuat.') + '</div>'); return; }
+      TREN_DATA = b; renderTren();
+    })
+    .catch(() => { const c = document.getElementById('trenCard'); if(c) c.innerHTML = trenShell('<div class="tren-note">Tren belum bisa dimuat. Cek koneksi lalu muat ulang halaman.</div>'); });
+}
+function renderTren(){
+  const card = document.getElementById('trenCard'); if(!card || !TREN_DATA) return;
+  const D = TREN_DATA, m = TREN_MONTH === 'cur' ? D.cur : D.prev;
+  const rows = D.rows.filter(r => r.tahun === m.tahun && r.bulan === m.bulan);
+  const ROLE_ORD = { FE:0, MR:1, BCH:2 };
+  const names = [];
+  rows.forEach(r => { if(!names.find(n => n.namaCO === r.namaCO)) names.push({ namaCO:r.namaCO, role:r.role }); });
+  names.sort((a,b) => (ROLE_ORD[a.role] - ROLE_ORD[b.role]) || a.namaCO.localeCompare(b.namaCO));
+  const series = names.slice(0, 4).map((n, i) => ({ namaCO:n.namaCO, role:n.role, color:'var(--s' + (i+1) + ')', label: n.role === 'BCH' ? 'Cabang (BCH)' : ((CO_META[n.namaCO]||{}).short || n.namaCO) }));
+  const monthLabel = BLN[m.bulan-1] + ' ' + m.tahun;
+  const toggle = '<div class="pill-toggle" id="trenToggle"><button type="button" data-m="cur" class="' + (TREN_MONTH==='cur'?'active':'') + '">Bulan ini</button><button type="button" data-m="prev" class="' + (TREN_MONTH==='prev'?'active':'') + '">Bulan lalu</button></div>';
+  if(!series.length){
+    card.innerHTML = trenShell('<div class="tren-head">' + toggle + '</div><div class="tren-note">Belum ada rekap mingguan untuk ' + esc(monthLabel) + '. Rekap tersimpan otomatis tiap hari lewat tab LOG_MINGGUAN.</div>');
+    bindTrenToggle(); return;
+  }
+  const get = (w, s) => { const r = rows.find(x => x.minggu === w && x.namaCO === s.namaCO); return r && isFinite(r.pct) ? r.pct : null; };
+  const tgt = (w, s) => { const t = D.targets[s.role]; return t && t[w] ? t[w][0] : null; };
+  const narrow = card.clientWidth < 520;
+  const W = narrow ? 360 : 640, H = narrow ? 250 : 270, pl = narrow ? 34 : 38, pr = 6, pt = 16, pb = 28;
+  const gw = (W - pl - pr) / 4, n = series.length, bw = Math.min(34, (gw - 18) / n - 2);
+  const y = v => pt + (H - pt - pb) * (1 - Math.max(0, Math.min(100, v)) / 100);
+  let lastW = 0; for(let w = 1; w <= 4; w++){ if(series.some(s => get(w, s) !== null)) lastW = w; }
+  let g = '';
+  [0,25,50,75,100].forEach(v => { g += `<line x1="${pl}" x2="${W-pr}" y1="${y(v)}" y2="${y(v)}" class="tg-grid"/><text x="${pl-6}" y="${y(v)+4}" class="tg-ax" text-anchor="end">${v}%</text>`; });
+  for(let w = 1; w <= 4; w++){
+    const gx = pl + (w-1) * gw + (gw - (n * (bw + 2) - 2)) / 2;
+    g += `<text x="${pl + (w-0.5) * gw}" y="${H-10}" class="tg-ax" text-anchor="middle">W${w}</text>`;
+    series.forEach((s, i) => {
+      const v = get(w, s); if(v === null) return;
+      const x = gx + i * (bw + 2), top = y(v), h = (H - pb) - top, t = tgt(w, s);
+      const tip = `${s.label} · W${w}: ${v.toFixed(1)}%` + (t !== null ? ` (target ${t}%)` : '');
+      g += `<path class="tbar" tabindex="0" data-tip="${esc(tip)}" aria-label="${esc(tip)}" fill="${s.color}" d="M${x},${H-pb} V${top+Math.min(4,h)} Q${x},${top} ${x+Math.min(4,bw/2)},${top} H${x+bw-Math.min(4,bw/2)} Q${x+bw},${top} ${x+bw},${top+Math.min(4,h)} V${H-pb} Z"/>`;
+      if(t !== null) g += `<line class="tg-target" x1="${x-2}" x2="${x+bw+2}" y1="${y(t)}" y2="${y(t)}"/>`;
+      if(w === lastW) g += `<text x="${x+bw/2}" y="${top-5}" class="tg-val" text-anchor="middle">${v.toFixed(0)}</text>`;
+    });
+  }
+  const legend = series.map(s => `<span class="tg-leg"><i style="background:${s.color}"></i>${esc(s.label)}</span>`).join('') + '<span class="tg-leg"><i class="tg-leg-line"></i>Target tier 1 insentif</span>';
+  const table = '<div class="pg-scroll"><table class="pg-table"><thead><tr><th>Penyelesaian</th>' + [1,2,3,4].map(w => '<th class="r">W' + w + '</th>').join('') + '</tr></thead><tbody>' +
+    series.map(s => '<tr><td>' + esc(s.label) + '</td>' + [1,2,3,4].map(w => { const v = get(w, s), t = tgt(w, s); return '<td class="r">' + (v === null ? '-' : v.toFixed(1) + '%') + (t !== null ? ' <span class="muted">/ ' + t + '%</span>' : '') + '</td>'; }).join('') + '</tr>').join('') + '</tbody></table></div>';
+  card.innerHTML = trenShell(`<div class="tren-head">${toggle}<span class="tren-month">${esc(monthLabel)}</span></div>
+    <div class="tren-wrap"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Grafik batang penyelesaian mingguan ${esc(monthLabel)} per CO dan cabang">${g}</svg><div class="tren-tip" id="trenTip" role="tooltip" hidden></div></div>
+    <div class="tg-legend">${legend}</div>
+    <details class="tren-table"><summary>Lihat sebagai tabel</summary>${table}</details>
+    <p class="tren-foot">Angka = persentase penyelesaian (100% - Flow). Garis hitam di tiap batang = batas tier 1 insentif minggu itu. Rekap W terakhir diperbarui tiap hari sampai minggunya berganti.</p>`);
+  bindTrenToggle();
+  const tip = document.getElementById('trenTip'), wrapEl = card.querySelector('.tren-wrap');
+  const show = (el) => { const rr = el.getBoundingClientRect(), wr = wrapEl.getBoundingClientRect(); tip.textContent = el.getAttribute('data-tip'); tip.hidden = false; tip.style.left = Math.max(4, Math.min(wr.width - tip.offsetWidth - 4, rr.left - wr.left + rr.width/2 - tip.offsetWidth/2)) + 'px'; tip.style.top = Math.max(0, rr.top - wr.top - tip.offsetHeight - 8) + 'px'; };
+  card.querySelectorAll('.tbar').forEach(el => { el.addEventListener('mouseenter', () => show(el)); el.addEventListener('focus', () => show(el)); el.addEventListener('mouseleave', () => tip.hidden = true); el.addEventListener('blur', () => tip.hidden = true); });
+}
+function bindTrenToggle(){
+  document.querySelectorAll('#trenToggle button').forEach(b => b.addEventListener('click', () => { TREN_MONTH = b.dataset.m; renderTren(); }));
 }
 
 function renderRingkasanView(){
@@ -3021,8 +3332,10 @@ function renderRingkasanView(){
       </div>
       ${bigCustSection(d.bigCust)}
     </div>
+    <div class="rk-report-card" id="trenCard" style="margin-top:16px;"></div>
   `;
 
+  loadTren();
   animateCount(document.getElementById('rkValCount'), d.enrCount, false);
   animateCount(document.getElementById('rkValAmt'), d.enr, true);
 
@@ -3271,7 +3584,7 @@ function renderNBQChips(){
 
   if(chips.length === 0){ box.style.display='none'; box.innerHTML=''; return; }
   box.style.display='flex';
-  box.innerHTML = chips.map((c,i) => `<span class="chip">${c.label}: <b>${c.value}</b><span class="chip-x" data-idx="${i}">✕</span></span>`).join('');
+  box.innerHTML = chips.map((c,i) => `<span class="chip">${esc(c.label)}: <b>${esc(c.value)}</b><span class="chip-x" data-idx="${i}">${ic('x')}</span></span>`).join('');
   box.querySelectorAll('.chip-x').forEach(el => {
     el.onclick = () => chips[parseInt(el.getAttribute('data-idx'),10)].clear();
   });
@@ -3282,18 +3595,18 @@ function renderNBQTable(){
   const total = nbqPopulasi().length;
   document.getElementById('nbqCountNote').innerHTML = `Menampilkan <b>${rows.length}</b> dari <b>${total}</b> kontrak (NBQ 1-12)`;
   const tbody = document.getElementById('nbqTbody');
-  if(rows.length===0){ tbody.innerHTML = '<tr class="empty-row"><td colspan="7">Tidak ada kontrak yang cocok.</td></tr>'; return; }
-  tbody.innerHTML = rows.map(r => `
-    <tr data-kontrak="${r['NO KONTRAK']}">
-      <td data-label="No Kontrak" class="mono">${r['NO KONTRAK']||'-'}</td>
-      <td data-label="Nama">${r['NAMA KONSUMEN']||'-'}</td>
+  if(rows.length===0){ tbody.innerHTML = emptyRowHtml(7, tbody); return; }
+  tbody.innerHTML = pageRows('nbq', rows, tbody, renderNBQTable).map(r => `
+    <tr data-kontrak="${esc(r['NO KONTRAK'])}">
+      <td data-label="No Kontrak" class="mono">${esc(r['NO KONTRAK']||'-')}</td>
+      <td data-label="Nama">${esc(r['NAMA KONSUMEN']||'-')}${rowWa(r)}</td>
       <td data-label="NBQ" class="mono">${nbqNum(r)} MOB</td>
-      <td data-label="Status NBQ"><span class="nbq-pill ${nbqClass(r['STATUS NBQ'])}">${r['STATUS NBQ']||'-'}</span></td>
-      <td data-label="Status Bayar NBQ"><span class="status-pill ${isSudahBayar_(r['STATUS BAYAR NBQ']) ? 'status-sudah':'status-belum'}">${r['STATUS BAYAR NBQ']||'-'}</span></td>
+      <td data-label="Status NBQ"><span class="nbq-pill ${nbqClass(r['STATUS NBQ'])}">${esc(r['STATUS NBQ']||'-')}</span></td>
+      <td data-label="Status Bayar NBQ"><span class="status-pill ${isSudahBayar_(r['STATUS BAYAR NBQ']) ? 'status-sudah':'status-belum'}">${esc(r['STATUS BAYAR NBQ']||'-')}</span></td>
       <td data-label="Bucket"><span class="bpill" style="--c:${BUCKET_COLOR[r['BUCKET AWAL']]||'#999'}">${fmtBucket(r['BUCKET AWAL'])}</span></td>
       <td data-label="Sisa Piutang" class="num">${fmtRupiah(r['SIPOK'])}</td>
     </tr>`).join('');
-  tbody.querySelectorAll('tr[data-kontrak]').forEach(tr => tr.onclick = () => openPanel(tr.getAttribute('data-kontrak')));
+  tbody.querySelectorAll('tr[data-kontrak]').forEach(tr => tr.onclick = (ev) => { if(ev && ev.target.closest && ev.target.closest('a.row-wa')) return; openPanel(tr.getAttribute('data-kontrak')); });
   renderNBQChips();
 }
 
@@ -3303,7 +3616,7 @@ function currentSourceRecords(){
 
 function render(){
   if(DATA.length === 0 && !IS_ADMIN && ESCALATIONS.length === 0){
-    document.getElementById('wrap').innerHTML = '<div class="state-box">Belum ada kontrak yang terdaftar untuk akun <b>' + USER_EMAIL + '</b>. Hubungi admin kalau ini seharusnya ada datanya.</div>';
+    document.getElementById('wrap').innerHTML = '<div class="state-box">Belum ada kontrak yang terdaftar untuk akun <b>' + esc(USER_EMAIL) + '</b>. Hubungi admin kalau ini seharusnya ada datanya.</div>';
     return;
   }
   renderGrandTotal();
@@ -3316,6 +3629,7 @@ function render(){
   }
   renderBucketBar();
   renderCoRow();
+  renderJanjiStrip();
   renderTable();
   updateTabButtons();
   const thCO = document.getElementById('thCO');
@@ -3390,7 +3704,7 @@ function renderCoRow(){
     const meta = CO_META[co] || {short:co, role:''};
     const card = document.createElement('div');
     card.className = 'co-card' + (state.co===co?' active':'');
-    card.innerHTML = `<div class="name">${meta.short}</div><div class="role">${meta.role}</div>
+    card.innerHTML = `<div class="name">${esc(meta.short)}</div><div class="role">${esc(meta.role)}</div>
       <div class="stats"><div>Kontrak<b>${coStats[co].count}</b></div><div style="text-align:right">Sisa Piutang<b>${fmtRupiah(coStats[co].sipok)}</b></div></div>`;
     card.onclick = () => { state.co = state.co===co?'ALL':co; render(); };
     row.appendChild(card);
@@ -3406,6 +3720,7 @@ function getFiltered(){
   if(state.kecamatan!=='ALL') rows = rows.filter(r => r['KECAMATAN']===state.kecamatan);
   if(state.ever!=='ALL') rows = rows.filter(r => r['STATUS EVER']===state.ever);
   if(state.janjiList.length > 0) rows = rows.filter(r => state.janjiList.includes((r['JANJI BAYAR']||'').toString().trim()));
+  if(state.quick) rows = rows.filter(r => quickMatch(r, state.quick));
   if(state.search.trim()){
     const q = state.search.trim().toLowerCase();
     rows = rows.filter(r => (r['NAMA KONSUMEN']||'').toLowerCase().includes(q) || (r['NO KONTRAK']||'').toLowerCase().includes(q) || (r['NOPOL']||'').toLowerCase().includes(q));
@@ -3432,11 +3747,12 @@ function renderActiveChips(){
   if(state.kecamatan !== 'ALL') chips.push({label:'Kecamatan', value:state.kecamatan, clear:() => { state.kecamatan='ALL'; const s=document.getElementById('kecamatanSelect'); if(s)s.value='ALL'; updateFilterBadge(); renderTable(); }});
   if(state.ever !== 'ALL') chips.push({label:'Status Ever', value:state.ever, clear:() => { state.ever='ALL'; const s=document.getElementById('everSelect'); if(s)s.value='ALL'; updateFilterBadge(); renderTable(); }});
   if(state.janjiList.length > 0) chips.push({label:'Janji Bayar', value:state.janjiList.join(', '), clear:() => { state.janjiList=[]; buildLayout(); render(); }});
+  if(state.quick) chips.push({label:'Pantauan', value:QUICK_LABEL[state.quick], clear:() => { state.quick=''; renderJanjiStrip(); renderTable(); }});
   if(state.search.trim()) chips.push({label:'Cari', value:state.search, clear:() => { state.search=''; const i=document.getElementById('searchInput'); if(i)i.value=''; renderTable(); }});
 
   if(chips.length === 0){ box.style.display='none'; box.innerHTML=''; return; }
   box.style.display='flex';
-  box.innerHTML = chips.map((c,i) => `<span class="chip">${c.label}: <b>${c.value}</b><span class="chip-x" data-idx="${i}">✕</span></span>`).join('');
+  box.innerHTML = chips.map((c,i) => `<span class="chip">${esc(c.label)}: <b>${esc(c.value)}</b><span class="chip-x" data-idx="${i}">${ic('x')}</span></span>`).join('');
   box.querySelectorAll('.chip-x').forEach(el => {
     el.onclick = () => chips[parseInt(el.getAttribute('data-idx'),10)].clear();
   });
@@ -3474,26 +3790,26 @@ function renderTable(){
   const total = currentSourceRecords().length;
   document.getElementById('countNote').innerHTML = `Menampilkan <b>${rows.length}</b> dari <b>${total}</b> kontrak`;
   const tbody = document.getElementById('tbody');
-  if(rows.length===0){ tbody.innerHTML = '<tr class="empty-row"><td colspan="11">Tidak ada kontrak yang cocok.</td></tr>'; return; }
+  if(rows.length===0){ tbody.innerHTML = emptyRowHtml(11, tbody); return; }
   const showCO = IS_ADMIN || state.tab === 'escalation';
-  tbody.innerHTML = rows.map(r => {
+  tbody.innerHTML = pageRows('main', rows, tbody, renderTable).map(r => {
     const meta = CO_META[r['CO ALL']] || {short:r['CO ALL']||'-'};
     const differs = r['BUCKET AWAL'] !== r['BUCKET UPDATE'];
-    return `<tr data-kontrak="${r['NO KONTRAK']}">
-      <td data-label="CO" class="mono" style="${showCO?'':'display:none;'}">${meta.short}</td>
-      <td data-label="No Kontrak" class="mono">${r['NO KONTRAK']||'-'}</td>
-      <td data-label="Nama">${r['NAMA KONSUMEN']||'-'}</td>
+    return `<tr data-kontrak="${esc(r['NO KONTRAK'])}">
+      <td data-label="CO" class="mono" style="${showCO?'':'display:none;'}">${esc(meta.short)}</td>
+      <td data-label="No Kontrak" class="mono">${esc(r['NO KONTRAK']||'-')}</td>
+      <td data-label="Nama">${esc(r['NAMA KONSUMEN']||'-')}${rowWa(r)}</td>
       <td data-label="Bucket"><div class="bucket-flow"><span class="bpill" style="--c:${BUCKET_COLOR[r['BUCKET AWAL']]||'#999'}">${fmtBucket(r['BUCKET AWAL'])}</span>${differs?' → <span class="bpill" style="--c:'+(BUCKET_COLOR[r['BUCKET UPDATE']]||'#999')+'">'+fmtBucket(r['BUCKET UPDATE'])+'</span>':''}</div></td>
-      <td data-label="Status"><span class="status-pill ${statusClass(r['STATUS BAYAR'])}">${r['STATUS BAYAR']||'-'}</span></td>
+      <td data-label="Status"><span class="status-pill ${statusClass(r['STATUS BAYAR'])}">${esc(r['STATUS BAYAR']||'-')}</span></td>
       <td data-label="Sisa Piutang" class="num">${fmtRupiah(r['SIPOK'])}</td>
-      <td data-label="% Flow" class="num">${pengaruhFlowText_(r)}</td>
-      <td data-label="Angsuran" class="num">${fmtRupiah(r['ANGSURAN'])}</td>
-      <td data-label="DPD" class="num">${r['DPD'] ?? '-'}</td>
-      <td data-label="Status Ever">${r['STATUS EVER'] ? `<span class="status-pill ${r['STATUS EVER']==='SUDAH EVER'?'status-belum':'status-sudah'}">${r['STATUS EVER']}</span>` : '-'}</td>
+      <td data-label="% Flow" class="num" data-opt>${pengaruhFlowText_(r)}</td>
+      <td data-label="Angsuran" class="num" data-opt>${fmtRupiah(r['ANGSURAN'])}</td>
+      <td data-label="DPD" class="num">${esc(r['DPD'] ?? '-')}</td>
+      <td data-label="Status Ever" data-opt>${r['STATUS EVER'] ? `<span class="status-pill ${r['STATUS EVER']==='SUDAH EVER'?'status-belum':'status-sudah'}">${esc(r['STATUS EVER'])}</span>` : '-'}</td>
       <td data-label="Jatuh Tempo" class="mono">${fmtDate(r['JATUH TEMPO'])}</td>
     </tr>`;
   }).join('');
-  tbody.querySelectorAll('tr[data-kontrak]').forEach(tr => tr.onclick = () => openPanel(tr.getAttribute('data-kontrak')));
+  tbody.querySelectorAll('tr[data-kontrak]').forEach(tr => tr.onclick = (ev) => { if(ev && ev.target.closest && ev.target.closest('a.row-wa')) return; openPanel(tr.getAttribute('data-kontrak')); });
   renderActiveChips();
 }
 
@@ -3503,6 +3819,33 @@ function waLink(raw){
   if(d.startsWith('0')) d = '62' + d.slice(1);
   else if(!d.startsWith('62')) d = '62' + d;
   return 'https://wa.me/' + d;
+}
+
+let PANEL_KONTRAK = null, HIST_ITEMS = [];
+const BLN = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+function fmtWaktu(w){
+  const m = String(w||'').match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
+  return m ? (parseInt(m[3],10) + ' ' + BLN[parseInt(m[2],10)-1] + ' ' + m[1] + ', ' + m[4] + '.' + m[5]) : esc(w);
+}
+function renderHistory(){
+  const box = document.getElementById('histBox'); if(!box) return;
+  box.style.display = '';
+  const items = HIST_ITEMS;
+  box.innerHTML = '<h3>Riwayat Tindak Lanjut</h3>' + (items.length ? '<div class="hist">' + items.map(it => `
+    <div class="hist-item">
+      <div class="hist-meta">${fmtWaktu(it.waktu)} · ${esc(String(it.email||'').split('@')[0])}${it.janji ? ' · janji tgl <b>' + esc(it.janji) + '</b>' : ''}</div>
+      <div class="hist-text">${it.kronologis ? esc(it.kronologis) : '<span class="muted">(tanpa catatan)</span>'}</div>
+    </div>`).join('') + '</div>' : '<div class="hist-empty">Belum ada riwayat. Setiap kali kamu menyimpan janji bayar atau kronologis, catatannya tersimpan di sini.</div>');
+}
+function loadHistory(noKontrak){
+  fetch('/api/riwayat?noKontrak=' + encodeURIComponent(noKontrak), { headers: { Authorization: 'Bearer ' + ID_TOKEN } })
+    .then(res => res.json().then(b => ({ ok: res.ok, b })))
+    .then(({ok, b}) => {
+      if(PANEL_KONTRAK !== noKontrak) return;
+      if(!ok) return; // bukan pemilik/admin: bagian riwayat tidak ditampilkan
+      HIST_ITEMS = b.items || [];
+      renderHistory();
+    }).catch(() => {});
 }
 
 function openPanel(noKontrak){
@@ -3517,25 +3860,32 @@ function openPanel(noKontrak){
   if(wa){ waBtn.style.display='inline-flex'; waBtn.href = wa; } else { waBtn.style.display='none'; }
   const moneyFields = new Set(['SIPOK','ANGSURAN']); const dateFields = new Set(['TANGGAL BAYAR BULAN LALU','JATUH TEMPO']);
   const canEdit = IS_ADMIN || (r['EMAIL CO']||'').toString().trim().toLowerCase() === USER_EMAIL.toLowerCase();
-  document.getElementById('panelBody').innerHTML = FIELD_GROUPS.map(g => `
-    <div class="field-group"><h3>${g.title}</h3>
-      ${g.fields.map(f => { let v=r[f]; if(moneyFields.has(f)) v=fmtRupiah(v); else if(dateFields.has(f)) v=fmtDate(v); else v=(v===''||v==null)?'-':v;
-        return `<div class="field-row"><span class="k">${f.charAt(0)+f.slice(1).toLowerCase()}</span><span class="v">${v}</span></div>`; }).join('')}
-    </div>`).join('') + `
+  document.getElementById('panelBody').innerHTML = FIELD_GROUPS.map(g => {
+    const rowsHtml = g.fields.map(f => {
+        if(f !== 'KONTAK' && !(f in r)) return ''; // kolom tidak dikirim server untuk akun ini
+        let v = f === 'KONTAK' ? (r['WHATSAPP'] || r['NO HP']) : r[f];
+        if(moneyFields.has(f)) v=fmtRupiah(v); else if(dateFields.has(f)) v=fmtDate(v); else v=esc((v===''||v==null)?'-':v);
+        const label = f === 'KONTAK' ? 'Kontak (WA/HP)' : f.charAt(0)+f.slice(1).toLowerCase();
+        return `<div class="field-row"><span class="k">${label}</span><span class="v">${v}</span></div>`; }).join('');
+    return rowsHtml ? `<div class="field-group"><h3>${g.title}</h3>${rowsHtml}</div>` : '';
+  }).join('') + `
     <div class="field-group">
       <h3>Progress Penanganan</h3>
       ${canEdit ? `
         <label class="edit-label">Janji Bayar (tgl)</label>
-        <input type="text" id="janjiBayarInput" class="edit-input" placeholder="misal: 07" value="${(r['JANJI BAYAR']||'').toString()}" maxlength="2">
+        <input type="text" id="janjiBayarInput" class="edit-input" placeholder="misal: 07" inputmode="numeric" value="${esc((r['JANJI BAYAR']||'').toString())}" maxlength="2">
         <label class="edit-label" style="margin-top:10px;">Kronologis</label>
-        <textarea id="kronologisInput" class="edit-textarea" placeholder="Catatan hasil follow up…">${(r['KRONOLOGIS']||'').toString()}</textarea>
+        <textarea id="kronologisInput" class="edit-textarea" maxlength="1000" placeholder="Catatan hasil follow up…">${esc((r['KRONOLOGIS']||'').toString())}</textarea>
         <button class="btn primary" id="saveProgressBtn" style="width:100%;margin-top:10px;">Simpan</button>
-        <div id="saveProgressMsg" style="font-size:11.5px;margin-top:8px;"></div>
+        <div id="saveProgressMsg" style="font-size:11.5px;margin-top:8px;" role="status"></div>
       ` : `
-        <div class="field-row"><span class="k">Janji Bayar</span><span class="v">${r['JANJI BAYAR']||'-'}</span></div>
-        <div class="field-row"><span class="k">Kronologis</span><span class="v">${r['KRONOLOGIS']||'-'}</span></div>
+        <div class="field-row"><span class="k">Janji Bayar</span><span class="v">${esc(r['JANJI BAYAR']||'-')}</span></div>
+        <div class="field-row"><span class="k">Kronologis</span><span class="v">${esc(r['KRONOLOGIS']||'-')}</span></div>
       `}
-    </div>`;
+    </div>
+    <div class="field-group" id="histBox" style="display:none;"></div>`;
+  PANEL_KONTRAK = r['NO KONTRAK']; HIST_ITEMS = [];
+  loadHistory(r['NO KONTRAK']);
 
   if(canEdit){
     document.getElementById('saveProgressBtn').addEventListener('click', () => saveProgress(r));
@@ -3565,8 +3915,13 @@ function saveProgress(r){
     btn.disabled = false; btn.textContent = 'Simpan';
     if(!ok){ msg.style.color = 'var(--bad)'; msg.textContent = body.error || 'Gagal menyimpan.'; return; }
     r['JANJI BAYAR'] = janjiBayar; r['KRONOLOGIS'] = kronologis;
-    msg.style.color = 'var(--good)'; msg.textContent = '✓ Tersimpan';
-    if(VIEW_MODE==='dashboard') renderTable();
+    if(body.logged && PANEL_KONTRAK === r['NO KONTRAK']){
+      const t = new Date(Date.now() + 7*3600*1000).toISOString().replace('T',' ').slice(0,16);
+      HIST_ITEMS.unshift({ waktu: t, email: USER_EMAIL, janji: janjiBayar, kronologis });
+      renderHistory();
+    }
+    msg.style.color = 'var(--good)'; msg.innerHTML = ic('check') + ' Tersimpan';
+    if(VIEW_MODE==='dashboard'){ renderJanjiStrip(); renderTable(); }
   })
   .catch(err => {
     btn.disabled = false; btn.textContent = 'Simpan';
@@ -3640,7 +3995,13 @@ document.getElementById('overlay').onclick = document.getElementById('panelClose
   const dateEl = document.getElementById('topDate');
   if(!sidebar || !nav) return;
 
-  const ORDER = ['ringkasan','dashboard','nbq','feever','dekscall','insentif','tglbayar','simulasirapor','simulasi','panduan'];
+  const HINT = { ringkasan:'Ringkasan performa cabang: sebaran bucket, flow, dan tren mingguan', dashboard:'Beban awal: daftar kontrak per bucket beserta status bayarnya', nbq:'Kontrak NBQ (new booking quality) dan status bayarnya', feever:'Kontrak limpahan 31+ hari', tglbayar:'Kontrak yang bulan lalu dibayar pada tanggal hari ini', insentif:'Proyeksi insentif mingguan', dekscall:'Daftar tugas deskcall', simulasirapor:'Simulasi nilai rapor jika kontrak tertentu flow/stay/lunas', simulasi:'Simulasi penawaran MotorKu', panduan:'Panduan membaca KPI dan insentif' };
+  sidebar.querySelectorAll('.nav-item[data-view]').forEach(b => { if(HINT[b.dataset.view]) b.title = HINT[b.dataset.view]; });
+  function orderFor(){
+    if(IS_DESKCALL) return ['dashboard','dekscall','tglbayar','simulasi','panduan'];
+    if(IS_ADMIN) return ['ringkasan','dashboard','nbq','insentif','feever','tglbayar','simulasirapor','simulasi','panduan'];
+    return ['dashboard','nbq','feever','insentif','tglbayar','simulasirapor','simulasi','panduan'];
+  }
   const SHORT = { ringkasan:'Ringkasan', dashboard:'Beban', nbq:'NBQ', feever:'FE Ever', tglbayar:'Tgl Bayar', insentif:'Insentif', dekscall:'Dekscall', simulasirapor:'Rapor', simulasi:'Simulasi', panduan:'Panduan' };
   const MORE_ICON = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/></svg>';
 
@@ -3651,7 +4012,7 @@ document.getElementById('overlay').onclick = document.getElementById('panelClose
     const vis = items();
     const byView = {}; vis.forEach(b => byView[b.dataset.view] = b);
     const active = vis.find(b => b.classList.contains('active'));
-    let pick = ORDER.filter(v => byView[v]).slice(0, 4);
+    let pick = orderFor().filter(v => byView[v]).slice(0, 4);
     if(active && !pick.includes(active.dataset.view)) pick[pick.length - 1] = active.dataset.view;
     nav.innerHTML = '';
     pick.forEach(v => {
