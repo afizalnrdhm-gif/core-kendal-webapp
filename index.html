@@ -2140,14 +2140,14 @@ function renderInsentifView(){
   let html = '';
 
   if(d.isAdmin){
-    html += `<div class="ins-section"><h2>Achievement Harian — Front End (FE)</h2><div class="ins-row">${d.achievement.FE.map(h=>achievementCard(h,'Flow No OD','flowNoODPct')).join('')}</div></div>`;
-    html += `<div class="ins-section"><h2>Achievement Harian — Mid Range (MR)</h2><div class="ins-row">${d.achievement.MR.map(h=>achievementCard(h,'Flow 1-30','flowPct')).join('')}</div></div>`;
+    html += `<details class="ins-section fold" data-fold="in-fe" data-open="1"><summary>Achievement Harian — Front End (FE)</summary><div class="ins-row">${d.achievement.FE.map(h=>achievementCard(h,'Flow No OD','flowNoODPct')).join('')}</div></details>`;
+    html += `<details class="ins-section fold" data-fold="in-mr" data-open="1"><summary>Achievement Harian — Mid Range (MR)</summary><div class="ins-row">${d.achievement.MR.map(h=>achievementCard(h,'Flow 1-30','flowPct')).join('')}</div></details>`;
     if(d.achievement.BCH){
-      html += `<div class="ins-section"><h2>Achievement Harian — Branch Collection Head (BCH)</h2><div class="ins-row">${achievementCard(d.achievement.BCH,'Flow Forward 31-60','flowForwardPct')}</div></div>`;
+      html += `<details class="ins-section fold" data-fold="in-bch"><summary>Achievement Harian — Branch Collection Head (BCH)</summary><div class="ins-row">${achievementCard(d.achievement.BCH,'Flow Forward 31-60','flowForwardPct')}</div></details>`;
     }
-    html += `<div class="ins-section"><h2>Insentif Penyelesaian — Minggu ${d.minggu}</h2><div class="ins-row">${d.penyelesaian.map(p=>penyelesaianCard(p)).join('')}</div></div>`;
+    html += `<details class="ins-section fold" data-fold="in-pen"><summary>Insentif Penyelesaian — Minggu ${d.minggu}</summary><div class="ins-row">${d.penyelesaian.map(p=>penyelesaianCard(p)).join('')}</div></details>`;
     if(d.totalInsentif && d.totalInsentif.length){
-      html += `<div class="ins-section"><h2>Total Insentif Bulan Ini</h2><div class="ins-row">${d.totalInsentif.map(t=>totalInsentifCard(t)).join('')}</div></div>`;
+      html += `<details class="ins-section fold" data-fold="in-tot" data-open="1"><summary>Total Insentif Bulan Ini</summary><div class="ins-row">${d.totalInsentif.map(t=>totalInsentifCard(t)).join('')}</div></details>`;
     }
   } else {
     if(d.achievement){
@@ -2166,6 +2166,7 @@ function renderInsentifView(){
   }
 
   document.getElementById('wrap').innerHTML = html;
+  initFolds('#wrap details[data-fold]');
 }
 
 // ============================================================
