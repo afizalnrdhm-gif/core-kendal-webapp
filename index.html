@@ -1082,6 +1082,13 @@
   .td-more,.td-empty{margin:8px 0 0;font-size:12px;color:var(--ink-soft);}
   .td-warn,.td-good{margin-top:10px;padding:9px 12px;border-radius:10px;font-size:12.5px;} .td-warn{background:var(--warn-bg);color:var(--warn);} .td-good{background:var(--good-bg);color:var(--good);}
   @media (max-width:680px){ .td-stats{grid-template-columns:1fr 1fr 1fr;gap:6px;} .td-stats b{font-size:14px;} .td-big b{font-size:19px;} .td-poin{padding:14px;} .fc-pics{grid-template-columns:1fr;} }
+
+  .td-prog{margin:12px 0 4px;padding:12px;border-radius:12px;background:var(--surface-alt);border:1px solid color-mix(in srgb,var(--line) 70%,transparent);}
+  .td-prog-h{display:flex;justify-content:space-between;align-items:baseline;font-size:12.5px;color:var(--ink-soft);} .td-prog-h b{font-size:20px;color:var(--ink);font-variant-numeric:tabular-nums;}
+  .td-prog-bar{height:10px;border-radius:99px;background:color-mix(in srgb,var(--line) 80%,transparent);overflow:hidden;margin:8px 0 10px;} .td-prog-bar i{display:block;height:100%;border-radius:99px;background:var(--gold);transition:width .6s ease;}
+  .td-prog.done .td-prog-bar i{background:var(--good);}
+  .td-prog-n{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;} .td-prog-n span{display:grid;gap:1px;} .td-prog-n small{font-size:11.5px;color:var(--ink-soft);} .td-prog-n b{font-size:14px;font-variant-numeric:tabular-nums;}
+  .td-paid{margin-top:10px;font-size:13px;} .td-paid summary{cursor:pointer;font-weight:600;padding:6px 0;} .td-paid ul{list-style:none;margin:4px 0 0;padding:0;display:grid;gap:4px;} .td-paid li{display:flex;justify-content:space-between;gap:10px;} .td-paid li b{font-variant-numeric:tabular-nums;white-space:nowrap;}
 </style>
 </head>
 <body>
@@ -3965,9 +3972,9 @@ function renderFocus(){
     }
     b2.style.display = '';
     const w = TD_DATA.tanggal;
-    const semua = TD_DATA.pic.every(p => p.poin.every(q => q.perHari <= 0));
+    const semua = TD_DATA.pic.every(p => p.poin.every(q => tdTarget(q) <= 0 || (q.progres && q.progres.tuntas)));
     b2.className = 'focus-card ' + (semua ? 'good' : '');
-    const rows = TD_DATA.pic.map(p => `<button type="button" class="fc-pic" data-pic="${esc(p.namaCO)}"><span class="fc-pn"><b>${esc(tdShort(p.namaCO, p.role))}</b><small>${esc(TD_SHORT_ROLE[p.role] || p.role)}</small></span>${p.poin.map(q => `<span class="fc-pt"><small>${esc(q.judul)}</small><b>${q.perHari > 0 ? tdRp(q.perHari) : 'Aman'}</b>${q.perHari > 0 ? '<em>/ hari</em>' : ''}</span>`).join('')}</button>`).join('');
+    const rows = TD_DATA.pic.map(p => `<button type="button" class="fc-pic" data-pic="${esc(p.namaCO)}"><span class="fc-pn"><b>${esc(tdShort(p.namaCO, p.role))}</b><small>${esc(TD_SHORT_ROLE[p.role] || p.role)}</small></span>${p.poin.map(q => `<span class="fc-pt"><small>${esc(q.judul)}</small><b>${tdTarget(q) > 0 ? tdRp(tdTarget(q)) : 'Aman'}</b>${tdTarget(q) > 0 ? '<em>' + (q.progres ? 'tercapai ' + fmtDec(q.progres.persen, 0) + '%' : '/ hari') + '</em>' : ''}</span>`).join('')}</button>`).join('');
     b2.innerHTML = `
       <div class="fc-head">
         <div class="fc-badge" aria-hidden="true">${ic(semua ? 'check' : 'target')}</div>
@@ -3980,6 +3987,21 @@ function renderFocus(){
   };
   draw();
   if(!TD_DATA) ensureTD(draw);
+}
+
+// Target yang dipakai tampilan: kalau baseline pagi ada, target dibekukan (tidak bergeser saat admin update data); kalau tidak, nilai hitung langsung.
+function tdTarget(q){ return q.progres ? q.progres.targetHari : q.perHari; }
+function tdProgHtml(q){
+  const g = q.progres; if(!g) return '';
+  if(g.targetHari <= 0 && g.tercapai <= 0) return '';
+  const pct = Math.max(0, Math.min(100, g.persen));
+  const lis = g.kontrakBayar.slice(0, 6).map(k => `<li><span>${esc(k.nama)}</span><b>${fmtRupiah(k.sipok)}</b></li>`).join('');
+  return `<div class="td-prog ${g.tuntas ? 'done' : ''}">
+    <div class="td-prog-h"><span>Progres hari ini</span><b>${fmtDec(g.persen, 0)}%</b></div>
+    <div class="td-prog-bar" role="img" aria-label="Tercapai ${fmtDec(g.persen,0)} persen dari target hari ini"><i style="width:${pct}%"></i></div>
+    <div class="td-prog-n"><span><small>Tercapai</small><b>${tdRp(g.tercapai)}</b></span><span><small>Target hari ini</small><b>${tdRp(g.targetHari)}</b></span><span><small>${g.tuntas ? 'Lewat target' : 'Sisa'}</small><b>${tdRp(g.tuntas ? g.tercapai - g.targetHari : g.sisa)}</b></span></div>
+    ${g.jumlahBayar ? `<details class="td-paid"><summary>${g.jumlahBayar} kontrak sudah bayar hari ini</summary><ul>${lis}</ul>${g.jumlahBayar > 6 ? `<p class="td-more">+ ${g.jumlahBayar - 6} kontrak lainnya</p>` : ''}</details>` : '<p class="td-more">Belum ada kontrak target yang bayar hari ini. Progres bergerak tiap admin update data bayar.</p>'}
+  </div>`;
 }
 
 function tdKontrakRow(k){
@@ -3999,9 +4021,10 @@ function tdPoinHtml(p, q, idx){
   <section class="td-poin ${aman ? 'aman' : ''}" data-key="${p.namaCO}|${q.kunci}">
     <header>
       <div><span class="td-tag">${q.kunci === 'balance' ? 'Poin 1 · Balance' : 'Poin 2 · Flow'}</span><h3>${esc(q.judul)}</h3></div>
-      <div class="td-big">${aman ? '<b>Aman</b>' : `<b>${tdRp(q.perHari)}</b><em>/ hari</em>`}</div>
+      <div class="td-big">${tdTarget(q) <= 0 ? '<b>Aman</b>' : `<b>${tdRp(tdTarget(q))}</b><em>${q.progres ? 'target hari ini' : '/ hari'}</em>`}</div>
     </header>
     <p class="td-ket">${esc(q.keterangan)}</p>
+    ${tdProgHtml(q)}
     <div class="td-meter" role="img" aria-label="Sekarang ${fmtDec(q.nilaiPct,1)} persen, batas ${fmtDec(q.batasPct,1)} persen"><i style="width:${pct}%"></i><s style="left:${bt}%"></s></div>
     <div class="td-stats">
       ${naik ? `<div><small>Cabang sekarang</small><b>${fmtDec(q.nilaiPct,1)}%</b><span>${tdRp(q.nilaiAmt)}</span></div>
@@ -4022,7 +4045,7 @@ function tdPicHtml(p){
 }
 function renderTargetDaily(){
   const wrap = document.getElementById('wrap');
-  const head = `<div class="td-intro"><h2>Target daily</h2><p>Target harian = (belum bayar - batas yang boleh flow) ÷ sisa hari, sama seperti REPORT DAILY di Excel. Balance FE = target NOOD cabang, dibagi sesuai beban awal. Data adalah kondisi kemarin, jadi hari ini ikut dihitung.</p></div>`;
+  const head = `<div class="td-intro"><h2>Target daily</h2><p>Target harian = (belum bayar - batas yang boleh flow) ÷ sisa hari, sama seperti REPORT DAILY di Excel. Balance FE = target NOOD cabang, dibagi sesuai beban awal. Target hari ini dibekukan tiap pagi, lalu progresnya naik setiap admin update data bayar.</p></div>`;
   if(!TD_DATA){
     wrap.innerHTML = head + (TD_ERR ? `<div class="state-box error"><div class="err-icon">${ic('alert')}</div>${esc(TD_ERR)}<br><br><button class="btn" onclick="TD_ERR='';renderTargetDaily()">Coba lagi</button></div>` : `<div class="skeleton-row"><div class="skel"></div><div class="skel"></div></div><div class="skel tall"></div>`);
     if(!TD_ERR) ensureTD(() => { if(VIEW_MODE === 'targetdaily') renderTargetDaily(); });
@@ -4037,7 +4060,7 @@ function renderTargetDaily(){
   const meta = `<div class="td-meta"><span>${ic('clock')} Sisa <b>${w.sisaHari} hari</b> sampai ${w.akhirBulan}/${w.bulan} (termasuk hari ini)</span></div>`;
   let body;
   if(TD_SEL === 'ALL'){
-    body = `<div class="td-sum">${pics.map(p => `<button type="button" class="td-card" data-pic="${esc(p.namaCO)}"><div class="td-ch"><b>${esc(tdShort(p.namaCO, p.role))}</b><small>${esc(TD_SHORT_ROLE[p.role] || p.role)}</small></div>${p.poin.map(q => `<div class="td-cl"><span><small>${q.kunci === 'balance' ? 'Balance' : 'Flow'}</small>${esc(q.judul.replace(/^(Balance|Flow) /, ''))}</span><span class="td-cv">${q.perHari > 0 ? '<b>' + tdRp(q.perHari) + '</b><em>/ hari</em>' : '<b class="ok">Aman</b>'}<small>${fmtDec(q.nilaiPct,1)}% · ${q.arah === 'naik' ? 'target' : 'batas'} ${fmtDec(q.batasPct,1)}%</small></span></div>`).join('')}<span class="td-go">Lihat kontrak potensial ›</span></button>`).join('')}</div>`;
+    body = `<div class="td-sum">${pics.map(p => `<button type="button" class="td-card" data-pic="${esc(p.namaCO)}"><div class="td-ch"><b>${esc(tdShort(p.namaCO, p.role))}</b><small>${esc(TD_SHORT_ROLE[p.role] || p.role)}</small></div>${p.poin.map(q => `<div class="td-cl"><span><small>${q.kunci === 'balance' ? 'Balance' : 'Flow'}</small>${esc(q.judul.replace(/^(Balance|Flow) /, ''))}</span><span class="td-cv">${tdTarget(q) > 0 ? '<b>' + tdRp(tdTarget(q)) + '</b><em>/ hari</em>' : '<b class="ok">Aman</b>'}<small>${q.progres && tdTarget(q) > 0 ? 'tercapai ' + fmtDec(q.progres.persen, 0) + '% · ' + tdRp(q.progres.tercapai) : fmtDec(q.nilaiPct,1) + '% · ' + (q.arah === 'naik' ? 'target' : 'batas') + ' ' + fmtDec(q.batasPct,1) + '%'}</small></span></div>`).join('')}<span class="td-go">Lihat kontrak potensial ›</span></button>`).join('')}</div>`;
   } else {
     body = tdPicHtml(pics.find(p => p.namaCO === TD_SEL));
   }
