@@ -96,3 +96,14 @@ test('progres: kontrak REALISASI > 0 ikut dihitung walau tidak ada di baseline, 
   assert.equal(q.progres.jumlahBayar, 2);
   assert.equal(q.bayarHariIni, undefined);
 });
+
+test('kontrak bayar hari ini dikenali dari BUCKET POTENSIAL; bayar tepat waktu tidak dihitung', () => {
+  const mk = (no, pot, sipok) => ({ 'NO KONTRAK': no, 'NAMA KONSUMEN': no, 'CO ALL': 'FE1', 'FLEET/NON FLEET': 'NON FLEET', 'BUCKET AWAL': 'NOOD', 'BUCKET POTENSIAL': pot, 'BUCKET UPDATE': 'NOOD', 'STATUS BAYAR': 'BAYAR', SIPOK: sipok });
+  const master = [mk('A', 'P001_030', 100), mk('B', 'NOOD', 50)];
+  const peta = { A: { 'NO KONTRAK': 'A', REALISASI: 1, 'BUCKET UPDATE': 'NOOD', 'SISA PIUTANG': 100, 'NAMA COLLECTOR': 'FE1' }, B: { 'NO KONTRAK': 'B', REALISASI: 1, 'BUCKET UPDATE': 'NOOD', 'SISA PIUTANG': 50, 'NAMA COLLECTOR': 'FE1' } };
+  const cfg = [{ NAMA_CO: 'FE1', ROLE: 'FE', BUCKET_PENYELESAIAN: 'P001_030', BUCKET_ASAL_FLOW: 'NOOD', BUCKET_BALANCE: 'P001_030' }];
+  const r = hitungTargetDaily(master, peta, cfg);
+  const [bal, flow] = r.pic[0].poin;
+  assert.deepEqual(bal.bayarHariIni.map(x => x[0]), ['A']);
+  assert.deepEqual(flow.bayarHariIni.map(x => x[0]), ['A']);
+});
