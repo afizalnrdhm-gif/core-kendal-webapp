@@ -189,8 +189,14 @@ module.exports = async (req, res) => {
       if (!appendRes.ok) throw new Error('Gagal tambah baris LOG_MINGGUAN: ' + JSON.stringify(appendJson));
     }
 
+    // Bekukan target daily hari ini (baseline pagi). Gagal di sini tidak boleh menggagalkan snapshot mingguan.
+    let targetDaily = null;
+    try { targetDaily = await require('./insentif').bekukanTargetHariIni(accessToken, sheetId); }
+    catch (e) { console.log('Gagal bekukan target daily:', e.message); targetDaily = { error: true }; }
+
     res.status(200).json({
       ok: true,
+      targetDaily,
       tahun, bulan, minggu,
       updated: toUpdate.length,
       appended: toAppend.length,

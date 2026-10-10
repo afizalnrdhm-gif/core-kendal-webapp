@@ -61,3 +61,17 @@ test('FE balance NOOD: target 88% cabang dibagi sesuai beban awal FE', () => {
   assert.ok(Math.abs(a.perluAmt - 510) < 1e-9);
   assert.ok(Math.abs(b.perluAmt - 170) < 1e-9);
 });
+
+test('progres target harian: dihitung dari kontrak baseline yang sudah tidak belum-bayar', () => {
+  const { terapkanProgres } = require('../api/_tdsnap');
+  const td = { pic: [{ namaCO: 'A', poin: [{ kunci: 'flow', perHari: 100, semuaKandidat: [['K2', 40, 'Dua'], ['K3', 30, 'Tiga']] }] }] };
+  const base = { 'A|flow': { targetHari: 100, baseNilai: 170, kontrak: [['K1', 60, 'Satu'], ['K2', 40, 'Dua'], ['K3', 30, 'Tiga']] } };
+  terapkanProgres(td, base);
+  const q = td.pic[0].poin[0];
+  assert.equal(q.progres.tercapai, 60);
+  assert.equal(q.progres.persen, 60);
+  assert.equal(q.progres.sisa, 40);
+  assert.equal(q.progres.tuntas, false);
+  assert.equal(q.progres.kontrakBayar[0].noKontrak, 'K1');
+  assert.equal(q.semuaKandidat, undefined);
+});

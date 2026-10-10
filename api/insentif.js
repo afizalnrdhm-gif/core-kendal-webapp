@@ -1,3 +1,4 @@
+const { pastikanBaseline, terapkanProgres } = require('./_tdsnap');
 const { getAccessToken, sendError, verifyIdToken } = require('./_auth');
 const { cleanCell } = require('./_sheet');
 
@@ -330,7 +331,9 @@ function tdSusunKontrak(kandidat, perHari, D, akhirBulan) {
   const bersih = b => { const o = Object.assign({}, b); delete o._dTb; delete o._dJb; delete o.skor; return o; };
   return {
     potensial: potensial.slice(0, 30).map(bersih), jumlahPotensial: potensial.length, totalPotensial,
-    kurang, jumlahUntukTarget: untukTarget, rekomendasi: rekom.map(bersih), tercukupi: kurang <= 0
+    kurang, jumlahUntukTarget: untukTarget, rekomendasi: rekom.map(bersih), tercukupi: kurang <= 0,
+    // Seluruh kontrak yang masih belum bayar di poin ini (no kontrak + SIPOK). Dipakai untuk membekukan baseline harian & menghitung progres.
+    semuaKandidat: baris.map(b => [b.noKontrak, b.sipok, b.nama])
   };
 }
 
@@ -444,6 +447,11 @@ module.exports = async (req, res) => {
       const adminList = (process.env.ADMIN_EMAILS || '').split(',').map(x => x.trim().toLowerCase());
       const admin = adminList.indexOf(email) > -1;
       const td = hitungTargetDaily(masterList, petaKA, configRows);
+      // Target hari ini dibekukan sekali sehari; progres dihitung dari kontrak baseline yang sudah bayar. Kalau tab belum bisa dipakai, tampil tanpa progres.
+      let adaBaseline = true;
+      try { const { base } = await pastikanBaseline(accessToken, sheetId, td); terapkanProgres(td, base); }
+      catch (e) { adaBaseline = false; console.error('Baseline target harian gagal:', e.message); terapkanProgres(td, {}); }
+      td.adaBaseline = adaBaseline;
       if (admin) { res.status(200).json(Object.assign({ isAdmin: true }, td)); return; }
       const rec = masterList.find(m => (m['EMAIL CO'] || '').toString().trim().toLowerCase() === email);
       const nama = rec ? rec['CO ALL'] : null;
@@ -501,3 +509,15 @@ module.exports = async (req, res) => {
 };
 
 module.exports.__test = { hitungTargetDaily, tdHariDariCell, tdSusunKontrak };
+
+// Dipanggil cron harian (api/log-snapshot.js): bekukan target hari ini dari data pagi, sebelum admin mulai update bayar.
+module.exports.bekukanTargetHariIni = async (accessToken, sheetId) => {
+  const [masterRaw, kaRaw, roleRaw] = await Promise.all([
+    fetchSheetRange(sheetId, 'MASTER', accessToken), fetchSheetRange(sheetId, 'KA HARIAN', accessToken), fetchSheetRange(sheetId, 'CONFIG_ROLE', accessToken)
+  ]);
+  const masterList = parseSheetGeneric(masterRaw, 0).filter(m => m['NO KONTRAK']);
+  const petaKA = {}; parseSheetGeneric(kaRaw, 15).forEach(r => { if (r['NO KONTRAK']) petaKA[r['NO KONTRAK']] = r; });
+  const td = hitungTargetDaily(masterList, petaKA, parseSheetGeneric(roleRaw, 0));
+  const { baru } = await pastikanBaseline(accessToken, sheetId, td);
+  return { baru, pic: td.pic.length };
+};
