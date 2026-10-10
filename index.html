@@ -1013,6 +1013,11 @@
     tbody td.num,tbody td.mono{font-family:var(--mono);font-size:12.5px;}
     tbody tr.empty-row{display:block;padding:18px;}
   }
+
+  /* rapikan-ui: janji + proyeksi satu kartu, sebaran dilipat */
+  .pantau-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px 10px;margin-bottom:18px;}
+  .pantau-card .alert-row{margin-bottom:10px;}
+  .pantau-card .proy-row{margin:0;padding-top:10px;border-top:1px dashed var(--line);}
 </style>
 </head>
 <body>
@@ -1624,9 +1629,11 @@ function buildLayout(){
   }
 
   html += `
-    <div class="alert-row" id="janjiStrip" role="group" aria-label="Pantauan janji bayar"></div>
-    <div class="proy-row" id="proyStrip" role="group" aria-label="Filter proyeksi"></div>
-    <details class="fold" id="foldSebaran" open>
+    <div class="pantau-card">
+      <div class="alert-row" id="janjiStrip" role="group" aria-label="Pantauan janji bayar"></div>
+      <div class="proy-row" id="proyStrip" role="group" aria-label="Filter proyeksi"></div>
+    </div>
+    <details class="fold" id="foldSebaran">
       <summary><span>Sebaran bucket${IS_ADMIN ? ' &amp; per CO' : ''}</span><small>klik untuk memfilter tabel</small></summary>
       <div class="bucket-bar" id="bucketBar"></div>
       <div class="bucket-legend" id="bucketLegend"></div>
@@ -1795,6 +1802,7 @@ function buildLayout(){
   colsBtn.addEventListener('click', () => { full = !full; try{ localStorage.setItem('ck-cols', full ? 'full' : 'compact'); }catch(e){} applyCols(); });
   // Di HP, bagian sebaran dilipat dulu supaya tabel lebih cepat terjangkau
   if(window.matchMedia && window.matchMedia('(max-width: 680px)').matches){ const f = document.getElementById('foldSebaran'); if(f) f.removeAttribute('open'); }
+  (function(){ const f=document.getElementById('foldSebaran'); if(!f) return; try{ if(localStorage.getItem('ck-fold-sebaran')==='1') f.setAttribute('open',''); }catch(e){} f.addEventListener('toggle',function(){ try{ localStorage.setItem('ck-fold-sebaran', f.open?'1':'0'); }catch(e){} }); })();
 }
 
 // ---------- Pantauan janji bayar ----------
