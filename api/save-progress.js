@@ -169,6 +169,22 @@ module.exports = async (req, res) => {
     const proyeksiWrites = [{ range: `MASTER!${proyCol}${rowNumber}`, values: [[proyeksi]] }];
     if (idxProy === -1) proyeksiWrites.push({ range: `MASTER!${proyCol}1`, values: [['PROYEKSI']] });
 
+    // Kolom PROYEKSI baru ada di luar batas kolom sheet MASTER -> tambah 1 kolom dulu, kalau tidak Sheets menolak.
+    if (kirimProyeksi && idxProy === -1) {
+      const metaRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}?fields=sheets(properties(sheetId,title,gridProperties(columnCount)))`,
+        { headers: { Authorization: 'Bearer ' + accessToken } });
+      const meta = await metaRes.json();
+      const sh = ((meta && meta.sheets) || []).map(x => x.properties).find(x => x && x.title === 'MASTER');
+      if (sh && sh.gridProperties && sh.gridProperties.columnCount <= header.length) {
+        const addRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}:batchUpdate`, {
+          method: 'POST',
+          headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ requests: [{ appendDimension: { sheetId: sh.sheetId, dimension: 'COLUMNS', length: (header.length + 1) - sh.gridProperties.columnCount } }] })
+        });
+        if (!addRes.ok) console.error('Gagal menambah kolom PROYEKSI:', JSON.stringify(await addRes.json()));
+      }
+    }
+
     const updateRes = await fetch(
       `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values:batchUpdate`,
       {
