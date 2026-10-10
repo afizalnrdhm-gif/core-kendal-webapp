@@ -75,3 +75,13 @@ test('progres target harian: dihitung dari kontrak baseline yang sudah tidak bel
   assert.equal(q.progres.kontrakBayar[0].noKontrak, 'K1');
   assert.equal(q.semuaKandidat, undefined);
 });
+
+test('streak tidak target: hitung hari berturut-turut dari yang terbaru', () => {
+  const { hitungStreak, kemarin } = require('../api/_tdsnap');
+  const h = (tanggal, pic, tuntas) => ({ tanggal, pic, kunci: 'flow', target: 100, tercapai: tuntas ? 100 : 10, persen: tuntas ? 100 : 10, tuntas });
+  const r = hitungStreak([h('2026-10-07', 'A', true), h('2026-10-08', 'A', false), h('2026-10-09', 'A', false), h('2026-10-10', 'A', false), h('2026-10-08', 'B', false), h('2026-10-09', 'B', true), h('2026-10-10', 'B', false)]);
+  assert.equal(r.daftar.find(x => x.pic === 'A').hari, 3);
+  assert.equal(r.daftar.find(x => x.pic === 'B').hari, 1);
+  assert.equal(r.riwayatHari, 4);
+  assert.deepEqual(kemarin({ tahun: 2026, bulan: 11, hari: 1 }), { tahun: 2026, bulan: 10, hari: 31 });
+});
