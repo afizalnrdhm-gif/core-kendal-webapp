@@ -912,27 +912,36 @@
   .cms-title{font-size:13px;font-weight:800;letter-spacing:.08em;color:var(--ink);margin:0 2px 10px;display:flex;align-items:center;gap:10px;}
   .cms-title::after{content:"";flex:1;height:1px;background:var(--line);}
   .cms-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr));gap:12px;}
-  .cms-co-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-sm,none);padding:14px;display:flex;flex-direction:column;gap:12px;}
-  .cms-co-card.tot{background:color-mix(in srgb,var(--navy-lighter,var(--info)) 7%,var(--surface));border-color:color-mix(in srgb,var(--navy-lighter,var(--info)) 35%,var(--line));}
-  .cms-ch{display:flex;align-items:center;justify-content:space-between;gap:12px;}
-  .cms-cn{font-size:15px;font-weight:800;color:var(--ink);line-height:1.25;}
-  .cms-act{text-align:right;display:flex;flex-direction:column;align-items:flex-end;line-height:1;}
-  .cms-al{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:4px;}
-  .cms-act b{font-size:28px;font-weight:800;font-family:var(--mono);}
-  .cms-tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
-  .cms-tile{background:var(--surface-sunken);border-radius:12px;padding:10px 6px;text-align:center;}
-  .cms-tl{font-size:10.5px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.03em;line-height:1.2;min-height:25px;display:flex;align-items:center;justify-content:center;}
-  .cms-tv{font-size:22px;font-weight:800;font-family:var(--mono);margin:2px 0;}
-  .cms-tp{font-size:12px;font-family:var(--mono);color:var(--ink-soft);}
-  .cms-grp{border-left:3px solid var(--cg,var(--line-strong));padding-left:10px;}
-  .cms-grp.g-bertemu{--cg:var(--good);} .cms-grp.g-tidak{--cg:var(--warn);} .cms-grp.g-risk{--cg:var(--info);} .cms-grp.g-tdk{--cg:var(--bad);}
-  .cms-gh{display:flex;justify-content:space-between;align-items:baseline;font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--ink);margin-bottom:6px;}
-  .cms-gp{font-family:var(--mono);font-size:12.5px;color:var(--ink-soft);letter-spacing:0;}
-  .cms-chips{display:grid;grid-template-columns:repeat(auto-fit,minmax(44px,1fr));gap:6px;}
-  .cms-chip{background:var(--surface-sunken);border-radius:10px;padding:6px 2px;text-align:center;}
-  .cms-chip.z{opacity:.55;}
-  .cms-cl{font-size:10.5px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.03em;}
-  .cms-cv{font-size:17px;font-weight:800;font-family:var(--mono);line-height:1.35;}
+  .cms-co-card{background:var(--surface);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow-sm,none);padding:16px;display:flex;flex-direction:column;gap:14px;}
+  .cms-co-card.tot{background:color-mix(in srgb,var(--navy-lighter) 8%,var(--surface));border-color:color-mix(in srgb,var(--navy-lighter) 38%,var(--line));}
+  .cms-ch{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
+  .cms-cn{font-size:17px;font-weight:800;color:var(--ink);line-height:1.2;}
+  .cms-sub{font-size:12px;color:var(--ink-soft);margin-top:3px;}
+  .cms-act{text-align:right;display:flex;flex-direction:column;align-items:flex-end;}
+  .cms-act b{font-size:34px;line-height:1;font-weight:800;font-family:var(--mono);color:var(--navy-lighter);}
+  .cms-act b .cms-hit{font-size:34px;padding:0 2px;}
+  .cms-act span{font-size:11.5px;color:var(--ink-soft);margin-top:4px;}
+  .cms-progs{display:flex;flex-direction:column;gap:12px;}
+  .cms-pr{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:6px;}
+  .cms-pt{font-size:13px;font-weight:700;color:var(--ink);}
+  .cms-pv{font-size:13px;color:var(--ink-soft);display:flex;align-items:baseline;gap:4px;}
+  .cms-pv i{font-style:normal;} .cms-pv em{font-style:normal;font-weight:800;color:var(--ink);margin-left:6px;font-family:var(--mono);}
+  .cms-pv .cms-hit{font-size:15px;padding:0 2px;}
+  .cms-track{height:10px;border-radius:99px;background:var(--surface-sunken);overflow:hidden;}
+  .cms-fill{height:100%;border-radius:99px;background:var(--cf,var(--navy-lighter));transition:width .6s cubic-bezier(.2,.8,.2,1);}
+  .p-ter{--cf:var(--navy-lighter);} .p-dik{--cf:var(--good);}
+  .cms-flag{display:flex;}
+  .cms-warnbtn{font:inherit;font-size:13px !important;font-weight:700;color:var(--warn) !important;background:var(--warn-bg) !important;border-radius:99px !important;padding:7px 14px !important;}
+  .cms-okmsg{font-size:13px;font-weight:700;color:var(--good);background:var(--good-bg);border-radius:99px;padding:7px 14px;}
+  .cms-more{display:flex;flex-direction:column;gap:12px;border-top:1px dashed var(--line-strong,var(--line));padding-top:14px;}
+  .cms-sh{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:7px;font-size:12.5px;font-weight:800;color:var(--ink);}
+  .cms-sh em{font-style:normal;font-weight:600;font-size:12px;color:var(--ink-soft);}
+  .cms-pills{display:flex;flex-wrap:wrap;gap:7px;}
+  .cms-pill{font:inherit;display:inline-flex;align-items:center;gap:8px;min-height:36px;padding:5px 12px;border-radius:99px;border:1px solid color-mix(in srgb,var(--cg,var(--info)) 35%,transparent);background:color-mix(in srgb,var(--cg,var(--info)) 11%,transparent);color:var(--ink);cursor:pointer;}
+  .cms-pill span{font-size:12.5px;font-weight:600;color:var(--ink-soft);} .cms-pill b{font-size:15px;font-weight:800;font-family:var(--mono);}
+  .cms-pill:active{transform:scale(.96);}
+  .cms-none{font-size:12.5px;color:var(--ink-soft);opacity:.7;}
+  .g-bertemu{--cg:var(--good);} .g-tidak{--cg:var(--warn);} .g-risk{--cg:var(--info);} .g-tdk{--cg:var(--bad);}
   .cms-zero{color:var(--ink-soft);font-weight:500;}
   .cms-hit{font:inherit;font-weight:800;color:var(--link);background:none;border:none;padding:4px 8px;border-radius:8px;cursor:pointer;min-width:30px;}
   .cms-hit:hover{background:color-mix(in srgb,var(--navy-lighter) 16%,transparent);} .cms-hit:active{transform:scale(.94);}
@@ -4073,27 +4082,40 @@ function renderCms(){
   if(M.kolomHilang && M.kolomHilang.length) notes.push('<div class="cms-note bad">'+ic('alert')+'<span><b>Kolom belum ditemukan:</b> '+esc(M.kolomHilang.join('; '))+'. Angka di bawah bisa belum lengkap.</span></div>');
   (M.peringatan || []).forEach(p => notes.push('<div class="cms-note warn">'+ic('alert')+'<span>'+esc(p)+'</span></div>'));
   const status = `<div class="cms-meta"><span><b>${M.masterBaris||0}</b> kontrak MASTER</span><span><b>${M.prodKontrak||0}</b> kontrak di PRODUCTIVITY (${M.prodBaris||0} tugas)</span><span>Tgl tagihan terbaru <b>${esc(M.tglTagihanTerbaru||'-')}</b></span><span>OD dari <b>${esc(M.odSumber||'-')}</b></span><button class="btn" id="cmsRefresh">${ic('refresh')} Muat ulang</button></div>`;
+  const attr = (bal, co, c, label) => `data-b="${bal}" data-co="${esc(co)}" data-m="${c.m}" data-l="${esc(c.l)}" data-r="${esc(label)}"`;
   const hit = (bal, co, c, label, v) => v > 0
-    ? `<button type="button" class="cms-hit" data-b="${bal}" data-co="${esc(co)}" data-m="${c.m}" data-l="${esc(c.l)}" data-r="${esc(label)}" aria-label="${esc(label)} ${esc(c.l)}: ${v} kontrak. Lihat daftar">${v}</button>`
+    ? `<button type="button" class="cms-hit" ${attr(bal, co, c, label)} aria-label="${esc(label)} ${esc(c.l)}: ${v} kontrak. Lihat daftar">${v}</button>`
     : `<span class="cms-zero">0</span>`;
+  const bar = (title, n, d, cls, nBtn) => {
+    const w = d > 0 ? Math.max(0, Math.min(100, n / d * 100)) : 0;
+    return `<div class="cms-prog ${cls}"><div class="cms-pr"><span class="cms-pt">${esc(title)}</span><span class="cms-pv">${nBtn}<i> dari ${d}</i><em>${cmsPct(n, d)}</em></span></div><div class="cms-track"><div class="cms-fill" style="width:${w.toFixed(1)}%"></div></div></div>`;
+  };
+  const sect = (bal, co, label, title, cols, tail, cls) => {
+    const pills = cols.map(c => ({ c, v: get(bal, co, c.m) })).filter(x => x.v > 0)
+      .map(x => `<button type="button" class="cms-pill" ${attr(bal, co, x.c, label)} aria-label="${esc(label)} ${esc(x.c.l)}: ${x.v} kontrak. Lihat daftar"><span>${esc(x.c.l)}</span><b>${x.v}</b></button>`).join('');
+    return `<div class="cms-sect ${cls}"><div class="cms-sh"><span>${esc(title)}</span>${tail ? `<em>${tail}</em>` : ''}</div><div class="cms-pills">${pills || '<span class="cms-none">belum ada</span>'}</div></div>`;
+  };
   const card = (bal, co, label, isTotal) => {
-    const act = CMS_COLS[0].cols[0];
-    const tiles = []; const g1 = CMS_COLS[1].cols;
-    for(let i = 0; i < g1.length; i += 2){
-      const c = g1[i], pc = g1[i+1]; const v = get(bal, co, c.m);
-      tiles.push(`<div class="cms-tile"><div class="cms-tl">${esc(c.l)}</div><div class="cms-tv">${hit(bal, co, c, label, v)}</div><div class="cms-tp">${cmsPct(get(bal, co, pc.pct[0]), get(bal, co, pc.pct[1]))}</div></div>`);
-    }
-    const groups = CMS_COLS.slice(2).map((g, i) => {
-      const gi = i + 2; const pc = g.cols.find(c => c.pct); const cs = g.cols.filter(c => !c.pct);
-      const chips = cs.map(c => { const v = get(bal, co, c.m); return `<div class="cms-chip${v ? '' : ' z'}"><div class="cms-cl">${esc(c.l)}</div><div class="cms-cv">${hit(bal, co, c, label, v)}</div></div>`; }).join('');
-      const ptxt = pc ? `<span class="cms-gp">${cmsPct(get(bal, co, pc.pct[0]), get(bal, co, pc.pct[1]))}</span>` : '';
-      return `<div class="cms-grp ${CMS_CLS[gi]}"><div class="cms-gh"><span>${esc(g.g)}</span>${ptxt}</div><div class="cms-chips">${chips}</div></div>`;
-    }).join('');
-    return `<article class="cms-co-card${isTotal ? ' tot' : ''}"><header class="cms-ch"><div class="cms-cn">${esc(label)}</div><div class="cms-act"><span class="cms-al">Actual</span><b>${hit(bal, co, act, label, get(bal, co, 'actual'))}</b></div></header><div class="cms-tiles">${tiles.join('')}</div>${groups}</article>`;
+    const G = CMS_COLS; const act = get(bal, co, 'actual'), ter = get(bal, co, 'terbentuk'), dik = get(bal, co, 'dikerjakan'), tdk = get(bal, co, 'tdk');
+    const cm = (i) => G[i].cols.filter(c => !c.pct);
+    const pctOf = (i) => { const pc = G[i].cols.find(c => c.pct); return pc ? cmsPct(get(bal, co, pc.pct[0]), get(bal, co, pc.pct[1])) : ''; };
+    const terC = G[1].cols[0], dikC = G[1].cols[4], tdkC = G[1].cols[2];
+    const tdkBtn = tdk > 0 ? `<button type="button" class="cms-warnbtn cms-hit" ${attr(bal, co, tdkC, label)}>${tdk} kontrak belum dikerjakan</button>` : `<span class="cms-okmsg">Semua sudah dikerjakan</span>`;
+    const ttl = get(bal, co, 'ttl');
+    return `<article class="cms-co-card${isTotal ? ' tot' : ''}">
+      <header class="cms-ch"><div><div class="cms-cn">${esc(label)}</div><div class="cms-sub">${isTotal ? 'Gabungan semua CO' : 'Kontrak di bucket ini'}</div></div><div class="cms-act"><b>${hit(bal, co, G[0].cols[0], label, act)}</b><span>kontrak actual</span></div></header>
+      <div class="cms-progs">${bar('DKH terbentuk', ter, act, 'p-ter', hit(bal, co, terC, label, ter))}${bar('Sudah dikerjakan', dik, ter, 'p-dik', hit(bal, co, dikC, label, dik))}</div>
+      <div class="cms-flag">${tdkBtn}</div>
+      <div class="cms-more">
+        ${sect(bal, co, label, 'Bertemu', cm(2), pctOf(2), 'g-bertemu')}
+        ${sect(bal, co, label, 'Tidak bertemu', cm(3), pctOf(3), 'g-tidak')}
+        ${sect(bal, co, label, 'Risk code', cm(4), '', 'g-risk')}
+        ${sect(bal, co, label, 'Tidak terbentuk DKH', cm(5).filter(c => c.m !== 'ttl'), ttl > 0 ? ttl + ' kontrak · ' + pctOf(5) : '', 'g-tdk')}
+      </div></article>`;
   };
   const fe = D.urutan.fe.filter(c => D.items.some(it => it.co === c));
   const tbl = (b) => {
-    const cards = b.id === 'b1' ? fe.map(c => card(b.id, c, nm(c), false)).join('') + card(b.id, '*', 'TOTAL', true) : card(b.id, '*', nm(D.urutan.mr), true);
+    const cards = b.id === 'b1' ? card(b.id, '*', 'TOTAL', true) + fe.map(c => card(b.id, c, nm(c), false)).join('') : card(b.id, '*', nm(D.urutan.mr), true);
     return `<section class="cms-sec"><div class="cms-title">${esc(b.judul)}</div><div class="cms-cards">${cards}</div></section>`;
   };
   wrap.innerHTML = notes.join('') + status + D.balances.map(tbl).join('') +
