@@ -366,7 +366,7 @@ function hitungTargetDaily(masterList, petaKA, configRows) {
     const batasBal = TD_BATAS_BALANCE[role] || 0;
     const pctBal = arTotal > 0 ? arBucket / arTotal * 100 : 0;
     const perluBal = Math.max(0, arBucket - arTotal * batasBal / 100);
-    const kandBal = masterList.filter(m => scopeM(m) && (role === 'FE' ? m['BUCKET UPDATE'] === 'P001_030' : balBuckets.includes(m['BUCKET UPDATE'])) && !tdSudahBayar(m));
+    const kandBal = masterList.filter(m => scopeM(m) && (role === 'FE' ? m['BUCKET UPDATE'] === 'P001_030' : balBuckets.includes(m['BUCKET UPDATE'])));
     let balance;
     if (role === 'FE') {
       const porsi = bebanFETotal > 0 ? bebanFE[namaCO] / bebanFETotal : 0;
@@ -376,6 +376,8 @@ function hitungTargetDaily(masterList, petaKA, configRows) {
         keterangan: 'Target porsi NOOD cabang ' + TD_TARGET_NOOD + '% dari total AR. Kekurangannya dibagi ke FE sesuai beban awal (porsi ' + Math.round(porsi * 1000) / 10 + '%)',
         nilaiAmt: noodCab, nilaiPct: arCab > 0 ? noodCab / arCab * 100 : 0, batasPct: TD_TARGET_NOOD, bolehAmt: arCab * TD_TARGET_NOOD / 100,
         porsiPct: porsi * 100, bebanAmt: bebanFE[namaCO], gapCabang: gapNood, perluAmt: perlu, perHari: perlu / w.sisaHari,
+        // Balance NOOD = seluruh kontrak KA HARIAN dengan BUCKET UPDATE NOOD. Milik FE ini (NAMA COLLECTOR) dipakai untuk progres: kenaikannya dari baseline pagi.
+        nilaiFE: Object.values(petaKA).reduce((t, ka) => t + (nonFleet(ka) && ka['NAMA COLLECTOR'] === namaCO && ka['BUCKET UPDATE'] === 'NOOD' ? (typeof ka['SISA PIUTANG'] === 'number' ? ka['SISA PIUTANG'] : 0) : 0), 0),
         ...tdSusunKontrak(kandBal, perlu / w.sisaHari, D, w.akhirBulan)
       };
     } else {
@@ -406,16 +408,8 @@ function hitungTargetDaily(masterList, petaKA, configRows) {
       perluAmt: perluFlow, perHari: perluFlow / w.sisaHari, jumlahBelumBayar: kandFlow.length,
       ...tdSusunKontrak(kandFlow, perluFlow / w.sisaHari, D, w.akhirBulan)
     };
-    // Kontrak yang BAYAR hari ini menurut KA HARIAN (kolom REALISASI > 0, sama dengan command /realisasi di Telegram).
-    // Dipakai untuk progres supaya tetap akurat walau baseline pagi terlambat dibekukan.
-    // Status SEBELUM bayar dibaca dari BUCKET POTENSIAL (bucket kalau tidak bayar): kontrak yang bayar hari ini kembali ke bucket awal di BUCKET UPDATE,
-    // jadi hanya BUCKET POTENSIAL yang menunjukkan apakah kontrak itu memang termasuk yang dikejar. Bayar tepat waktu sebelum jatuh tempo (potensial = awal) tidak dihitung.
-    const bayarHariIni = m => scopeM(m) && petaKA[m['NO KONTRAK']] && Number(petaKA[m['NO KONTRAK']]['REALISASI']) > 0;
-    const bayarKe = m => [m['NO KONTRAK'], sipokOf(m), m['NAMA KONSUMEN'] || '-'];
-    // Balance: kontrak yang sebelum bayar berada di bucket balance PIC (FE: 1-30 -> bayar -> NOOD naik)
-    balance.bayarHariIni = masterList.filter(m => bayarHariIni(m) && (role === 'FE' ? ['P001_030'] : balBuckets).includes(m['BUCKET POTENSIAL'])).map(bayarKe);
-    // Flow: kontrak bucket asal yang sebelum bayar berpotensi flow (potensial > awal)
-    flow.bayarHariIni = masterList.filter(m => bayarHariIni(m) && m['BUCKET AWAL'] === bAsal && bucketIndex(m['BUCKET POTENSIAL']) > bucketIndex(m['BUCKET AWAL'])).map(bayarKe);
+    // Progres hanya memakai BUCKET UPDATE (bucket actual = bucket update): kontrak flow yang BUCKET UPDATE-nya sudah kembali ke bucket awal = sudah realisasi,
+    // yang masih di bucket lebih tinggi (mis. 1-30) berarti belum realisasi dan masih menjadi flow. Tidak memakai REALISASI/POTENSIAL.
     return { namaCO, role, poin: [balance, flow] };
   });
   return { tanggal: w, pic: hasil };

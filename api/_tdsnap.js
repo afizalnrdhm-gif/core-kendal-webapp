@@ -45,7 +45,7 @@ function barisBaseline(td, kunciTgl) {
     let kontrak = (q.semuaKandidat || []).map(x => [x[0], Math.round(x[1]), String(x[2] || '').slice(0, 40)]);
     let js = JSON.stringify(kontrak);
     while (js.length > MAKS_CELL && kontrak.length) { kontrak = kontrak.slice(0, Math.floor(kontrak.length * 0.9)); js = JSON.stringify(kontrak); }
-    rows.push([kunciTgl, safe(p.namaCO), q.kunci, Math.round(q.perHari || 0), Math.round(q.nilaiAmt || 0), js, waktu]);
+    rows.push([kunciTgl, safe(p.namaCO), q.kunci, Math.round(q.perHari || 0), Math.round(q.nilaiFE !== undefined ? q.nilaiFE : (q.nilaiAmt || 0)), js, waktu]);
   }));
   return rows;
 }
@@ -71,13 +71,10 @@ function terapkanProgres(td, base) {
     const b = base[p.namaCO + '|' + q.kunci];
     const sekarang = new Set((q.semuaKandidat || []).map(x => x[0]));
     if (b) {
-      // Bayar = kontrak baseline yang sudah keluar dari daftar belum bayar, DITAMBAH kontrak dengan REALISASI > 0 hari ini (KA HARIAN),
-      // digabung per no kontrak supaya tidak dobel. REALISASI membuat progres tetap benar walau baseline terlambat dibekukan.
-      const gab = new Map();
-      (b.kontrak || []).filter(x => !sekarang.has(x[0])).forEach(x => gab.set(x[0], x));
-      (q.bayarHariIni || []).forEach(x => { if (!gab.has(x[0])) gab.set(x[0], x); });
-      const bayar = Array.from(gab.values());
-      const tercapai = bayar.reduce((t, x) => t + (Number(x[1]) || 0), 0);
+      // Hanya BUCKET UPDATE: kontrak baseline yang sekarang sudah tidak ada di daftar (BUCKET UPDATE kembali ke bucket awal) = sudah realisasi.
+      const bayar = (b.kontrak || []).filter(x => !sekarang.has(x[0]));
+      // Balance NOOD FE: tercapai = kenaikan NOOD milik FE itu (KA HARIAN, BUCKET UPDATE NOOD) dari baseline pagi; daftar kontrak di atas hanya informasi.
+      const tercapai = q.nilaiFE !== undefined ? Math.max(0, q.nilaiFE - b.baseNilai) : bayar.reduce((t, x) => t + (Number(x[1]) || 0), 0);
       q.progres = {
         targetHari: b.targetHari, baseNilai: b.baseNilai, tercapai,
         persen: b.targetHari > 0 ? tercapai / b.targetHari * 100 : (tercapai > 0 ? 100 : 0),
@@ -85,7 +82,7 @@ function terapkanProgres(td, base) {
         jumlahBayar: bayar.length, kontrakBayar: bayar.slice().sort((a, c) => c[1] - a[1]).slice(0, 15).map(x => ({ noKontrak: x[0], sipok: x[1], nama: x[2] || '-' }))
       };
     }
-    delete q.semuaKandidat; delete q.bayarHariIni;
+    delete q.semuaKandidat; delete q.nilaiFE;
   }));
   return td;
 }
