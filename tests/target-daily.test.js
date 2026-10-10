@@ -86,24 +86,31 @@ test('streak tidak target: hitung hari berturut-turut dari yang terbaru', () => 
   assert.deepEqual(kemarin({ tahun: 2026, bulan: 11, hari: 1 }), { tahun: 2026, bulan: 10, hari: 31 });
 });
 
-test('progres: kontrak REALISASI > 0 ikut dihitung walau tidak ada di baseline, tanpa dobel', () => {
+test('Flow: masih BUCKET UPDATE 1-30 = belum realisasi; kembali NOOD = realisasi (progres dari baseline)', () => {
   const { terapkanProgres } = require('../api/_tdsnap');
-  const td = { pic: [{ namaCO: 'A', poin: [{ kunci: 'flow', perHari: 100, semuaKandidat: [['K3', 30, 'Tiga']], bayarHariIni: [['K1', 60, 'Satu'], ['K9', 20, 'Sembilan']] }] }] };
-  const base = { 'A|flow': { targetHari: 100, baseNilai: 0, kontrak: [['K1', 60, 'Satu'], ['K3', 30, 'Tiga']] } };
+  const mk = (no, upd) => ({ 'NO KONTRAK': no, 'NAMA KONSUMEN': no, 'CO ALL': 'FE1', 'FLEET/NON FLEET': 'NON FLEET', 'BUCKET AWAL': 'NOOD', 'BUCKET UPDATE': upd, SIPOK: 100 });
+  const ka = (no, upd) => ({ 'NO KONTRAK': no, 'BUCKET UPDATE': upd, 'SISA PIUTANG': 100, 'NAMA COLLECTOR': 'FE1' });
+  const cfg = [{ NAMA_CO: 'FE1', ROLE: 'FE', BUCKET_PENYELESAIAN: 'P001_030', BUCKET_ASAL_FLOW: 'NOOD', BUCKET_BALANCE: 'P001_030' }];
+  // pagi: A, B, C masih 1-30. Siang: A dan B sudah kembali NOOD, C masih 1-30
+  const td = hitungTargetDaily([mk('A', 'NOOD'), mk('B', 'NOOD'), mk('C', 'P001_030')], { A: ka('A', 'NOOD'), B: ka('B', 'NOOD'), C: ka('C', 'P001_030') }, cfg);
+  const base = { 'FE1|flow': { targetHari: 200, baseNilai: 300, kontrak: [['A', 100, 'A'], ['B', 100, 'B'], ['C', 100, 'C']] } };
   terapkanProgres(td, base);
-  const q = td.pic[0].poin[0];
-  assert.equal(q.progres.tercapai, 80); // K1 (60, tidak dobel) + K9 (20)
-  assert.equal(q.progres.jumlahBayar, 2);
-  assert.equal(q.bayarHariIni, undefined);
+  const flow = td.pic[0].poin[1];
+  assert.equal(flow.progres.tercapai, 200);
+  assert.equal(flow.progres.jumlahBayar, 2);
+  assert.equal(flow.progres.tuntas, true);
 });
 
-test('kontrak bayar hari ini dikenali dari BUCKET POTENSIAL; bayar tepat waktu tidak dihitung', () => {
-  const mk = (no, pot, sipok) => ({ 'NO KONTRAK': no, 'NAMA KONSUMEN': no, 'CO ALL': 'FE1', 'FLEET/NON FLEET': 'NON FLEET', 'BUCKET AWAL': 'NOOD', 'BUCKET POTENSIAL': pot, 'BUCKET UPDATE': 'NOOD', 'STATUS BAYAR': 'BAYAR', SIPOK: sipok });
-  const master = [mk('A', 'P001_030', 100), mk('B', 'NOOD', 50)];
-  const peta = { A: { 'NO KONTRAK': 'A', REALISASI: 1, 'BUCKET UPDATE': 'NOOD', 'SISA PIUTANG': 100, 'NAMA COLLECTOR': 'FE1' }, B: { 'NO KONTRAK': 'B', REALISASI: 1, 'BUCKET UPDATE': 'NOOD', 'SISA PIUTANG': 50, 'NAMA COLLECTOR': 'FE1' } };
+test('Balance NOOD FE: tercapai = kenaikan NOOD milik FE dari baseline (KA HARIAN, BUCKET UPDATE NOOD)', () => {
+  const { terapkanProgres } = require('../api/_tdsnap');
+  const mk = no => ({ 'NO KONTRAK': no, 'NAMA KONSUMEN': no, 'CO ALL': 'FE1', 'FLEET/NON FLEET': 'NON FLEET', 'BUCKET AWAL': 'NOOD', 'BUCKET UPDATE': 'NOOD', SIPOK: 100 });
+  const ka = (no, upd, sisa) => ({ 'NO KONTRAK': no, 'BUCKET UPDATE': upd, 'SISA PIUTANG': sisa, 'NAMA COLLECTOR': 'FE1' });
   const cfg = [{ NAMA_CO: 'FE1', ROLE: 'FE', BUCKET_PENYELESAIAN: 'P001_030', BUCKET_ASAL_FLOW: 'NOOD', BUCKET_BALANCE: 'P001_030' }];
-  const r = hitungTargetDaily(master, peta, cfg);
-  const [bal, flow] = r.pic[0].poin;
-  assert.deepEqual(bal.bayarHariIni.map(x => x[0]), ['A']);
-  assert.deepEqual(flow.bayarHariIni.map(x => x[0]), ['A']);
+  const td = hitungTargetDaily([mk('A'), mk('B')], { A: ka('A', 'NOOD', 100), B: ka('B', 'NOOD', 150) }, cfg);
+  assert.equal(td.pic[0].poin[0].nilaiFE, 250);
+  const base = { 'FE1|balance': { targetHari: 500, baseNilai: 100, kontrak: [] }, 'FE1|flow': { targetHari: 0, baseNilai: 0, kontrak: [] } };
+  terapkanProgres(td, base);
+  assert.equal(td.pic[0].poin[0].progres.tercapai, 150);
+  assert.equal(td.pic[0].poin[0].progres.persen, 30);
+  assert.equal(td.pic[0].poin[0].nilaiFE, undefined);
 });
