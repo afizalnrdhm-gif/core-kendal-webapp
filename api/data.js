@@ -1,65 +1,8 @@
-const crypto = require('crypto');
+const { getAccessToken, verifyIdToken, SCOPE_DRIVE_META } = require('./_auth');
+const { cleanCell } = require('./_sheet');
 
 const BUCKET_ORDER = ['NOOD','P001_030','P031_060','P061_090','P091_120','P121_150','P151_180','P181_210','P211_240'];
 function bucketIdx(b) { return BUCKET_ORDER.indexOf(b); }
-
-function base64url(input) {
-  return Buffer.from(input)
-    .toString('base64')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/, '');
-}
-
-// Tukar kredensial Service Account jadi access token, tanpa library eksternal.
-async function getAccessToken() {
-  const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-  const privateKey = (process.env.GOOGLE_PRIVATE_KEY || '').replace(/\\n/g, '\n');
-
-  const header = { alg: 'RS256', typ: 'JWT' };
-  const now = Math.floor(Date.now() / 1000);
-  const claimSet = {
-    iss: email,
-    scope: 'https://www.googleapis.com/auth/spreadsheets',
-    aud: 'https://oauth2.googleapis.com/token',
-    iat: now,
-    exp: now + 3600
-  };
-
-  const unsigned = base64url(JSON.stringify(header)) + '.' + base64url(JSON.stringify(claimSet));
-  const signer = crypto.createSign('RSA-SHA256');
-  signer.update(unsigned);
-  signer.end();
-  const signature = signer.sign(privateKey)
-    .toString('base64')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/, '');
-
-  const jwt = unsigned + '.' + signature;
-
-  const res = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: 'grant_type=' + encodeURIComponent('urn:ietf:params:oauth:grant-type:jwt-bearer') + '&assertion=' + jwt
-  });
-  const data = await res.json();
-  if (!data.access_token) throw new Error('Gagal ambil access token service account: ' + JSON.stringify(data));
-  return data.access_token;
-}
-
-// Verifikasi ID token yang dikirim dari tombol "Sign in with Google" di browser.
-async function verifyIdToken(idToken) {
-  const res = await fetch('https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(idToken));
-  const data = await res.json();
-  if (!data.email || data.aud !== process.env.GOOGLE_CLIENT_ID) {
-    throw new Error('Token login tidak valid.');
-  }
-  if (data.email_verified !== 'true' && data.email_verified !== true) {
-    throw new Error('Email belum terverifikasi Google.');
-  }
-  return data.email.toLowerCase();
-}
 
 function serialToDateStr(serial) {
   if (typeof serial !== 'number' || serial < 1000) return '';
@@ -105,7 +48,7 @@ function parseSheetValues(values, headerRowIndex) {
     const rec = {};
     keepIdx.forEach((idx, j) => {
       let v = raw[idx];
-      if (typeof v === 'string') v = v.trim();
+      v = cleanCell(finalHeader[j], v);
       const colName = finalHeader[j];
       if (DATE_FIELDS.has(colName) && typeof v === 'number') {
         v = serialToDateStr(v);
@@ -135,6 +78,16 @@ module.exports = async (req, res) => {
       return;
     }
     const email = await verifyIdToken(idToken);
+
+    // ?check=1 -> hanya cek kapan Sheet terakhir diubah (dulu endpoint check-update, digabung supaya slot function lega)
+    if (req.query && req.query.check) {
+      const driveToken = await getAccessToken(SCOPE_DRIVE_META);
+      const driveRes = await fetch(`https://www.googleapis.com/drive/v3/files/${process.env.GOOGLE_SHEET_ID}?fields=modifiedTime`, { headers: { Authorization: 'Bearer ' + driveToken } });
+      const driveJson = await driveRes.json();
+      if (!driveJson.modifiedTime) { console.error('check-update gagal:', JSON.stringify(driveJson)); res.status(500).json({ error: 'Gagal ambil info update.' }); return; }
+      res.status(200).json({ modifiedTime: driveJson.modifiedTime });
+      return;
+    }
 
     const accessToken = await getAccessToken();
     const sheetId = process.env.GOOGLE_SHEET_ID;
@@ -263,6 +216,6 @@ module.exports = async (req, res) => {
     });
   } catch (err) {
     console.error('Error data:', err && err.message);
-    res.status(500).json({ error: publicError(err) });
+    res.status(err.status || 500).json({ error: publicError(err) });
   }
 };

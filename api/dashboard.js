@@ -1,44 +1,5 @@
-const crypto = require('crypto');
-
-function base64url(input) {
-  return Buffer.from(input).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-
-async function getAccessToken() {
-  const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-  const privateKey = (process.env.GOOGLE_PRIVATE_KEY || '').replace(/\\n/g, '\n');
-  const header = { alg: 'RS256', typ: 'JWT' };
-  const now = Math.floor(Date.now() / 1000);
-  const claimSet = {
-    iss: email,
-    scope: 'https://www.googleapis.com/auth/spreadsheets',
-    aud: 'https://oauth2.googleapis.com/token',
-    iat: now,
-    exp: now + 3600
-  };
-  const unsigned = base64url(JSON.stringify(header)) + '.' + base64url(JSON.stringify(claimSet));
-  const signer = crypto.createSign('RSA-SHA256');
-  signer.update(unsigned);
-  signer.end();
-  const signature = signer.sign(privateKey).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-  const jwt = unsigned + '.' + signature;
-  const res = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: 'grant_type=' + encodeURIComponent('urn:ietf:params:oauth:grant-type:jwt-bearer') + '&assertion=' + jwt
-  });
-  const data = await res.json();
-  if (!data.access_token) throw new Error('Gagal ambil access token: ' + JSON.stringify(data));
-  return data.access_token;
-}
-
-async function verifyIdToken(idToken) {
-  const res = await fetch('https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(idToken));
-  const data = await res.json();
-  if (!data.email || data.aud !== process.env.GOOGLE_CLIENT_ID) throw new Error('Token login tidak valid.');
-  if (data.email_verified !== 'true' && data.email_verified !== true) throw new Error('Email belum terverifikasi Google.');
-  return data.email.toLowerCase();
-}
+const { getAccessToken, sendError, verifyIdToken } = require('./_auth');
+const { cleanCell } = require('./_sheet');
 
 function parseSheetValues(values, headerRowIndex) {
   headerRowIndex = headerRowIndex || 0;
@@ -51,7 +12,7 @@ function parseSheetValues(values, headerRowIndex) {
   for (let r = headerRowIndex + 1; r < values.length; r++) {
     const raw = values[r] || [];
     const rec = {};
-    keepIdx.forEach((idx, j) => { let v = raw[idx]; if (typeof v === 'string') v = v.trim(); rec[finalHeader[j]] = v === undefined ? '' : v; });
+    keepIdx.forEach((idx, j) => { let v = raw[idx]; v = cleanCell(finalHeader[j], v); rec[finalHeader[j]] = v === undefined ? '' : v; });
     rows.push(rec);
   }
   return rows;
@@ -188,6 +149,6 @@ module.exports = async (req, res) => {
       generatedAt: new Date().toISOString()
     });
   } catch (err) {
-    res.status(500).json({ error: err.message || String(err) });
+    sendError(res, err);
   }
 };

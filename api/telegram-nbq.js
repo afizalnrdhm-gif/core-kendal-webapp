@@ -1,43 +1,13 @@
-const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const satori = require('satori').default;
 const sharp = require('sharp');
+const { SCOPE_SHEETS_RO, getAccessToken } = require('./_auth');
+const { cleanCell } = require('./_sheet');
 
 // ============================================================
 // AUTH KE GOOGLE SHEETS (sama pola dengan endpoint lain)
 // ============================================================
-function base64url(input) {
-  return Buffer.from(input).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-
-async function getAccessToken() {
-  const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-  const privateKey = (process.env.GOOGLE_PRIVATE_KEY || '').replace(/\\n/g, '\n');
-  const header = { alg: 'RS256', typ: 'JWT' };
-  const now = Math.floor(Date.now() / 1000);
-  const claimSet = {
-    iss: email,
-    scope: 'https://www.googleapis.com/auth/spreadsheets.readonly',
-    aud: 'https://oauth2.googleapis.com/token',
-    iat: now,
-    exp: now + 3600
-  };
-  const unsigned = base64url(JSON.stringify(header)) + '.' + base64url(JSON.stringify(claimSet));
-  const signer = crypto.createSign('RSA-SHA256');
-  signer.update(unsigned);
-  signer.end();
-  const signature = signer.sign(privateKey).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-  const jwt = unsigned + '.' + signature;
-  const res = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: 'grant_type=' + encodeURIComponent('urn:ietf:params:oauth:grant-type:jwt-bearer') + '&assertion=' + jwt
-  });
-  const data = await res.json();
-  if (!data.access_token) throw new Error('Gagal ambil access token: ' + JSON.stringify(data));
-  return data.access_token;
-}
 
 function parseSheetValues(values, headerRowIndex) {
   headerRowIndex = headerRowIndex || 0;
@@ -50,7 +20,7 @@ function parseSheetValues(values, headerRowIndex) {
   for (let r = headerRowIndex + 1; r < values.length; r++) {
     const raw = values[r] || [];
     const rec = {};
-    keepIdx.forEach((idx, j) => { let v = raw[idx]; if (typeof v === 'string') v = v.trim(); rec[finalHeader[j]] = v === undefined ? '' : v; });
+    keepIdx.forEach((idx, j) => { let v = raw[idx]; v = cleanCell(finalHeader[j], v); rec[finalHeader[j]] = v === undefined ? '' : v; });
     rows.push(rec);
   }
   return rows;
@@ -772,7 +742,7 @@ module.exports = async (req, res) => {
     }
 
     if (parsed.type === 'realisasi') {
-      const accessToken = await getAccessToken();
+      const accessToken = await getAccessToken(SCOPE_SHEETS_RO);
       const sheetId = process.env.GOOGLE_SHEET_ID;
       const [masterRes, kaRes] = await Promise.all([
         fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/MASTER?valueRenderOption=UNFORMATTED_VALUE`, {
@@ -833,7 +803,7 @@ module.exports = async (req, res) => {
     }
 
     if (parsed.type === 'dashboard') {
-      const accessToken = await getAccessToken();
+      const accessToken = await getAccessToken(SCOPE_SHEETS_RO);
       const sheetId = process.env.GOOGLE_SHEET_ID;
       const [masterRes, kaRes] = await Promise.all([
         fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/MASTER?valueRenderOption=UNFORMATTED_VALUE`, {
@@ -871,7 +841,7 @@ module.exports = async (req, res) => {
     }
 
     if (parsed.type === 'perform') {
-      const accessToken = await getAccessToken();
+      const accessToken = await getAccessToken(SCOPE_SHEETS_RO);
       const sheetId = process.env.GOOGLE_SHEET_ID;
       const [masterRes, kaRes, roleRes, logRes] = await Promise.all([
         fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/MASTER?valueRenderOption=UNFORMATTED_VALUE`, {
@@ -956,7 +926,7 @@ module.exports = async (req, res) => {
     // BUKAN follow-up tunggakan kayak /nbq default -- makanya gak dibatasin JATUH TEMPO, dan cuma
     // butuh MASTER, gak perlu KA HARIAN).
     if (parsed.type === 'bucket_stay') {
-      const accessToken = await getAccessToken();
+      const accessToken = await getAccessToken(SCOPE_SHEETS_RO);
       const sheetId = process.env.GOOGLE_SHEET_ID;
       const masterRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/MASTER?valueRenderOption=UNFORMATTED_VALUE`, {
         headers: { Authorization: 'Bearer ' + accessToken }
@@ -990,7 +960,7 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const accessToken = await getAccessToken();
+    const accessToken = await getAccessToken(SCOPE_SHEETS_RO);
     const sheetId = process.env.GOOGLE_SHEET_ID;
     const masterRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/MASTER?valueRenderOption=UNFORMATTED_VALUE`, {
       headers: { Authorization: 'Bearer ' + accessToken }

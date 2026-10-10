@@ -969,6 +969,50 @@
   .cms-drill-body td,.cms-drill-body th{display:table-cell !important;}
   .cms-drill-body td::before{content:none !important;}
   .cms-drill-body td{max-width:240px;overflow:hidden;text-overflow:ellipsis;}
+  /* =====================================================================
+     V5 — FINAL: kartu kontrak HP ringkas, label huruf biasa, penanda geser
+     ===================================================================== */
+  .bpill{white-space:nowrap;}
+  .bucket-flow{display:inline-flex;align-items:center;gap:6px;flex-wrap:nowrap;white-space:nowrap;}
+  @media (max-width: 900px){ .bucket-flow{flex-wrap:wrap;} }
+  .ins-insentif.nol{color:var(--ink-soft) !important;}
+  /* label: huruf biasa, tidak berjarak lebar (lebih santai dibaca) */
+  .panel-title,.grand-card .lbl,.rk-hero-card .lbl,.ins-section h2,.ins-total-label,.field-group h3,.edit-label,.proy-title,details.fold > summary,.panel-head .pk,.ms-panel-title{text-transform:none;letter-spacing:.01em;}
+  .panel-title{font-size:13.5px;}
+  /* tabel desktop: bayangan tipis di tepi kalau masih ada kolom di kanan/kiri */
+  @media (min-width: 901px){
+    .table-scroll{
+      background:
+        linear-gradient(to right, var(--surface) 30%, transparent) left center / 40px 100% no-repeat local,
+        linear-gradient(to left, var(--surface) 30%, transparent) right center / 40px 100% no-repeat local,
+        radial-gradient(farthest-side at 0 50%, rgba(10,30,50,.16), transparent) left center / 14px 100% no-repeat scroll,
+        radial-gradient(farthest-side at 100% 50%, rgba(10,30,50,.16), transparent) right center / 14px 100% no-repeat scroll,
+        var(--surface);
+    }
+    .table-scroll td,.table-scroll th{padding-left:10px;padding-right:10px;}
+  }
+  /* penanda geser untuk kartu yang bisa digeser ke samping di HP */
+  .swipe-dots{display:none;}
+  @media (max-width: 900px){
+    .swipe-dots{display:flex;justify-content:center;gap:6px;margin:-12px 0 18px;}
+    .swipe-dots i{width:6px;height:6px;border-radius:99px;background:var(--line-strong,var(--line));transition:width .25s ease,background .25s ease;}
+    .swipe-dots i.on{width:18px;background:var(--navy-lighter);}
+
+    /* kartu kontrak: nama + no kontrak, lalu pil bucket & status, lalu angka 3 kolom */
+    tbody tr{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 12px;padding:14px 14px 12px;border-radius:16px;}
+    tbody td{padding:0 !important;border:none !important;background:none !important;font-size:13px;gap:2px;min-width:0;overflow-wrap:anywhere;}
+    tbody td::before{font-size:11px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--ink-soft);font-family:'Plus Jakarta Sans',system-ui,sans-serif;}
+    tbody td:empty{display:none;}
+    tbody td[data-label="Nama"],tbody td[data-label="Nama Konsumen"]{grid-column:1 / -1;order:-6;font-size:15.5px;font-weight:800;padding:0 !important;display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:10px;}
+    tbody td[data-label="No Kontrak"]{grid-column:1 / -1;order:-5;margin-top:-8px;font-size:12px;color:var(--ink-soft);}
+    tbody td[data-label="No Kontrak"]::before{display:none;}
+    tbody td[data-label="Bucket"]{grid-column:span 2;order:-4;}
+    tbody td[data-label="Status"]{grid-column:auto;order:-4;justify-self:start;}
+    tbody td[data-label="Bucket"]::before,tbody td[data-label="Status"]::before{display:none;}
+    tbody td[data-label="Sisa Piutang"]{grid-column:auto;order:-3;font-weight:700;}
+    tbody td.num,tbody td.mono{font-family:var(--mono);font-size:12.5px;}
+    tbody tr.empty-row{display:block;padding:18px;}
+  }
 </style>
 </head>
 <body>
@@ -1052,7 +1096,7 @@
         </button>
         <button class="nav-item nav-hidden" data-view="dekscall" id="navDekscall">
           <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.34 1.9.63 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.29 1.85.5 2.81.63A2 2 0 0 1 22 16.92z"/></svg>
-          <span>Dekscall</span>
+          <span>Deskcall</span>
         </button>
         <button class="nav-item" data-view="simulasirapor" id="navSimulasiRapor">
           <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.1-2.8-2.8L7 14"/><circle cx="18.7" cy="8" r="1.2" fill="currentColor" stroke="none"/></svg>
@@ -1133,7 +1177,7 @@ const ICONS = {
 // Escape teks dari Sheet/server sebelum disisipkan ke HTML (cegah injeksi lewat nama, kronologis, dll).
 
 // ---------- Helper tabel: bagi halaman, ekspor CSV, status kosong, aksi cepat ----------
-const PAGE_STEP = 50;
+const PAGE_STEP = (window.matchMedia && window.matchMedia('(max-width: 900px)').matches) ? 20 : 50;
 const PAGE_STATE = {};
 let EXPORT_CTX = null;
 function rowWa(r){
@@ -1214,7 +1258,8 @@ const BUCKET_COLOR = {
 const CO_META = {
   'ACHMAD RAHUL HIDAYAT': {short:'Rahul', role:'Front End'},
   'MOHAMAD IZZA ULIL WAFA': {short:'Izza', role:'Front End'},
-  'SIGIT KURNIAWAN': {short:'Sigit', role:'Mid Range'}
+  'SIGIT KURNIAWAN': {short:'Sigit', role:'Mid Range'},
+  'REM': {short:'Remedial', role:'Penanganan remedial'}
 };
 const FIELD_GROUPS = [
   { title:'Identitas & Alamat', fields:['KELURAHAN','KECAMATAN','ALAMAT','KONTAK'] },
@@ -1232,7 +1277,7 @@ let USER_EMAIL = '';
 let ID_TOKEN = null;
 let state = { quick:'', proy:'', search:'', co:'ALL', bucket:'ALL', kriteria:'ALL', tipe:'ALL', kecamatan:'ALL', ever:'ALL', janjiList:[], sortKey:'JATUH TEMPO', sortDir:1, tab:'own' };
 
-function fmtBucket(b){ return (b||'-').replace('_','-'); }
+function fmtBucket(b){ if(!b) return '-'; const m = String(b).match(/^P0*(\d+)[_-]0*(\d+)$/); return m ? m[1] + '-' + m[2] : String(b); }
 function fmtRupiah(n){ if(typeof n !== 'number') return '-'; return 'Rp' + Math.round(n).toLocaleString('id-ID'); }
 function fmtDate(s){ if(!s) return '-'; const d = new Date(s); if(isNaN(d)) return s; return d.toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'}); }
 function statusClass(s){ if(!s) return ''; const u=s.toUpperCase(); if(u.includes('LUNAS')) return 'status-lunas'; if(u.includes('SUDAH')) return 'status-sudah'; return 'status-belum'; }
@@ -1284,7 +1329,7 @@ function startUpdateWatcher(){
 }
 
 function checkForUpdate(isBaseline){
-  fetch('/api/check-update', { headers: { Authorization: 'Bearer ' + ID_TOKEN } })
+  fetch('/api/data?check=1', { headers: { Authorization: 'Bearer ' + ID_TOKEN } })
     .then(r => r.json().then(body => ({ ok: r.ok, body })))
     .then(({ok, body}) => {
       if(!ok || !body.modifiedTime) return;
@@ -1815,7 +1860,7 @@ function updateFilterBadge(){
 let VIEW_MODE = 'dashboard';
 let INSENTIF_DATA = null;
 
-const VIEW_TITLES = { ringkasan: 'Ringkasan Cabang', cms: 'CMS Produktivitas', dashboard: 'Beban Awal', nbq: 'NBQ', feever: 'FE Ever', tglbayar: 'Tgl Bayar Bulan Lalu', insentif: 'Insentif', dekscall: 'Dekscall', simulasi: 'Simulasi Penawaran', simulasirapor: 'Simulasi Rapor', panduan: 'Panduan KPI' };
+const VIEW_TITLES = { ringkasan: 'Ringkasan Cabang', cms: 'CMS Produktivitas', dashboard: 'Beban Awal', nbq: 'NBQ', feever: 'FE Ever', tglbayar: 'Tgl Bayar Bulan Lalu', insentif: 'Insentif', dekscall: 'Deskcall', simulasi: 'Simulasi Penawaran', simulasirapor: 'Simulasi Rapor', panduan: 'Panduan KPI' };
 
 function triggerFadeIn(){
   const el = document.getElementById('wrap');
@@ -1954,20 +1999,20 @@ function renderPanduan(){
   if(!PANDUAN_ROLE) PANDUAN_ROLE = panduanRoleDefault_();
   const role = PANDUAN_ROLE;
   const rp = n => n > 0 ? fmtRupiah(n) : '-';
-  let html = `<div class="view-toggle-note" onclick="switchView('dashboard')">← Kembali ke Dashboard</div>`;
+  let html = '';
   html += `<div class="rk-header"><h1>Panduan KPI &amp; Insentif</h1></div>`;
   html += `<div class="pg-card"><p>Halaman ini menjelaskan <b>cara baca rapor</b>, <b>target KPI per metrik</b>, dan <b>cara hitung insentif</b>. Angkanya sama dengan yang dipakai sistem untuk menghitung Achievement dan Insentif. Pilih role di bawah untuk melihat tabel poinnya.</p></div>`;
   html += `<div class="pill-toggle" style="margin-bottom:14px;">${['FE','MR','BCH'].map(r => `<button class="${r===role?'active':''}" onclick="PANDUAN_ROLE='${r}';renderPanduan()">${r}</button>`).join('')}</div>`;
 
   // 1. Rapor
   html += `<div class="pg-card"><h3>1. Rapor harian — ${PANDUAN_ROLE_NAMA[role]}</h3>
-    <p>Nilai rapor = jumlah poin dari <b>3 metrik</b> (maksimal <b>5.00</b>). Semua metrik ini <b>makin kecil makin bagus</b>.</p>`;
+    <p>Nilai rapor = jumlah poin dari <b>3 metrik</b> (maksimal <b>5,00</b>). Semua metrik ini <b>makin kecil makin bagus</b>.</p>`;
   PANDUAN_TIER[role].forEach(m => {
     const info = PANDUAN_INFO[m.key];
-    html += `<div class="pg-metric" id="pg-${m.key}"><div class="pg-title">${esc(m.nama)} <span style="font-weight:500;color:var(--ink-soft);">· maks ${m.maks.toFixed(2)} poin</span></div>
+    html += `<div class="pg-metric" id="pg-${m.key}"><div class="pg-title">${esc(m.nama)} <span style="font-weight:500;color:var(--ink-soft);">· maks ${fmtDec(m.maks,2)} poin</span></div>
       <p style="margin-top:4px;">${info ? info.isi : ''}</p>
       <div class="pg-scroll"><table class="pg-table"><thead><tr><th>Hasil</th><th class="r">Poin</th></tr></thead><tbody>
-      ${m.tiers.map(t => `<tr><td>${t[0]}</td><td class="r">${t[1].toFixed(2)}</td></tr>`).join('')}
+      ${m.tiers.map(t => `<tr><td>${String(t[0]).replace(/(\d)\.(\d)/g,'$1,$2')}</td><td class="r">${fmtDec(t[1],2)}</td></tr>`).join('')}
       </tbody></table></div></div>`;
   });
   html += `</div>`;
@@ -2015,7 +2060,8 @@ function renderPanduan(){
   }
 }
 
-function fmtPct(n){ return (typeof n==='number' ? n.toFixed(2) : '0.00') + '%'; }
+function fmtDec(n,d){ return (Number(n)||0).toFixed(d).replace('.', ','); }
+function fmtPct(n){ return (typeof n==='number' ? fmtDec(n,2) : '0,00') + '%'; }
 function katClass(k){ return 'kat-' + (k||'').replace(/\s+/g,'_'); }
 
 function loadInsentif(){
@@ -2038,8 +2084,8 @@ function achievementCard(h, extraLabel, extraKey){
       <div><div class="iname">${esc(h.namaCO)}</div><div class="irole">${esc(h.role)}</div></div>
       <span class="kategori-pill ${katClass(h.kategori)}">${h.kategori}</span>
     </div>
-    <div class="ins-nilai">${h.totalNilai.toFixed(2)} <span style="font-size:12px;color:var(--ink-soft);font-weight:500;">/ 5.00</span></div>
-    <div class="ins-insentif">${fmtRupiah(h.insentif)}</div>
+    <div class="ins-nilai">${fmtDec(h.totalNilai,2)} <span style="font-size:12px;color:var(--ink-soft);font-weight:500;">/ 5,00</span></div>
+    <div class="ins-insentif${h.insentif ? '' : ' nol'}">${fmtRupiah(h.insentif)}</div>
     <div class="ins-metric"><span class="mlabel">Balance${infoTip_('balance')}</span><span class="mval">${fmtPct(h.balancePct)}</span></div>
     <div class="ins-metric"><span class="mlabel">Flow Ever (${h.flowEverEscaped}/${h.totalAwal})${infoTip_('flowever')}</span><span class="mval">${fmtPct(h.flowEverPct)}</span></div>
     <div class="ins-metric"><span class="mlabel">${extraLabel}${infoTipByLabel_(extraLabel)}</span><span class="mval">${fmtPct(h[extraKey])}</span></div>
@@ -2048,12 +2094,12 @@ function achievementCard(h, extraLabel, extraKey){
 
 function penyelesaianCard(p){
   const gapHtml = p.gapPct !== null
-    ? `<div class="ins-gap">${ic('target')}Butuh naik <b>${p.gapPct.toFixed(2)}%</b> lagi ke tier berikutnya ${infoTip_('penyelesaian')}<br>(± <b>${fmtRupiah(p.gapRupiah)}</b> SIPOK yang perlu diselesaikan)</div>`
+    ? `<div class="ins-gap">${ic('target')}Butuh naik <b>${fmtDec(p.gapPct,2)}%</b> lagi ke tier berikutnya ${infoTip_('penyelesaian')}<br>(± <b>${fmtRupiah(p.gapRupiah)}</b> SIPOK yang perlu diselesaikan)</div>`
     : `<div class="ins-gap">${ic('trophy')}Sudah di tier tertinggi minggu ini</div>`;
   const rekomHtml = p.rekomendasi && p.rekomendasi.length
     ? `<div class="ins-rekom">
         <div style="font-size:11px;text-transform:uppercase;color:var(--ink-soft);margin-bottom:4px;">Rekomendasi dikejar (SIPOK terbesar)</div>
-        ${p.rekomendasi.map(r => `<div class="ins-rekom-item"><span class="rname">${esc(r.namaKonsumen)}</span><span class="rval">${fmtRupiah(r.sipok)} (+${r.pengaruhPct.toFixed(2)}%)</span></div>`).join('')}
+        ${p.rekomendasi.map(r => `<div class="ins-rekom-item"><span class="rname">${esc(r.namaKonsumen)}</span><span class="rval">${fmtRupiah(r.sipok)} (+${fmtDec(r.pengaruhPct,2)}%)</span></div>`).join('')}
       </div>` : '';
   return `
   <div class="ins-card">
@@ -2061,7 +2107,7 @@ function penyelesaianCard(p){
       <div><div class="iname">${esc(p.namaCO)}</div><div class="irole">${esc(p.role)} · Minggu ${p.minggu}</div></div>
     </div>
     <div class="ins-nilai">${fmtPct(p.pct)}</div>
-    <div class="ins-insentif">${fmtRupiah(p.nilai)}</div>
+    <div class="ins-insentif${p.nilai ? '' : ' nol'}">${fmtRupiah(p.nilai)}</div>
     ${gapHtml}
     ${rekomHtml}
   </div>`;
@@ -2083,7 +2129,7 @@ function totalInsentifCard(t){
 function renderInsentifView(){
   const d = INSENTIF_DATA;
   if(!d) return;
-  let html = `<div class="view-toggle-note" onclick="switchView('dashboard')">← Kembali ke Dashboard</div>`;
+  let html = '';
 
   if(d.isAdmin){
     html += `<div class="ins-section"><h2>Achievement Harian — Front End (FE)</h2><div class="ins-row">${d.achievement.FE.map(h=>achievementCard(h,'Flow No OD','flowNoODPct')).join('')}</div></div>`;
@@ -2168,7 +2214,7 @@ function simMetricLabel_(role){
 // jelas berapa kontribusi poin dari tiap metric ke total nilai, bukan cuma persentase mentah yang
 // susah dibayangin lagi dekat/jauhnya ke ambang tier berikutnya.
 function simMetricRow_(label, pct, poin, highlight){
-  return `<div class="ins-metric"><span class="mlabel">${label}${infoTipByLabel_(label)}</span><span class="mval">${fmtPct(pct)} <span class="ins-poin" style="opacity:.65;font-weight:500;">(${(typeof poin==='number'?poin.toFixed(2):'-')} poin)</span></span></div>`;
+  return `<div class="ins-metric"><span class="mlabel">${label}${infoTipByLabel_(label)}</span><span class="mval">${fmtPct(pct)} <span class="ins-poin" style="opacity:.65;font-weight:500;">(${(typeof poin==='number'?fmtDec(poin,2):'-')} poin)</span></span></div>`;
 }
 
 function simResultCard_(title, h, highlight){
@@ -2179,8 +2225,8 @@ function simResultCard_(title, h, highlight){
       <div><div class="iname">${title}</div><div class="irole">${esc(h.role)}</div></div>
       <span class="kategori-pill ${katClass(h.kategori)}">${h.kategori}</span>
     </div>
-    <div class="ins-nilai">${h.totalNilai.toFixed(2)} <span style="font-size:12px;color:${highlight?'#BFD2E0':'var(--ink-soft)'};font-weight:500;">/ 5.00</span></div>
-    <div class="ins-insentif">${fmtRupiah(h.insentif)}</div>
+    <div class="ins-nilai">${fmtDec(h.totalNilai,2)} <span style="font-size:12px;color:${highlight?'#BFD2E0':'var(--ink-soft)'};font-weight:500;">/ 5,00</span></div>
+    <div class="ins-insentif${h.insentif ? '' : ' nol'}">${fmtRupiah(h.insentif)}</div>
     ${simMetricRow_('Balance', h.balancePct, h.nilaiBalance, highlight)}
     ${simMetricRow_('Flow Ever', h.flowEverPct, h.nilaiFlowEver, highlight)}
     ${simMetricRow_(extra[0], h[extra[1]], h[extra[2]], highlight)}
@@ -2197,7 +2243,7 @@ function getSimulasiKontrakFiltered_(){
 function renderSimulasiRapor(){
   const d = SIMULASI_RAPOR_DATA;
   if(!d) return;
-  let html = `<div class="view-toggle-note" onclick="switchView('dashboard')">← Kembali ke Dashboard</div>`;
+  let html = '';
 
   html += `<details class="sim-intro"><summary>Cara baca &amp; cara pakai simulasi</summary><div class="sim-intro-body">
     Daftar di bawah nampilin kontrak yang ngefek ke rapor ${d.isAdmin ? d.namaCO : 'kamu'}: baik yang relevan buat Flow Ever/Flow NOOD
@@ -2243,7 +2289,7 @@ function renderSimulasiRapor(){
         ${simResultCard_('Simulasi', r.simulasi, true)}
       </div>
       <div class="ins-gap" style="margin-top:14px;">
-        Selisih nilai: <b>${r.delta.totalNilai>=0?'+':''}${r.delta.totalNilai.toFixed(2)}</b> ·
+        Selisih nilai: <b>${r.delta.totalNilai>=0?'+':''}${fmtDec(r.delta.totalNilai,2)}</b> ·
         Selisih insentif rapor: <b>${r.delta.insentif>=0?'+':''}${fmtRupiah(r.delta.insentif)}</b>
       </div>
     </div>`;
@@ -2262,14 +2308,14 @@ function renderSimulasiRapor(){
           Simulasi kamu masih <b>di bawah ON TARGET</b>. Ini kontrak-kontrak yang paling ngefek buat dikejar
           duluan (diurutin dari SIPOK terbesar, dicoba beneran disimulasikan bertahap) — kalau ke-${rk.daftar.length}
           kontrak ini semua berhasil dikejar sesuai aksi yang disaranin di bawah, proyeksi nilai totalnya jadi
-          <b>${rk.proyeksiGabungan.totalNilai.toFixed(2)}</b> (${rk.proyeksiGabungan.kategori})${rk.proyeksiGabungan.tercapai ? ' — udah ON TARGET' : ' — masih perlu usaha tambahan di luar daftar ini (populasi kontrak yang berpengaruh mungkin udah abis atau butuh dikejar lebih banyak lagi)'}.
+          <b>${fmtDec(rk.proyeksiGabungan.totalNilai,2)}</b> (${rk.proyeksiGabungan.kategori})${rk.proyeksiGabungan.tercapai ? ' — udah ON TARGET' : ' — masih perlu usaha tambahan di luar daftar ini (populasi kontrak yang berpengaruh mungkin udah abis atau butuh dikejar lebih banyak lagi)'}.
         </div>
         <div class="sim-kontrak-list">
           ${rk.daftar.map(x => `
             <div class="sim-kontrak-item">
               <div class="sim-kontrak-info">
                 <div class="sim-kontrak-name">${esc(x.namaKonsumen||'-')} <span class="sim-kontrak-kontrak">${esc(x.noKontrak)}</span></div>
-                <div class="sim-kontrak-meta">Disaranin: <b>${aksiLabel[x.aksi]||x.aksi}</b> · setelah kontrak ini nilai jadi ${x.totalNilaiSetelah.toFixed(2)} (${x.poinGain>=0?'+':''}${x.poinGain.toFixed(2)})</div>
+                <div class="sim-kontrak-meta">Disaranin: <b>${aksiLabel[x.aksi]||x.aksi}</b> · setelah kontrak ini nilai jadi ${fmtDec(x.totalNilaiSetelah,2)} (${x.poinGain>=0?'+':''}${fmtDec(x.poinGain,2)})</div>
               </div>
               <div class="sim-kontrak-sipok">${fmtRupiah(x.sisaPiutang)}</div>
             </div>`).join('')}
@@ -2311,7 +2357,7 @@ function renderSimulasiRapor(){
 
   if(d.kontrakList && d.kontrakList.length){
     renderSimKontrakList_();
-    document.getElementById('simSearchInput').addEventListener('input', e => { simulasiRaporState.search = e.target.value; renderSimKontrakList_(); });
+    document.getElementById('simSearchInput').addEventListener('input', e => { simulasiRaporState.search = e.target.value; simulasiRaporState.limit = 20; renderSimKontrakList_(); });
     document.getElementById('simClearBtn').addEventListener('click', () => { simulasiRaporState.proyeksi.clear(); SIMULASI_RAPOR_RESULT = null; renderSimulasiRapor(); });
     document.getElementById('simRunBtn').addEventListener('click', runSimulasiRapor);
   }
@@ -2320,7 +2366,9 @@ function renderSimulasiRapor(){
 function renderSimKontrakList_(){
   const box = document.getElementById('simKontrakList');
   if(!box) return;
-  const rows = getSimulasiKontrakFiltered_();
+  const allRows = getSimulasiKontrakFiltered_();
+  const lim = simulasiRaporState.limit || 20;
+  const rows = allRows.slice(0, lim);
   box.innerHTML = rows.map(k => {
     const current = simulasiRaporState.proyeksi.get(k.noKontrak) || '';
     const bucketSekarang = k.bucketUpdateKA || k.bucketUpdateMaster;
@@ -2354,7 +2402,9 @@ function renderSimKontrakList_(){
         <button type="button" class="sim-proyeksi-btn sim-proyeksi-lunas ${current==='lunas'?'active':''}" data-nokontrak="${esc(k.noKontrak)}" data-val="lunas">${current==='lunas'?ic('check')+' ':''}Proyeksi Lunas</button>
       </div>
     </div>`;
-  }).join('');
+  }).join('') + (allRows.length > rows.length ? `<div class="load-more"><button type="button" class="btn" id="simMoreBtn">Tampilkan ${Math.min(20, allRows.length - rows.length)} lagi <span class="load-note">(${rows.length} dari ${allRows.length})</span></button></div>` : '');
+  const moreBtn = document.getElementById('simMoreBtn');
+  if(moreBtn) moreBtn.onclick = () => { simulasiRaporState.limit = lim + 20; renderSimKontrakList_(); };
   box.querySelectorAll('.sim-proyeksi-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const nk = btn.getAttribute('data-nokontrak');
@@ -2495,7 +2545,7 @@ function buildDekscallLayout(){
   const stat = { count: base.length, sipok: base.reduce((s,r)=> s + (typeof r['SIPOK']==='number' ? r['SIPOK'] : 0), 0) };
 
   document.getElementById('wrap').innerHTML = `
-    <div class="panel-title">NOOD Belum Realisasi (Flow ke P001_030)</div>
+    <div class="panel-title">NOOD Belum Realisasi (Flow ke 1-30)</div>
     <div class="grand-row" style="margin-bottom:22px;">
       <div class="grand-card"><div class="lbl">Jumlah Kontrak</div><div class="val" id="dekscallValKontrak">0</div></div>
       <div class="grand-card"><div class="lbl">Total Sisa Piutang</div><div class="val" id="dekscallValSipok">Rp0</div></div>
@@ -3180,7 +3230,7 @@ function buildSimulasiLayout(){
         <div>
           <label style="font-size:12px;color:var(--ink-soft);display:block;margin-bottom:4px;">Regional Daerah Plat No</label>
           <select id="mkRegionalPlat" required style="width:100%;padding:9px;border-radius:7px;border:1px solid var(--line);">
-            ${MK_REGIONAL_PLAT_OPT.map(o=>`<option value="${o}">${o}</option>`).join('')}
+            ${MK_REGIONAL_PLAT_OPT.map(o=>`<option value="${o}"${o==='JATENG UTARA'?' selected':''}>${o}</option>`).join('')}
           </select>
         </div>
         <div>
@@ -3372,7 +3422,7 @@ function barListSection(title, rows, opts){
             <div class="bar-row-right">
               <span class="bar-row-meta">${r.count.toLocaleString('id-ID')} akun</span>
               <span class="bar-row-amount">${fmtRupiah(r.amount)}</span>
-              <span class="bar-row-pct">${r.pct.toFixed(2)}%</span>
+              <span class="bar-row-pct">${fmtDec(r.pct,2)}%</span>
             </div>
           </div>
           <div class="bar-track"><div class="bar-fill ${opts.gold?'gold':''}" style="width:${Math.min(r.pct/maxPct*100,100)}%"></div></div>
@@ -3416,7 +3466,7 @@ function bigCustSection(bigCust){
 
 // ---------- Tren penyelesaian mingguan (admin) ----------
 let TREN_DATA = null, TREN_MONTH = 'cur';
-function trenShell(inner){ return '<div class="rk-report-header"><div class="rk-report-title">' + ic('chart') + ' TREN PENYELESAIAN MINGGUAN</div></div>' + inner; }
+function trenShell(inner){ return '<div class="rk-report-header"><div class="rk-report-title">' + ic('chart') + ' Tren penyelesaian mingguan</div></div>' + inner; }
 function loadTren(){
   const card = document.getElementById('trenCard'); if(!card) return;
   if(TREN_DATA){ renderTren(); return; }
@@ -3462,7 +3512,7 @@ function renderTren(){
     series.forEach((s, i) => {
       const v = get(w, s); if(v === null) return;
       const x = gx + i * (bw + 2), top = y(v), h = (H - pb) - top, t = tgt(w, s);
-      const tip = `${s.label} · W${w}: ${v.toFixed(1)}%` + (t !== null ? ` (target ${t}%)` : '');
+      const tip = `${s.label} · W${w}: ${fmtDec(v,1)}%` + (t !== null ? ` (target ${t}%)` : '');
       g += `<path class="tbar" tabindex="0" data-tip="${esc(tip)}" aria-label="${esc(tip)}" fill="${s.color}" d="M${x},${H-pb} V${top+Math.min(4,h)} Q${x},${top} ${x+Math.min(4,bw/2)},${top} H${x+bw-Math.min(4,bw/2)} Q${x+bw},${top} ${x+bw},${top+Math.min(4,h)} V${H-pb} Z"/>`;
       if(t !== null) g += `<line class="tg-target" x1="${x-2}" x2="${x+bw+2}" y1="${y(t)}" y2="${y(t)}"/>`;
       if(w === lastW) g += `<text x="${x+bw/2}" y="${top-5}" class="tg-val" text-anchor="middle">${v.toFixed(0)}</text>`;
@@ -3471,7 +3521,7 @@ function renderTren(){
   const uniqBad = [...new Set(bad)];
   const legend = series.map(s => `<span class="tg-leg"><i style="background:${s.color}"></i>${esc(s.label)}</span>`).join('') + '<span class="tg-leg"><i class="tg-leg-line"></i>Target tier 1 insentif</span>';
   const table = '<div class="pg-scroll"><table class="pg-table"><thead><tr><th>Penyelesaian</th>' + [1,2,3,4].map(w => '<th class="r">W' + w + '</th>').join('') + '</tr></thead><tbody>' +
-    series.map(s => '<tr><td>' + esc(s.label) + '</td>' + [1,2,3,4].map(w => { const v = get(w, s), t = tgt(w, s); return '<td class="r">' + (v === null ? '-' : v.toFixed(1) + '%') + (t !== null ? ' <span class="muted">/ ' + t + '%</span>' : '') + '</td>'; }).join('') + '</tr>').join('') + '</tbody></table></div>';
+    series.map(s => '<tr><td>' + esc(s.label) + '</td>' + [1,2,3,4].map(w => { const v = get(w, s), t = tgt(w, s); return '<td class="r">' + (v === null ? '-' : fmtDec(v,1) + '%') + (t !== null ? ' <span class="muted">/ ' + t + '%</span>' : '') + '</td>'; }).join('') + '</tr>').join('') + '</tbody></table></div>';
   card.innerHTML = trenShell(`<div class="tren-head">${toggle}<span class="tren-month">${esc(monthLabel)}</span></div>
     <div class="tren-wrap"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Grafik batang penyelesaian mingguan ${esc(monthLabel)} per CO dan cabang">${g}</svg><div class="tren-tip" id="trenTip" role="tooltip" hidden></div></div>
     <div class="tg-legend">${legend}</div>
@@ -3502,7 +3552,7 @@ function renderRingkasanView(){
     </div>
     <div class="rk-report-card rk-compact" id="rkReportCard">
       <div class="rk-report-header">
-        <div class="rk-report-title">${ic('chart')} DASHBOARD PERFORMANCE CORE KENDAL</div>
+        <div class="rk-report-title">${ic('chart')} Performa CORE Kendal</div>
         <div class="rk-report-date">Update per: ${todayStr}</div>
       </div>
       <div class="rk-hero-row">
@@ -3886,7 +3936,8 @@ function renderCoRow(){
   const coStats = {};
   DATA.forEach(r => { const co=r['CO ALL']||'LAINNYA'; if(!coStats[co]) coStats[co]={count:0,sipok:0}; coStats[co].count++; if(typeof r['SIPOK']==='number') coStats[co].sipok+=r['SIPOK']; });
   const row = document.getElementById('coRow'); row.innerHTML='';
-  Object.keys(coStats).forEach(co => {
+  const CO_ORD = Object.keys(CO_META), ordOf = c => { const i = CO_ORD.indexOf(c); return i < 0 ? 99 : i; };
+  Object.keys(coStats).sort((a, b) => ordOf(a) - ordOf(b) || a.localeCompare(b)).forEach(co => {
     const meta = CO_META[co] || {short:co, role:''};
     const card = document.createElement('div');
     card.className = 'co-card' + (state.co===co?' active':'');
@@ -3964,14 +4015,14 @@ function flowDenom_(){
 }
 function pengaruhFlowText_(r){
   if(r['FLEET/NON FLEET'] === 'FLEET') return '-';
-  if(typeof r['PENGARUH FLOW'] === 'number') return r['PENGARUH FLOW'].toFixed(2) + '%';
+  if(typeof r['PENGARUH FLOW'] === 'number') return fmtDec(r['PENGARUH FLOW'],2) + '%';
   const v = typeof r['SIPOK']==='number' ? r['SIPOK'] : 0;
   const d = flowDenom_();
   // Penyebut mengikuti CO pemilik kontrak (sama dengan Insentif Penyelesaian): FE = per CO, selain itu se-cabang.
   const isFE = (CO_META[r['CO ALL']] || {}).role === 'Front End';
   const den = isFE ? d.perCO[r['BUCKET AWAL']+'|'+r['CO ALL']] : d.org[r['BUCKET AWAL']];
   if(!den) return '-';
-  return (v/den*100).toFixed(2) + '%';
+  return fmtDec(v/den*100,2) + '%';
 }
 
 function renderTable(){
@@ -4063,7 +4114,7 @@ const CMS_COLS = [
   { g:'Tdk terbentuk DKH', cols:[ { l:'Fresh flow', m:'flow' }, { l:'Stay', m:'stay' }, { l:'Roll back', m:'rollback' }, { l:'TTL', m:'ttl' }, { l:'%', pct:['ttl','actual'] } ] }
 ];
 const CMS_CLS = ['', 'g-terbentuk', 'g-bertemu', 'g-tidak', 'g-risk', 'g-tdk'];
-function cmsPct(n, d){ return d > 0 ? (n / d * 100).toFixed(2).replace('.', ',') + '%' : '-'; }
+function cmsPct(n, d){ return d > 0 ? fmtDec(n / d * 100, 2) + '%' : '-'; }
 function cmsMetricItems(items, bal, co, m){
   const has = (it, t) => it.t.indexOf(bal + '|' + co + '|' + t) > -1;
   if(m === 'tdk') return items.filter(it => has(it, 'terbentuk') && !has(it, 'dikerjakan'));
@@ -4301,7 +4352,7 @@ document.getElementById('overlay').onclick = document.getElementById('panelClose
     if(IS_ADMIN) return ['ringkasan','dashboard','cms','nbq','insentif','feever','tglbayar','simulasirapor','simulasi','panduan'];
     return ['dashboard','nbq','feever','insentif','tglbayar','simulasirapor','simulasi','panduan'];
   }
-  const SHORT = { cms:'CMS', ringkasan:'Ringkasan', dashboard:'Beban', nbq:'NBQ', feever:'FE Ever', tglbayar:'Tgl Bayar', insentif:'Insentif', dekscall:'Dekscall', simulasirapor:'Rapor', simulasi:'Simulasi', panduan:'Panduan' };
+  const SHORT = { cms:'CMS', ringkasan:'Ringkasan', dashboard:'Beban', nbq:'NBQ', feever:'FE Ever', tglbayar:'Tgl Bayar', insentif:'Insentif', dekscall:'Deskcall', simulasirapor:'Rapor', simulasi:'Simulasi', panduan:'Panduan' };
   const MORE_ICON = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/></svg>';
 
   function items(){
@@ -4374,6 +4425,30 @@ document.getElementById('overlay').onclick = document.getElementById('panelClose
 </script>
 
 <script>
+/* V5 — penanda geser: titik di bawah deretan kartu yang bisa digeser ke samping (HP) */
+(function(){
+  const SEL = '.status-row, .role-row, .co-row';
+  function attach(row){
+    if(row.dataset.dots) return; row.dataset.dots = '1';
+    const dots = document.createElement('div'); dots.className = 'swipe-dots'; dots.setAttribute('aria-hidden', 'true');
+    row.insertAdjacentElement('afterend', dots);
+    const draw = () => {
+      const kids = Array.from(row.children).filter(k => k.offsetParent !== null);
+      if(kids.length < 2 || row.scrollWidth <= row.clientWidth + 4){ dots.innerHTML = ''; return; }
+      const mid = row.scrollLeft + row.clientWidth / 2; let cur = 0;
+      kids.forEach((k, i) => { if(k.offsetLeft <= mid) cur = i; });
+      dots.innerHTML = kids.map((_, i) => '<i' + (i === cur ? ' class="on"' : '') + '></i>').join('');
+    };
+    row.addEventListener('scroll', () => requestAnimationFrame(draw), { passive: true });
+    new MutationObserver(draw).observe(row, { childList: true });
+    draw(); setTimeout(draw, 300);
+  }
+  const scan = () => document.querySelectorAll(SEL).forEach(attach);
+  const wrap = document.getElementById('wrap');
+  if(wrap) new MutationObserver(scan).observe(wrap, { childList: true, subtree: true });
+  window.addEventListener('resize', () => document.querySelectorAll(SEL).forEach(r => r.dispatchEvent(new Event('scroll'))));
+  scan();
+})();
 /* V4 — gerak halus: transisi antar menu, reveal saat gulir, top bar adaptif, pil bottom nav */
 (function(){
   const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -4404,7 +4479,7 @@ document.getElementById('overlay').onclick = document.getElementById('panelClose
       else { k.style.setProperty('--i', Math.min(n++, 7)); }
     });
     wrap.classList.remove('m-enter'); void wrap.offsetWidth; wrap.classList.add('m-enter');
-    holdTimer = setTimeout(revealAll, 2800); // jaga-jaga: tidak ada elemen yang tertinggal tersembunyi
+    holdTimer = setTimeout(revealAll, 1000); // jaga-jaga: tidak ada elemen yang tertinggal tersembunyi
   }
   const origFade = window.triggerFadeIn;
   window.triggerFadeIn = function(){
