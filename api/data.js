@@ -195,6 +195,29 @@ module.exports = async (req, res) => {
       m['STATUS EVER'] = bucketIdx(ka['FLOW EVER']) > bucketIdx(targetBucket) ? 'SUDAH EVER' : 'BELUM EVER';
     });
 
+    // % pengaruh kontrak ke Flow bucket awalnya (SIPOK / total SIPOK non-fleet bucket awal yang sama).
+    // FE: penyebut per CO; selain itu se-cabang. Dihitung di server dari SELURUH data supaya akurat
+    // untuk akun non-admin yang hanya menerima sebagian baris.
+    (function(){
+      const org = {}, perCO = {};
+      allRecords.forEach(r => {
+        if (r['FLEET/NON FLEET'] === 'FLEET') return;
+        const v = typeof r['SIPOK'] === 'number' ? r['SIPOK'] : 0;
+        const b = r['BUCKET AWAL'];
+        org[b] = (org[b] || 0) + v;
+        const k = b + '|' + r['CO ALL'];
+        perCO[k] = (perCO[k] || 0) + v;
+      });
+      allRecords.forEach(r => {
+        r['PENGARUH FLOW'] = '';
+        if (r['FLEET/NON FLEET'] === 'FLEET') return;
+        const v = typeof r['SIPOK'] === 'number' ? r['SIPOK'] : 0;
+        const cfg = roleMap[r['CO ALL']];
+        const den = (cfg && cfg.role === 'FE') ? perCO[r['BUCKET AWAL'] + '|' + r['CO ALL']] : org[r['BUCKET AWAL']];
+        if (den) r['PENGARUH FLOW'] = Math.round(v / den * 10000) / 100;
+      });
+    })();
+
     const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(x => x.trim().toLowerCase());
     const isAdmin = adminEmails.indexOf(email) > -1;
 

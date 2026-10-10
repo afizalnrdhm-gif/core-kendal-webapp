@@ -733,6 +733,8 @@
   #topFresh[hidden]{display:none;}
   .mobile-topbar #topFresh span{font-size:inherit;font-weight:inherit;letter-spacing:inherit;color:inherit;max-width:none;overflow:visible;}
   #topFresh .short{display:none;}
+  #topDate .d-short{display:none;}
+  .mobile-topbar #topDate span{font-size:inherit;font-weight:inherit;letter-spacing:inherit;color:inherit;max-width:none;overflow:visible;}
   .top-meta{overflow:hidden;white-space:nowrap;}
 
   /* tabel: kolom ringkas, halaman, kosong */
@@ -802,6 +804,8 @@
     #topFresh{background:none;border:none;padding:0;font-size:12px;font-weight:500;color:#BBD5E8;}
     #topFresh b{color:#fff;font-weight:600;}
     #topFresh .long{display:none;}
+    #topDate .d-long{display:none;} #topDate .d-short{display:inline;}
+    .top-meta{white-space:nowrap;min-width:0;}
     #topFresh .short{display:inline;}
     #topFresh::before{content:'·';margin-right:6px;}
   }
@@ -925,7 +929,7 @@
       <div class="mobile-topbar">
         <img class="top-logo" src="icon-192.png" alt="">
         <button id="menuToggle" type="button" aria-label="Buka menu" aria-controls="sidebar" aria-expanded="false"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg></button>
-        <div class="top-text"><span id="mobilePageTitle">Beban Awal</span><div class="top-meta"><small id="topDate"></small><small id="topFresh" hidden><span class="long">Sheet diperbarui </span><span class="short">Sheet </span><b id="topFreshVal"></b></small></div></div>
+        <div class="top-text"><span id="mobilePageTitle">Beban Awal</span><div class="top-meta"><small id="topDate"><span class="d-long"></span><span class="d-short"></span></small><small id="topFresh" hidden><span class="long">Sheet diperbarui </span><span class="short">Sheet </span><b id="topFreshVal"></b></small></div></div>
         <button id="topAvatar" type="button" aria-label="Buka menu akun dan semua halaman" aria-controls="sidebar" aria-expanded="false">?</button>
       </div>
       <div class="wrap" id="wrap" tabindex="-1">
@@ -1262,7 +1266,9 @@ function setFresh(prefix, iso){
   if(!el || !v) return;
   const d = new Date(iso); if(isNaN(d)) return;
   el.querySelector('.long').textContent = prefix + ' '; el.querySelector('.short').textContent = (prefix === 'Dimuat' ? 'Dimuat' : 'Sheet') + ' ';
-  v.textContent = d.toLocaleString('id-ID', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }).replace(',', '');
+  const jam = d.toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit' }).replace(':', '.');
+  const hariIni = d.toDateString() === new Date().toDateString();
+  v.textContent = hariIni ? jam : d.toLocaleDateString('id-ID', { day:'numeric', month:'short' }) + ' ' + jam;
   el.hidden = false;
 }
 function onDataLoaded(res){
@@ -1495,7 +1501,7 @@ function buildLayout(){
           </div>
         </div>
       </div>
-      <button class="btn" id="colsBtn" type="button" aria-pressed="false" title="Tampilkan kolom tambahan: % Flow, Angsuran, Status Ever">Kolom lengkap</button>
+      <button class="btn" id="colsBtn" type="button" aria-pressed="false" title="Tampilkan kolom tambahan: Angsuran, Status Ever">Kolom lengkap</button>
       <button class="btn" id="resetBtn">Reset filter</button>
       <button class="btn primary" id="refreshBtn">${ic('refresh')} Muat ulang</button>
     </div>
@@ -1511,7 +1517,7 @@ function buildLayout(){
             <th>Bucket</th>
             <th data-key="STATUS BAYAR">Status</th>
             <th data-key="SIPOK" class="num">Sisa Piutang</th>
-            <th class="num" data-opt title="Porsi SIPOK kontrak ini terhadap total SIPOK bucket awal yang sama. Kalau kontrak ini flow, persentase Flow bucket itu naik sebesar angka ini.">% Flow</th>
+            <th class="num" title="Porsi SIPOK kontrak ini terhadap total SIPOK bucket awal yang sama. Kalau kontrak ini flow, persentase Flow bucket itu naik sebesar angka ini.">% Flow</th>
             <th data-key="ANGSURAN" class="num" data-opt>Angsuran</th>
             <th data-key="DPD" class="num">DPD</th>
             <th data-key="STATUS EVER" data-opt>Status Ever</th>
@@ -2221,6 +2227,7 @@ function buildFEEverLayout(){
             <th>Bucket</th>
             <th data-key="STATUS BAYAR">Status</th>
             <th data-key="SIPOK" class="num">Sisa Piutang</th>
+            <th data-key="PENGARUH FLOW" class="num" title="Porsi SIPOK kontrak ini terhadap total SIPOK bucket awal yang sama (se-cabang). Kalau kontrak ini flow, persentase Flow bucket itu naik sebesar angka ini.">% Flow</th>
             <th data-key="DPD" class="num">DPD</th>
             <th data-key="JATUH TEMPO">Jatuh Tempo</th>
           </tr>
@@ -2278,7 +2285,7 @@ function renderFEEverTable(){
   const rows = getFEEverFiltered();
   document.getElementById('feeverCountNote').innerHTML = `Menampilkan <b>${rows.length}</b> dari <b>${ESCALATIONS.length}</b> kontrak`;
   const tbody = document.getElementById('feeverTbody');
-  if(rows.length===0){ tbody.innerHTML = emptyRowHtml(8, tbody); return; }
+  if(rows.length===0){ tbody.innerHTML = emptyRowHtml(9, tbody); return; }
   tbody.innerHTML = pageRows('feever', rows, tbody, renderFEEverTable).map(r => {
     const meta = CO_META[r['CO ALL']] || {short:r['CO ALL']||'-'};
     return `<tr data-kontrak="${esc(r['NO KONTRAK'])}">
@@ -2288,6 +2295,7 @@ function renderFEEverTable(){
       <td data-label="Bucket"><div class="bucket-flow"><span class="bpill" style="--c:${BUCKET_COLOR[r['BUCKET AWAL']]||'#999'}">${fmtBucket(r['BUCKET AWAL'])}</span> → <span class="bpill" style="--c:${BUCKET_COLOR[r['BUCKET UPDATE']]||'#999'}">${fmtBucket(r['BUCKET UPDATE'])}</span></div></td>
       <td data-label="Status"><span class="status-pill ${statusClass(r['STATUS BAYAR'])}">${esc(r['STATUS BAYAR']||'-')}</span></td>
       <td data-label="Sisa Piutang" class="num">${fmtRupiah(r['SIPOK'])}</td>
+      <td data-label="% Flow" class="num">${pengaruhFlowText_(r)}</td>
       <td data-label="DPD" class="num">${esc(r['DPD'] ?? '-')}</td>
       <td data-label="Jatuh Tempo" class="mono">${fmtDate(r['JATUH TEMPO'])}</td>
     </tr>`;
@@ -3776,6 +3784,7 @@ function flowDenom_(){
 }
 function pengaruhFlowText_(r){
   if(r['FLEET/NON FLEET'] === 'FLEET') return '-';
+  if(typeof r['PENGARUH FLOW'] === 'number') return r['PENGARUH FLOW'].toFixed(2) + '%';
   const v = typeof r['SIPOK']==='number' ? r['SIPOK'] : 0;
   const d = flowDenom_();
   // Penyebut mengikuti CO pemilik kontrak (sama dengan Insentif Penyelesaian): FE = per CO, selain itu se-cabang.
@@ -3802,7 +3811,7 @@ function renderTable(){
       <td data-label="Bucket"><div class="bucket-flow"><span class="bpill" style="--c:${BUCKET_COLOR[r['BUCKET AWAL']]||'#999'}">${fmtBucket(r['BUCKET AWAL'])}</span>${differs?' → <span class="bpill" style="--c:'+(BUCKET_COLOR[r['BUCKET UPDATE']]||'#999')+'">'+fmtBucket(r['BUCKET UPDATE'])+'</span>':''}</div></td>
       <td data-label="Status"><span class="status-pill ${statusClass(r['STATUS BAYAR'])}">${esc(r['STATUS BAYAR']||'-')}</span></td>
       <td data-label="Sisa Piutang" class="num">${fmtRupiah(r['SIPOK'])}</td>
-      <td data-label="% Flow" class="num" data-opt>${pengaruhFlowText_(r)}</td>
+      <td data-label="% Flow" class="num">${pengaruhFlowText_(r)}</td>
       <td data-label="Angsuran" class="num" data-opt>${fmtRupiah(r['ANGSURAN'])}</td>
       <td data-label="DPD" class="num">${esc(r['DPD'] ?? '-')}</td>
       <td data-label="Status Ever" data-opt>${r['STATUS EVER'] ? `<span class="status-pill ${r['STATUS EVER']==='SUDAH EVER'?'status-belum':'status-sudah'}">${esc(r['STATUS EVER'])}</span>` : '-'}</td>
@@ -4051,7 +4060,7 @@ document.getElementById('overlay').onclick = document.getElementById('panelClose
 
   // tanggal hari ini
   function setDate(){
-    try { dateEl.textContent = new Date().toLocaleDateString('id-ID', { weekday:'long', day:'numeric', month:'long', year:'numeric' }); } catch(e) { dateEl.textContent = ''; }
+    try { const n = new Date(); dateEl.querySelector('.d-long').textContent = n.toLocaleDateString('id-ID', { weekday:'long', day:'numeric', month:'long', year:'numeric' }); dateEl.querySelector('.d-short').textContent = n.toLocaleDateString('id-ID', { weekday:'short', day:'numeric', month:'short' }).replace(',', ''); } catch(e) { dateEl.textContent = ''; }
   }
   setDate(); setInterval(setDate, 30 * 60 * 1000);
 
