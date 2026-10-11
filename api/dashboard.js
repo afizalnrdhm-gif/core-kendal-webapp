@@ -38,7 +38,8 @@ module.exports = async (req, res) => {
     const authHeader = req.headers['authorization'] || '';
     const idToken = authHeader.replace(/^Bearer\s+/i, '');
     if (!idToken) { res.status(401).json({ error: 'Token login tidak ditemukan.' }); return; }
-    const email = await verifyIdToken(idToken);
+    // verifikasi login & token Sheets tidak saling bergantung: jalankan bersamaan
+    const [email, accessToken] = await Promise.all([verifyIdToken(idToken), getAccessToken()]);
 
     const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(x => x.trim().toLowerCase());
     if (adminEmails.indexOf(email) === -1) {
@@ -46,7 +47,6 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const accessToken = await getAccessToken();
     const sheetId = process.env.GOOGLE_SHEET_ID;
 
     const [masterRes, kaRes] = await Promise.all([

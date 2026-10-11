@@ -18,11 +18,11 @@ module.exports = async (req, res) => {
     const authHeader = req.headers['authorization'] || '';
     const idToken = authHeader.replace(/^Bearer\s+/i, '');
     if (!idToken) { res.status(401).json({ error: 'Token login tidak ditemukan. Silakan login ulang.' }); return; }
-    const email = await verifyIdToken(idToken);
+    // verifikasi login & token Sheets tidak saling bergantung: jalankan bersamaan
+    const [email, accessToken] = await Promise.all([verifyIdToken(idToken), getAccessToken()]);
     const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(x => x.trim().toLowerCase());
     if (adminEmails.indexOf(email) === -1) { res.status(403).json({ error: 'Menu ini khusus admin/head.' }); return; }
 
-    const accessToken = await getAccessToken();
     const sheetId = process.env.GOOGLE_SHEET_ID;
     const r = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent('LOG_MINGGUAN')}?valueRenderOption=UNFORMATTED_VALUE`, { headers: { Authorization: 'Bearer ' + accessToken } });
     const j = await r.json();

@@ -3505,16 +3505,23 @@ let RINGKASAN_DATA = null;
 let RINGKASAN_FLEET_MODE = 'nonfleet';
 
 function loadRingkasan(){
-  document.getElementById('wrap').innerHTML = `<div class="skeleton-row"><div class="skel"></div><div class="skel"></div></div><div class="skel tall"></div>`;
+  // Stale-while-revalidate: kalau pernah dibuka, tampilkan versi tersimpan di perangkat ini LANGSUNG, lalu perbarui diam-diam begitu data baru datang.
+  const kunci = 'rk1:' + (USER_EMAIL || '');
+  let dariCache = false;
+  try {
+    const c = JSON.parse(localStorage.getItem(kunci) || 'null');
+    if(c && c.d && c.d.nonfleet){ RINGKASAN_DATA = c.d; renderRingkasanView(); dariCache = true; }
+  } catch(e) {}
+  if(!dariCache) document.getElementById('wrap').innerHTML = `<div class="skeleton-row"><div class="skel"></div><div class="skel"></div></div><div class="skel tall"></div>`;
   fetch('/api/dashboard', { headers: { Authorization: 'Bearer ' + ID_TOKEN } })
     .then(r => r.json().then(body => ({ ok: r.ok, body })))
     .then(({ok, body}) => {
-      if(!ok){ document.getElementById('wrap').innerHTML = '<div class="state-box error"><div class="err-icon">'+ic('alert')+'</div>'+esc(body.error||'Gagal memuat dashboard.')+'<br><br><button class="btn" onclick="loadRingkasan()">Coba lagi</button></div>'; return; }
+      if(!ok){ if(dariCache) return; document.getElementById('wrap').innerHTML = '<div class="state-box error"><div class="err-icon">'+ic('alert')+'</div>'+esc(body.error||'Gagal memuat dashboard.')+'<br><br><button class="btn" onclick="loadRingkasan()">Coba lagi</button></div>'; return; }
       RINGKASAN_DATA = body;
-      renderRingkasanView();
-      triggerFadeIn();
+      try { localStorage.setItem(kunci, JSON.stringify({ d: body, t: Date.now() })); } catch(e) {}
+      if(VIEW_MODE === 'ringkasan'){ renderRingkasanView(); if(!dariCache) triggerFadeIn(); }
     })
-    .catch(err => { document.getElementById('wrap').innerHTML = '<div class="state-box error"><div class="err-icon">'+ic('alert')+'</div>'+esc(err.message)+'</div>'; });
+    .catch(err => { if(dariCache) return; document.getElementById('wrap').innerHTML = '<div class="state-box error"><div class="err-icon">'+ic('alert')+'</div>'+esc(err.message)+'</div>'; });
 }
 
 function barListSection(title, rows, opts){
