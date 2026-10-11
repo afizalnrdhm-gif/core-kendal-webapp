@@ -1,4 +1,4 @@
-const { pastikanBaseline, terapkanProgres, finalkanKemarin, bacaHasil, hitungStreak } = require('./_tdsnap');
+const { pastikanBaseline, terapkanProgres, finalkanKemarin, bacaHasil, bacaBaseline, kunciTanggal, hitungStreak } = require('./_tdsnap');
 const { getAccessToken, sendError, verifyIdToken } = require('./_auth');
 const { cleanCell } = require('./_sheet');
 
@@ -423,23 +423,23 @@ module.exports = async (req, res) => {
     const authHeader = req.headers['authorization'] || '';
     const idToken = authHeader.replace(/^Bearer\s+/i, '');
     if (!idToken) { res.status(401).json({ error: 'Token login tidak ditemukan. Silakan login ulang.' }); return; }
-    const email = await verifyIdToken(idToken);
-
-    const accessToken = await getAccessToken();
+    // Verifikasi login dan token Sheets tidak saling bergantung, jalankan bersamaan.
+    const [email, accessToken] = await Promise.all([verifyIdToken(idToken), getAccessToken()]);
     const sheetId = process.env.GOOGLE_SHEET_ID;
+    const modeTarget = !!(req.query && req.query.target);
 
-    const [masterRaw, kaRaw, roleRaw] = await Promise.all([
+    // Mode target: baseline hari ini & hasil harian dibaca BERSAMAAN dengan MASTER/KA/CONFIG (dulu berurutan setelahnya), dan LOG_MINGGUAN tidak dibaca.
+    const [masterRaw, kaRaw, roleRaw, baseAwal, hasilAwal, logRaw] = await Promise.all([
       fetchSheetRange(sheetId, 'MASTER', accessToken),
       fetchSheetRange(sheetId, 'KA HARIAN', accessToken),
-      fetchSheetRange(sheetId, 'CONFIG_ROLE', accessToken)
+      fetchSheetRange(sheetId, 'CONFIG_ROLE', accessToken),
+      modeTarget ? bacaBaseline(accessToken, sheetId, kunciTanggal(tdHariIni())).catch(() => null) : null,
+      modeTarget ? bacaHasil(accessToken, sheetId).catch(() => []) : null,
+      // LOG_MINGGUAN opsional — kalau belum ada/gagal dibaca, lanjut tanpa data historis W1-W4
+      modeTarget ? null : fetchSheetRange(sheetId, 'LOG_MINGGUAN', accessToken).catch(() => null)
     ]);
-
-    // LOG_MINGGUAN opsional — kalau belum ada/gagal dibaca, lanjut tanpa data historis W1-W4
     let logRows = [];
-    try {
-      const logRaw = await fetchSheetRange(sheetId, 'LOG_MINGGUAN', accessToken);
-      logRows = parseSheetGeneric(logRaw, 0);
-    } catch (e) { logRows = []; }
+    try { logRows = logRaw ? parseSheetGeneric(logRaw, 0) : []; } catch (e) { logRows = []; }
 
     const masterList = parseSheetGeneric(masterRaw, 0).filter(m => m['NO KONTRAK']);
     const kaRows = parseSheetGeneric(kaRaw, 15); // header KA HARIAN ada di baris ke-16
@@ -453,10 +453,10 @@ module.exports = async (req, res) => {
       const td = hitungTargetDaily(masterList, petaKA, configRows);
       // Target hari ini dibekukan sekali sehari; progres dihitung dari kontrak baseline yang sudah bayar. Kalau tab belum bisa dipakai, tampil tanpa progres.
       let adaBaseline = true;
-      try { const { base } = await pastikanBaseline(accessToken, sheetId, td); terapkanProgres(td, base); }
+      try { const { base } = await pastikanBaseline(accessToken, sheetId, td, baseAwal); terapkanProgres(td, base); }
       catch (e) { adaBaseline = false; console.error('Baseline target harian gagal:', e.message); terapkanProgres(td, {}); }
       td.adaBaseline = adaBaseline;
-      try { td.streak = hitungStreak(await bacaHasil(accessToken, sheetId)); } catch (e) { td.streak = { daftar: [], riwayatHari: 0 }; }
+      try { td.streak = hitungStreak(hasilAwal || []); } catch (e) { td.streak = { daftar: [], riwayatHari: 0 }; }
       if (admin) { res.status(200).json(Object.assign({ isAdmin: true }, td)); return; }
       const rec = masterList.find(m => (m['EMAIL CO'] || '').toString().trim().toLowerCase() === email);
       const nama = rec ? rec['CO ALL'] : null;
