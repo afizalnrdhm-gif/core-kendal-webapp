@@ -1117,6 +1117,9 @@
 @media(max-width:640px){
   #mkForm{grid-template-columns:1fr !important;}
   .grand-row{grid-template-columns:1fr 1fr;gap:8px;}
+  .grand-row .grand-card{flex-direction:column;align-items:flex-start;justify-content:center;gap:4px;padding:14px 14px;}
+  .grand-row .grand-card .val{font-size:clamp(17px,5.4vw,22px);}
+  .grand-row .grand-card .lbl{font-size:12px;}
   .proy-row{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px;scrollbar-width:none;}
   .proy-row::-webkit-scrollbar{display:none;}
   .proy-row>*{flex:0 0 auto;white-space:nowrap;}
@@ -3302,7 +3305,7 @@ function mkLookupTypeId(typeId){
     .then(r => r.json());
 }
 
-function pesanErr(e){ const m=(e&&e.message)||String(e||''); return /failed to fetch|networkerror|load failed|network request/i.test(m) ? 'Koneksi bermasalah. Cek internet kamu lalu coba lagi.' : m; }
+function pesanErr(e){ const m=(e&&e.message)||String(e||''); if(/failed to fetch|networkerror|load failed|network request/i.test(m)) return 'Koneksi bermasalah. Cek internet kamu lalu coba lagi.'; if(/cannot read|undefined|is not a function|is not defined|null/i.test(m)) return 'Data belum bisa ditampilkan. Muat ulang halaman atau coba lagi sebentar lagi.'; return m; }
 function buildSimulasiLayout(){
   const cabangOptions = mkCabangList().map(c => `<option value="${c}">${c}</option>`).join('');
   const tahunOptions = [];
