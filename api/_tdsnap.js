@@ -51,9 +51,10 @@ function barisBaseline(td, kunciTgl) {
 }
 
 // Pastikan baseline hari ini ada; kalau belum, bekukan dari kondisi saat ini. Mengembalikan baseline-nya + status.
-async function pastikanBaseline(token, sheetId, td) {
+async function pastikanBaseline(token, sheetId, td, baseAwal) {
   const kunciTgl = kunciTanggal(td.tanggal);
-  let base = await bacaBaseline(token, sheetId, kunciTgl);
+  // baseAwal = hasil baca yang sudah dilakukan paralel oleh pemanggil (hemat 1 round trip); null/undefined = baca di sini
+  let base = baseAwal || await bacaBaseline(token, sheetId, kunciTgl);
   if (Object.keys(base).length) return { base, baru: false };
   await ensureTab(token, sheetId);
   const rows = barisBaseline(td, kunciTgl);
