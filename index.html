@@ -1109,6 +1109,21 @@
   .achv-streak{list-style:none;margin:0;padding:0;display:grid;gap:6px;} .achv-streak li{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px 12px;border-radius:10px;background:var(--bad-bg);color:var(--bad);font-size:13px;} .achv-streak li span{font-weight:700;color:var(--ink);} .achv-streak li b{white-space:nowrap;}
   .achv-ok{margin:0;padding:10px 12px;border-radius:10px;background:var(--good-bg);color:var(--good);font-size:13px;font-weight:600;} .achv-note{margin:8px 0 0;font-size:12.5px;color:var(--ink-soft);}
   @media (max-width:680px){ .achv-pic{grid-template-columns:1fr;gap:6px;} .achv-pn{display:flex;gap:8px;align-items:baseline;} .achv-head .btn{width:100%;} }
+
+/* ===== Polish menyeluruh (V6) ===== */
+#mkForm label{font-size:12.5px !important;font-weight:600;color:var(--ink-soft);}
+#mkForm select,#mkForm input{width:100%;min-height:42px;padding:9px 11px !important;border-radius:9px !important;border:1px solid var(--line) !important;background:var(--card,#fff);color:var(--ink);font-size:14px;box-sizing:border-box;}
+#mkForm select:focus,#mkForm input:focus{outline:2px solid var(--accent,#2563eb);outline-offset:1px;}
+@media(max-width:640px){
+  #mkForm{grid-template-columns:1fr !important;}
+  .grand-row{grid-template-columns:1fr 1fr;gap:8px;}
+  .proy-row{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px;scrollbar-width:none;}
+  .proy-row::-webkit-scrollbar{display:none;}
+  .proy-row>*{flex:0 0 auto;white-space:nowrap;}
+}
+.proy-chip,.achv-card small,.td-cl small{font-size:max(12px,1em);}
+:root[data-theme="dark"] #mkForm select,:root[data-theme="dark"] #mkForm input{background:#1e2430;color:#e6e9ef;border-color:#344054 !important;}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) #mkForm select,:root:not([data-theme="light"]) #mkForm input{background:#1e2430;color:#e6e9ef;border-color:#344054 !important;}}
 </style>
 </head>
 <body>
@@ -1718,7 +1733,7 @@ function buildLayout(){
   let html = '';
 
   if(IS_ADMIN || IS_DESKCALL){
-    html += `<div class="panel-title">Total Beban Awal (Semua PIC)</div>
+    html += `<div class="panel-title">Beban Awal — Semua PIC</div>
       <div class="grand-row" id="grandRow"></div>
       <div class="panel-title">Monitoring Realisasi per Bucket</div>
       <div class="status-row" id="statusRowAdmin"></div>`;
@@ -2183,7 +2198,7 @@ function loadInsentif(){
       renderInsentifView();
       triggerFadeIn();
     })
-    .catch(err => { document.getElementById('wrap').innerHTML = '<div class="state-box error"><div class="err-icon">'+ic('alert')+'</div>'+esc(err.message)+'<br><br><button class="btn" onclick="loadInsentif()">Coba lagi</button></div>'; });
+    .catch(err => { document.getElementById('wrap').innerHTML = '<div class="state-box error"><div class="err-icon">'+ic('alert')+'</div>'+esc(pesanErr(err))+'<br><br><button class="btn" onclick="loadInsentif()">Coba lagi</button></div>'; });
 }
 
 function achievementCard(h, extraLabel, extraKey){
@@ -2293,7 +2308,7 @@ function loadSimulasiRapor(namaCO){
       renderSimulasiRapor();
       triggerFadeIn();
     })
-    .catch(err => { document.getElementById('wrap').innerHTML = '<div class="state-box error"><div class="err-icon">'+ic('alert')+'</div>'+esc(err.message)+'<br><br><button class="btn" onclick="loadSimulasiRapor()">Coba lagi</button></div>'; });
+    .catch(err => { document.getElementById('wrap').innerHTML = '<div class="state-box error"><div class="err-icon">'+ic('alert')+'</div>'+esc(pesanErr(err))+'<br><br><button class="btn" onclick="loadSimulasiRapor()">Coba lagi</button></div>'; });
 }
 
 function runSimulasiRapor(){
@@ -3287,6 +3302,7 @@ function mkLookupTypeId(typeId){
     .then(r => r.json());
 }
 
+function pesanErr(e){ const m=(e&&e.message)||String(e||''); return /failed to fetch|networkerror|load failed|network request/i.test(m) ? 'Koneksi bermasalah. Cek internet kamu lalu coba lagi.' : m; }
 function buildSimulasiLayout(){
   const cabangOptions = mkCabangList().map(c => `<option value="${c}">${c}</option>`).join('');
   const tahunOptions = [];
@@ -3521,7 +3537,7 @@ function loadRingkasan(){
       try { localStorage.setItem(kunci, JSON.stringify({ d: body, t: Date.now() })); } catch(e) {}
       if(VIEW_MODE === 'ringkasan'){ renderRingkasanView(); if(!dariCache) triggerFadeIn(); }
     })
-    .catch(err => { if(dariCache) return; document.getElementById('wrap').innerHTML = '<div class="state-box error"><div class="err-icon">'+ic('alert')+'</div>'+esc(err.message)+'</div>'; });
+    .catch(err => { if(dariCache) return; document.getElementById('wrap').innerHTML = '<div class="state-box error"><div class="err-icon">'+ic('alert')+'</div>'+esc(pesanErr(err))+'</div>'; });
 }
 
 function barListSection(title, rows, opts){
@@ -4377,7 +4393,7 @@ function loadCms(){
       if(!ok){ document.getElementById('wrap').innerHTML = '<div class="state-box error"><div class="err-icon">'+ic('alert')+'</div>'+esc(b.error||'Gagal memuat CMS.')+'<br><br><button class="btn" onclick="loadCms()">Coba lagi</button></div>'; return; }
       CMS_DATA = b; renderCms(); triggerFadeIn();
     })
-    .catch(err => { document.getElementById('wrap').innerHTML = '<div class="state-box error"><div class="err-icon">'+ic('alert')+'</div>'+esc(err.message)+'<br><br><button class="btn" onclick="loadCms()">Coba lagi</button></div>'; });
+    .catch(err => { document.getElementById('wrap').innerHTML = '<div class="state-box error"><div class="err-icon">'+ic('alert')+'</div>'+esc(pesanErr(err))+'<br><br><button class="btn" onclick="loadCms()">Coba lagi</button></div>'; });
 }
 const CMS_COLS = [
   { g:'', cols:[ { l:'Actual', m:'actual', tip:'Kontrak yang bucket aktualnya saat ini di bucket ini' } ] },
