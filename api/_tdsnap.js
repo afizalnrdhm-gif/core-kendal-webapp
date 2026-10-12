@@ -80,18 +80,18 @@ function terapkanProgres(td, base) {
     const b = base[p.namaCO + '|' + q.kunci];
     const sekarang = new Set((q.semuaKandidat || []).map(x => x[0]));
     if (b) {
-      // Hanya BUCKET UPDATE: kontrak baseline yang sekarang sudah tidak ada di daftar (BUCKET UPDATE kembali ke bucket awal) = sudah realisasi.
-      const bayar = (b.kontrak || []).filter(x => !sekarang.has(x[0]));
-      // Balance NOOD FE: tercapai = kenaikan NOOD milik FE itu (KA HARIAN, BUCKET UPDATE NOOD) dari baseline pagi; daftar kontrak di atas hanya informasi.
-      const tercapai = q.nilaiFE !== undefined ? Math.max(0, q.nilaiFE - b.baseNilai) : bayar.reduce((t, x) => t + (Number(x[1]) || 0), 0);
+      // Realisasi = kontrak dengan kolom REALISASI (KA HARIAN) > 0, SIPOK-nya dijumlahkan (logika sama dengan /realisasi Telegram).
+      const bayar = (q.realisasi || []).slice();
+      const tercapai = bayar.reduce((t, x) => t + (Number(x[1]) || 0), 0);
       q.progres = {
         targetHari: b.targetHari, baseNilai: b.baseNilai, tercapai,
         persen: b.targetHari > 0 ? tercapai / b.targetHari * 100 : (tercapai > 0 ? 100 : 0),
         sisa: Math.max(0, b.targetHari - tercapai), tuntas: tercapai >= b.targetHari,
-        jumlahBayar: bayar.length, jumlahBase: (b.kontrak || []).length, jumlahSekarang: sekarang.size, waktuBase: b.waktu || '', kontrakBayar: bayar.slice().sort((a, c) => c[1] - a[1]).slice(0, 15).map(x => ({ noKontrak: x[0], sipok: x[1], nama: x[2] || '-' }))
+        jumlahBayar: bayar.length, jumlahBase: (b.kontrak || []).length, jumlahSekarang: sekarang.size, waktuBase: b.waktu || '',
+        kontrakBayar: bayar.sort((a, c) => c[1] - a[1]).slice(0, 15).map(x => ({ noKontrak: x[0], sipok: x[1], nama: x[2] || '-' }))
       };
     }
-    delete q.semuaKandidat; delete q.nilaiFE;
+    delete q.semuaKandidat; delete q.nilaiFE; delete q.realisasi;
   }));
   return td;
 }
@@ -105,23 +105,22 @@ function kemarin(w) { const d = new Date(Date.UTC(w.tahun, w.bulan - 1, w.hari -
 async function bacaHasil(token, sheetId) {
   const r = await sf('https://sheets.googleapis.com/v4/spreadsheets/' + sheetId + '/values/' + encodeURIComponent(HASIL_TAB) + '?valueRenderOption=UNFORMATTED_VALUE', token);
   if (!r.ok || !r.json.values) return [];
-  return r.json.values.slice(1).filter(x => x[0]).map(x => ({ tanggal: String(x[0]), pic: String(x[1] || ''), kunci: String(x[2] || ''), target: Number(x[3]) || 0, tercapai: Number(x[4]) || 0, persen: Number(x[5]) || 0, tuntas: x[6] === true || String(x[6]).toUpperCase() === 'TRUE' || x[6] === 1 }));
+  const peta = {};
+  r.json.values.slice(1).filter(x => x[0]).forEach(x => { peta[x[0] + '|' + x[1] + '|' + x[2]] = x; });
+  return Object.values(peta).map(x => ({ tanggal: String(x[0]), pic: String(x[1] || ''), kunci: String(x[2] || ''), target: Number(x[3]) || 0, tercapai: Number(x[4]) || 0, persen: Number(x[5]) || 0, tuntas: x[6] === true || String(x[6]).toUpperCase() === 'TRUE' || x[6] === 1 }));
 }
 
-// Catat hasil final kemarin. Dipanggil cron pagi: data pagi = kondisi akhir kemarin, jadi progres kemarin dihitung dari baseline kemarin vs data ini.
-// Mengembalikan jumlah baris yang ditulis (0 kalau kemarin tidak punya baseline atau sudah pernah dicatat).
-async function finalkanKemarin(token, sheetId, td) {
-  const kTgl = kunciTanggal(kemarin(td.tanggal));
-  const baseKemarin = await bacaBaseline(token, sheetId, kTgl);
-  if (!Object.keys(baseKemarin).length) return 0;
-  const sudah = await bacaHasil(token, sheetId);
-  if (sudah.some(x => x.tanggal === kTgl)) return 0;
-  const salinan = JSON.parse(JSON.stringify(td));
-  terapkanProgres(salinan, baseKemarin);
+// Realisasi (kolom REALISASI di KA HARIAN) di-nol-kan tiap pagi, jadi hasil harian TIDAK bisa dihitung ulang esok harinya.
+// Hasil hari ini dicatat saat halaman Target Daily dibuka (baris pertama hari itu, lalu hanya kalau TERCAPAI naik); baris terakhir menang saat dibaca.
+async function catatHasilHariIni(token, sheetId, td, hasilAda) {
+  const tgl = kunciTanggal(td.tanggal);
+  const ada = {}; (hasilAda || []).filter(x => x.tanggal === tgl).forEach(x => { ada[x.pic + '|' + x.kunci] = x; });
   const rows = [];
-  salinan.pic.forEach(p => p.poin.forEach(q => {
+  td.pic.forEach(p => p.poin.forEach(q => {
     const g = q.progres; if (!g) return;
-    rows.push([kTgl, safe(p.namaCO), q.kunci, Math.round(g.targetHari), Math.round(g.tercapai), Math.round(g.persen * 10) / 10, (g.targetHari <= 0 || g.tuntas) ? 'TRUE' : 'FALSE']);
+    const lama = ada[p.namaCO + '|' + q.kunci];
+    if (lama && Math.round(g.tercapai) <= lama.tercapai) return;
+    rows.push([tgl, safe(p.namaCO), q.kunci, Math.round(g.targetHari), Math.round(g.tercapai), Math.round(g.persen * 10) / 10, (g.targetHari <= 0 || g.tuntas) ? 'TRUE' : 'FALSE']);
   }));
   if (!rows.length) return 0;
   const base = 'https://sheets.googleapis.com/v4/spreadsheets/' + sheetId;
@@ -131,6 +130,8 @@ async function finalkanKemarin(token, sheetId, td) {
   if (!ap.ok) throw new Error('Gagal menyimpan hasil harian.');
   return rows.length;
 }
+// Dipertahankan agar cron lama tetap jalan: hasil kemarin sudah dicatat harian oleh catatHasilHariIni.
+async function finalkanKemarin() { return 0; }
 
 // Streak hari berturut-turut TIDAK mencapai target, per PIC + poin, dihitung dari hari terbaru mundur. Hari target 0 dihitung tercapai.
 function hitungStreak(hasil) {
@@ -147,4 +148,4 @@ function hitungStreak(hasil) {
   return { daftar: out.filter(x => x.hari > 0).sort((a, b) => b.hari - a.hari), riwayatHari: tanggal.length };
 }
 
-module.exports = { JAM_BEKU, jamWIB, TAB, HASIL_TAB, kemarin, bacaHasil, finalkanKemarin, hitungStreak, kunciTanggal, bacaBaseline, pastikanBaseline, terapkanProgres, barisBaseline };
+module.exports = { catatHasilHariIni, JAM_BEKU, jamWIB, TAB, HASIL_TAB, kemarin, bacaHasil, finalkanKemarin, hitungStreak, kunciTanggal, bacaBaseline, pastikanBaseline, terapkanProgres, barisBaseline };

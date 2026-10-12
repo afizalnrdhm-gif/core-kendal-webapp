@@ -1,4 +1,4 @@
-const { pastikanBaseline, terapkanProgres, finalkanKemarin, bacaHasil, bacaBaseline, kunciTanggal, hitungStreak } = require('./_tdsnap');
+const { catatHasilHariIni, pastikanBaseline, terapkanProgres, finalkanKemarin, bacaHasil, bacaBaseline, kunciTanggal, hitungStreak } = require('./_tdsnap');
 const { getAccessToken, sendError, verifyIdToken } = require('./_auth');
 const { cleanCell } = require('./_sheet');
 
@@ -357,6 +357,9 @@ function hitungTargetDaily(masterList, petaKA, configRows) {
     if (role === 'BCH') { asal = 'P031_060'; balBuckets = ['P001_030', 'P031_060']; }
     const incFleet = role === 'BCH';
     const scopeM = m => (incFleet || m['FLEET/NON FLEET'] !== 'FLEET') && (role !== 'FE' || m['CO ALL'] === namaCO);
+    // Realisasi = kontrak dengan kolom REALISASI (KA HARIAN, formula; 0 saat pagi) > 0, dihitung dengan SIPOK-nya (sama seperti /realisasi di Telegram).
+    const realisasiDari = awalList => masterList.filter(m => scopeM(m) && awalList.includes(m['BUCKET AWAL']) && petaKA[m['NO KONTRAK']] && Number(petaKA[m['NO KONTRAK']]['REALISASI']) > 0)
+      .map(m => [m['NO KONTRAK'], sipokOf(m), m['NAMA KONSUMEN'] || '-']);
     const scopeKA = ka => (incFleet || ka['FLEET/NON FLEET'] !== 'FLEET') && (role !== 'FE' || ka['NAMA COLLECTOR'] === namaCO);
 
     // ---- Poin 1: BALANCE (porsi AR bucket terhadap total AR) ----
@@ -368,6 +371,7 @@ function hitungTargetDaily(masterList, petaKA, configRows) {
     const perluBal = Math.max(0, arBucket - arTotal * batasBal / 100);
     const kandBal = masterList.filter(m => scopeM(m) && (role === 'FE' ? m['BUCKET UPDATE'] === 'P001_030' : balBuckets.includes(m['BUCKET UPDATE'])));
     let balance;
+    const awalBalance = role === 'FE' ? ['P001_030'] : balBuckets;
     if (role === 'FE') {
       const porsi = bebanFETotal > 0 ? bebanFE[namaCO] / bebanFETotal : 0;
       const perlu = gapNood * porsi;
@@ -410,6 +414,8 @@ function hitungTargetDaily(masterList, petaKA, configRows) {
     };
     // Progres hanya memakai BUCKET UPDATE (bucket actual = bucket update): kontrak flow yang BUCKET UPDATE-nya sudah kembali ke bucket awal = sudah realisasi,
     // yang masih di bucket lebih tinggi (mis. 1-30) berarti belum realisasi dan masih menjadi flow. Tidak memakai REALISASI/POTENSIAL.
+    balance.realisasi = realisasiDari(awalBalance);
+    flow.realisasi = realisasiDari([bAsal]);
     return { namaCO, role, poin: [balance, flow] };
   });
   return { tanggal: w, pic: hasil };
@@ -457,7 +463,8 @@ module.exports = async (req, res) => {
       try { const r = await pastikanBaseline(accessToken, sheetId, td, baseAwal, { paksa }); td.tertunda = !!r.tertunda; terapkanProgres(td, r.base); }
       catch (e) { adaBaseline = false; console.error('Baseline target harian gagal:', e.message); terapkanProgres(td, {}); }
       td.adaBaseline = adaBaseline;
-      try { td.streak = hitungStreak(hasilAwal || []); } catch (e) { td.streak = { daftar: [], riwayatHari: 0 }; }
+      if (adaBaseline && !td.tertunda) { try { await catatHasilHariIni(accessToken, sheetId, td, hasilAwal || []); } catch (e) { console.error('Gagal catat hasil hari ini:', e.message); } }
+      try { td.streak = hitungStreak((hasilAwal || []).filter(x => x.tanggal !== kunciTanggal(td.tanggal))); } catch (e) { td.streak = { daftar: [], riwayatHari: 0 }; }
       if (admin) { res.status(200).json(Object.assign({ isAdmin: true }, td)); return; }
       const rec = masterList.find(m => (m['EMAIL CO'] || '').toString().trim().toLowerCase() === email);
       const nama = rec ? rec['CO ALL'] : null;
