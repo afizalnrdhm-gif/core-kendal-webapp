@@ -33,7 +33,7 @@ async function bacaBaseline(token, sheetId, kunciTgl) {
     const k = row[1] + '|' + row[2];
     // baris terakhir menang: pembekuan ulang (cron 09.00 / tombol admin) menimpa yang lebih awal
     let kontrak = []; try { kontrak = JSON.parse(row[5] || '[]'); } catch (e) {}
-    out[k] = { targetHari: Number(row[3]) || 0, baseNilai: Number(row[4]) || 0, kontrak };
+    out[k] = { targetHari: Number(row[3]) || 0, baseNilai: Number(row[4]) || 0, kontrak, waktu: String(row[6] || '') };
   });
   return out;
 }
@@ -88,7 +88,7 @@ function terapkanProgres(td, base) {
         targetHari: b.targetHari, baseNilai: b.baseNilai, tercapai,
         persen: b.targetHari > 0 ? tercapai / b.targetHari * 100 : (tercapai > 0 ? 100 : 0),
         sisa: Math.max(0, b.targetHari - tercapai), tuntas: tercapai >= b.targetHari,
-        jumlahBayar: bayar.length, kontrakBayar: bayar.slice().sort((a, c) => c[1] - a[1]).slice(0, 15).map(x => ({ noKontrak: x[0], sipok: x[1], nama: x[2] || '-' }))
+        jumlahBayar: bayar.length, jumlahBase: (b.kontrak || []).length, jumlahSekarang: sekarang.size, waktuBase: b.waktu || '', kontrakBayar: bayar.slice().sort((a, c) => c[1] - a[1]).slice(0, 15).map(x => ({ noKontrak: x[0], sipok: x[1], nama: x[2] || '-' }))
       };
     }
     delete q.semuaKandidat; delete q.nilaiFE;
