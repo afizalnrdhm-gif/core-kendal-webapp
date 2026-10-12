@@ -116,8 +116,10 @@ function cariCO(master, cfg, email) {
 // (JATUH TEMPO <= hari ini WIB; kalau tanggalnya kosong, dianggap jatuh tempo bila DPD > 0). Yang belum jatuh tempo tidak ditampilkan.
 function sudahJatuhTempo(r) {
   const jt = toMs(r['JATUH TEMPO']);
+  // DPD > 0 = masih menunggak (mis. sudah bayar 1x atau stay, JATUH TEMPO sudah bergeser ke depan) -> tetap tampil.
+  if (Number(r['DPD']) > 0) return true;
   if (jt !== null) return jt <= Date.parse(tglStr(waktuWIB()) + 'T00:00:00Z');
-  return Number(r['DPD']) > 0;
+  return false;
 }
 function kandidat(co) {
   const b = BUCKET_ROLE[co.role];

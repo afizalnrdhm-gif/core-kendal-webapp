@@ -9,11 +9,11 @@ test('kandidat FE = BUCKET AWAL NOOD & DPD>0 milik sendiri; MR = BUCKET AWAL 1-3
   const master = [
     k('1', 'NOOD', 'A'), k('2', 'NOOD', 'A', { DPD: 0 }), k('3', 'NOOD', 'A', { 'FLEET/NON FLEET': 'FLEET' }),
     k('4', 'NOOD', 'B'), k('5', 'P001_030', 'A', { DPD: 40 }), k('6', 'P001_030', 'A', { DPD: 20 }),
-    k('7', 'NOOD', 'A', { 'JATUH TEMPO': '2999-01-01' }), k('8', 'P001_030', 'C', { DPD: 31 })
+    k('7', 'NOOD', 'A', { 'JATUH TEMPO': '2999-01-01', DPD: 0 }), k('8', 'P001_030', 'C', { DPD: 31 })
   ];
   const cfg = [{ NAMA_CO: 'A', ROLE: 'FE' }, { NAMA_CO: 'B', ROLE: 'MR' }];
   const fe = cariCO(master, cfg, 'a@x.id');
-  assert.deepStrictEqual(kandidat(fe).map(x => x.noKontrak), ['1']); // 2 DPD 0, 3 fleet, 7 belum jatuh tempo
+  assert.deepStrictEqual(kandidat(fe).map(x => x.noKontrak), ['1']); // 2 & 7 DPD 0, 3 fleet
   const mr = cariCO(master, cfg, 'b@x.id');
   assert.deepStrictEqual(kandidat(mr).map(x => x.noKontrak).sort(), ['5', '8']); // DPD>=31 saja, milik FE mana pun
   assert.strictEqual(cariCO(master, cfg, 'z@x.id'), null);
@@ -58,4 +58,9 @@ test('rekomendasi: jatuh tempo & belum pernah terbentuk DKH diutamakan (paling l
   // D punya janji dekat tapi sudah jatuh tempo & belum terbentuk, jadi tetap grup utama; tanpa data PRODUCTIVITY aturan ini dilewati
   const tanpa = rekomendasi([k('A', 100, d(3)), k('C', 999, d(3))], new Set(), '2026-10-13', null);
   assert.strictEqual(tanpa[0].noKontrak, 'C');
+});
+
+test('sudah bayar 1x / stay: JATUH TEMPO bergeser ke depan tapi DPD > 0 -> tetap jadi kandidat', () => {
+  const r = m('9', 'P001_030', 'A', { 'BUCKET AWAL': 'P001_030', 'FLOW EVER': 'P001_030', DPD: 12, 'JATUH TEMPO': '2999-01-01' });
+  assert.deepStrictEqual(kandidat({ role: 'FE', kontrak: [r] }).map(x => x.noKontrak), ['9']);
 });
