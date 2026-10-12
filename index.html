@@ -1185,6 +1185,16 @@
 .ud-main .mono{overflow-wrap:anywhere;}
 .ud-tags{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
 .ud-side{white-space:nowrap;align-self:flex-start;padding-top:1px;font-weight:700;}
+
+/* Pilihan kontrak tanpa kotak centang: ketuk kartu, tampil tombol "Pilih" / "Dipilih" */
+.ud-row input[type=checkbox]{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none;}
+.ud-row{position:relative;}
+.ud-row:has(input:focus-visible){outline:2px solid var(--navy-lighter,#1d6fa5);outline-offset:2px;}
+.ud-pick{display:inline-block;margin-top:6px;font-size:12px;font-weight:700;padding:4px 12px;border-radius:99px;border:1.5px solid var(--line-strong,#b9c6d2);color:var(--ink-soft);background:var(--surface);}
+.ud-pick::before{content:'Pilih';}
+.ud-row.on .ud-pick{background:var(--navy,#0b3d62);border-color:var(--navy,#0b3d62);color:#fff;}
+.ud-row.on .ud-pick::before{content:'\2713  Dipilih';}
+.ud-row.done{cursor:default;}
 </style>
 </head>
 <body>
@@ -2301,7 +2311,7 @@ function renderUsulanCO(){
     const on = UD_SEL.has(x.noKontrak);
     return '<label class="ud-row' + (on ? ' on' : '') + '" data-q="' + esc((x.nama + ' ' + x.noKontrak).toLowerCase()) + '"><input type="checkbox" data-no="' + esc(x.noKontrak) + '"' + (on ? ' checked' : '') + ' onchange="udToggle(this)">' +
       '<div class="ud-main"><b>' + esc(x.nama) + '</b><span class="mono">' + esc(x.noKontrak) + '</span><span class="ud-sub">' + (x.dpd !== null && !isNaN(x.dpd) ? 'DPD ' + x.dpd : '') + (x.janji ? ' · janji tgl ' + esc(x.janji) : '') + '</span></div>' +
-      '<div class="ud-side"><span class="mono">' + fmtRupiah(x.sipok) + '</span></div></label>';
+      '<div class="ud-side"><span class="mono">' + fmtRupiah(x.sipok) + '</span><span class="ud-pick"></span></div></label>';
   }).join('') + '</div>';
   h += '<div class="ud-bar" id="udBar"><div class="ud-count" id="udCount"></div><button class="btn primary" id="udKirim" onclick="udKirim()">Kirim usulan</button></div><div class="ud-msg" id="udMsg" role="status"></div>';
   w.innerHTML = h; udBar();
@@ -2348,19 +2358,19 @@ function renderUsulanAdmin(){
     if(c.sudahKirim || c.kontrak.length){
       h += '<div class="ud-list">' + c.kontrak.map(x => {
         const berubah = x.bucketSekarang && x.bucketSekarang !== exp;
-        return '<label class="ud-row' + (x.assign ? ' done' : '') + '"><input type="checkbox" data-co="' + ci + '" data-no="' + esc(x.noKontrak) + '"' + (x.assign ? ' disabled' : '') + '>' +
+        return '<label class="ud-row' + (x.assign ? ' done' : '') + '"><input type="checkbox" data-co="' + ci + '" data-no="' + esc(x.noKontrak) + '"' + (x.assign ? ' disabled' : ' onchange="this.closest(\'.ud-row\').classList.toggle(\'on\',this.checked)"') + '>' +
           '<div class="ud-main"><b>' + esc(x.nama) + '</b><span class="mono">' + esc(x.noKontrak) + '</span>' +
           ((x.assign || x.tambahan || berubah) ? '<span class="ud-tags">' + (x.assign ? '<span class="ud-chip ok">Masuk DKH</span>' : '') + (x.tambahan ? '<span class="ud-chip">Tambahan head</span>' : '') + (berubah ? '<span class="ud-chip warn">bucket ' + esc(x.bucketSekarang) + '</span>' : '') + (x.assign ? '<button type="button" class="ud-link" onclick="event.preventDefault();udAssign([\'' + esc(x.noKontrak) + '\'],\'batal\')">batalkan</button>' : '') + '</span>' : '') + '</div>' +
-          '<div class="ud-side"><span class="mono">' + fmtRupiah(x.sipok) + '</span></div></label>';
+          '<div class="ud-side"><span class="mono">' + fmtRupiah(x.sipok) + '</span>' + (x.assign ? '' : '<span class="ud-pick"></span>') + '</div></label>';
       }).join('') + '</div>' +
-      '<div class="ud-actions"><button class="btn primary" onclick="udAssignPilih(' + ci + ')">Assign yang dicentang</button> <button class="btn" onclick="udAssignSemua(' + ci + ')">Assign semua</button> <button class="btn" onclick="udSalin(' + ci + ')">Salin daftar DKH</button></div>';
+      '<div class="ud-actions"><button class="btn primary" onclick="udAssignPilih(' + ci + ')">Assign yang dipilih</button> <button class="btn" onclick="udAssignSemua(' + ci + ')">Assign semua</button> <button class="btn" onclick="udSalin(' + ci + ')">Salin daftar DKH</button></div>';
     }
     if(c.rekomendasi && c.rekomendasi.length){
       h += '<div class="ud-rek"><div class="ud-rek-t">Rekomendasi tambahan <span class="ud-sub">(urut: janji bayar dekat tanggal DKH, biasa bayar, lalu SIPOK terbesar)</span></div><div class="ud-list">' + c.rekomendasi.map((x, i) =>
-        '<label class="ud-row"><input type="checkbox" data-rek="' + ci + '" data-no="' + esc(x.noKontrak) + '"' + (i < c.kurang ? ' checked' : '') + '>' +
+        '<label class="ud-row"><input type="checkbox" data-rek="' + ci + '" data-no="' + esc(x.noKontrak) + '"' + ' onchange="this.closest(\'.ud-row\').classList.toggle(\'on\',this.checked)">' +
         '<div class="ud-main"><b>' + esc(x.nama) + '</b><span class="mono">' + esc(x.noKontrak) + '</span><span class="ud-sub">' + esc(x.alasan) + (x.dpd !== null && !isNaN(x.dpd) ? ' · DPD ' + x.dpd : '') + '</span></div>' +
-        '<div class="ud-side"><span class="mono">' + fmtRupiah(x.sipok) + '</span></div></label>').join('') + '</div>' +
-        '<div class="ud-actions"><button class="btn primary" onclick="udTambah(' + ci + ')">Tambah &amp; assign yang dicentang</button></div></div>';
+        '<div class="ud-side"><span class="mono">' + fmtRupiah(x.sipok) + '</span><span class="ud-pick"></span></div></label>').join('') + '</div>' +
+        '<div class="ud-actions"><button class="btn" onclick="udPilihTeratas(' + ci + ',' + c.kurang + ')">Pilih ' + c.kurang + ' teratas</button> <button class="btn primary" onclick="udTambah(' + ci + ')">Tambah &amp; assign yang dipilih</button></div></div>';
     }
     h += '</section>';
   });
@@ -2376,7 +2386,7 @@ function udAssign(list, aksi){
 }
 function udAssignPilih(ci){
   const list = Array.from(document.querySelectorAll('.ud-co input[data-co="' + ci + '"]:checked')).map(i => i.dataset.no);
-  if(!list.length){ const m = document.getElementById('udMsg'); if(m){ m.className = 'ud-msg bad'; m.textContent = 'Centang dulu kontrak yang mau di-assign.'; } return; }
+  if(!list.length){ const m = document.getElementById('udMsg'); if(m){ m.className = 'ud-msg bad'; m.textContent = 'Pilih dulu kontrak yang mau di-assign.'; } return; }
   udAssign(list, 'assign');
 }
 function udAssignSemua(ci){ udAssign(UD_ADM.co[ci].kontrak.filter(x => !x.assign).map(x => x.noKontrak), 'assign'); }
@@ -2386,10 +2396,13 @@ function udSalin(ci){
   udSalinTeks(t, 'Daftar DKH ' + c.nama + ' disalin. Tinggal tempel di WhatsApp.');
 }
 
+function udPilihTeratas(ci, n){
+  document.querySelectorAll('input[data-rek="' + ci + '"]').forEach((i, idx) => { i.checked = idx < n; const r = i.closest('.ud-row'); if(r) r.classList.toggle('on', i.checked); });
+}
 function udTambah(ci){
   const c = UD_ADM.co[ci]; const m = document.getElementById('udMsg');
   const list = Array.from(document.querySelectorAll('input[data-rek="' + ci + '"]:checked')).map(i => i.dataset.no);
-  if(!list.length){ if(m){ m.className = 'ud-msg bad'; m.textContent = 'Centang dulu kontrak rekomendasi yang mau ditambahkan.'; } return; }
+  if(!list.length){ if(m){ m.className = 'ud-msg bad'; m.textContent = 'Pilih dulu kontrak rekomendasi yang mau ditambahkan.'; } return; }
   if(m){ m.className = 'ud-msg'; m.textContent = 'Menyimpan…'; }
   udApi('tambah', { method: 'POST', body: JSON.stringify({ untuk: UD_ADM.untuk, co: c.nama, kontrak: list }) }).then(({ok, b}) => {
     if(!ok){ const mm = document.getElementById('udMsg'); if(mm){ mm.className = 'ud-msg bad'; mm.textContent = b.error || 'Gagal menambahkan.'; } return; }
