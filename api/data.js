@@ -17,8 +17,8 @@ function serialToDateStr(serial) {
 
 // Kolom yang TIDAK dikirim ke akun non-admin (tidak dipakai layar mereka / data internal).
 // DESKCALL ditambah kolom identitas yang tidak dibutuhkan untuk telepon (alamat, email CO).
-const HIDE_NON_ADMIN = ['CMO', 'CO TAMBAHAN', 'PEKERJAAN KONSUMEN'];
-const HIDE_DESKCALL = HIDE_NON_ADMIN.concat(['EMAIL CO', 'ALAMAT', 'KELURAHAN']);
+const HIDE_NON_ADMIN = ['CMO', 'CO TAMBAHAN'];
+const HIDE_DESKCALL = HIDE_NON_ADMIN.concat(['PEKERJAAN KONSUMEN', 'EMAIL CO', 'ALAMAT', 'KELURAHAN']);
 function stripFields(records, hideList) {
   return records.map(r => {
     const c = Object.assign({}, r);

@@ -1139,9 +1139,10 @@
 .swipe-dots i{width:7px !important;height:7px !important;}
 .swipe-dots i.on{width:20px !important;}
 @media(max-width:640px){
-  #tbody td[data-sec]{display:none !important;}
   #tbody tr[data-kontrak]{cursor:pointer;}
-  #tbody tr[data-kontrak]::after{content:'Ketuk untuk detail ›';display:block;grid-column:1/-1;font-size:12px;color:var(--ink-soft);text-align:right;padding:0 0 2px;}
+  /* Status Ever (tag Sudah/Belum Ever) tampil di kartu HP kalau kontrak punya statusnya */
+  #tbody td[data-label="Status Ever"][data-opt]{display:flex !important;}
+  #tbody td[data-kosong]{display:none !important;}
 }
 
 /* ===== Usulan DKH ===== */
@@ -4576,12 +4577,12 @@ function renderTable(){
       <td data-label="Nama">${esc(r['NAMA KONSUMEN']||'-')}${rowWa(r)}</td>
       <td data-label="Bucket"><div class="bucket-flow"><span class="bpill" style="--c:${BUCKET_COLOR[r['BUCKET AWAL']]||'#999'}">${fmtBucket(r['BUCKET AWAL'])}</span>${differs?' → <span class="bpill" style="--c:'+(BUCKET_COLOR[r['BUCKET UPDATE']]||'#999')+'">'+fmtBucket(r['BUCKET UPDATE'])+'</span>':''}</div></td>
       <td data-label="Status"><span class="status-pill ${statusClass(r['STATUS BAYAR'])}">${esc(r['STATUS BAYAR']||'-')}</span></td>
-      <td data-label="Proyeksi" data-sec>${proyPill(r['PROYEKSI'])}</td>
+      <td data-label="Proyeksi">${proyPill(r['PROYEKSI'])}</td>
       <td data-label="Sisa Piutang" class="num">${fmtRupiah(r['SIPOK'])}</td>
-      <td data-label="% Flow" class="num" data-sec>${pengaruhFlowText_(r)}</td>
+      <td data-label="% Flow" class="num">${pengaruhFlowText_(r)}</td>
       <td data-label="Angsuran" class="num" data-opt>${fmtRupiah(r['ANGSURAN'])}</td>
-      <td data-label="DPD" class="num" data-sec>${esc(r['DPD'] ?? '-')}</td>
-      <td data-label="Status Ever" data-opt>${r['STATUS EVER'] ? `<span class="status-pill ${r['STATUS EVER']==='SUDAH EVER'?'status-belum':'status-sudah'}">${esc(r['STATUS EVER'])}</span>` : '-'}</td>
+      <td data-label="DPD" class="num">${esc(r['DPD'] ?? '-')}</td>
+      <td data-label="Status Ever" data-opt${r['STATUS EVER'] ? '' : ' data-kosong'}>${r['STATUS EVER'] ? `<span class="status-pill ${r['STATUS EVER']==='SUDAH EVER'?'status-belum':'status-sudah'}">${esc(r['STATUS EVER'])}</span>` : '-'}</td>
       <td data-label="Jatuh Tempo" class="mono">${fmtDate(r['JATUH TEMPO'])}</td>
     </tr>`;
   }).join('');
