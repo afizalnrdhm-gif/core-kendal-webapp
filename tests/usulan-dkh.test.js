@@ -19,6 +19,17 @@ test('kandidat FE = BUCKET AWAL NOOD & DPD>0 milik sendiri; MR = BUCKET AWAL 1-3
   assert.strictEqual(cariCO(master, cfg, 'z@x.id'), null);
 });
 
+test('kandidat juga memuat kontrak BELUM EVER (FE: awal 1-30, MR: awal 31-60), bukan yang sudah ever', () => {
+  const k = (no, awal, co, ever, extra) => m(no, 'X', co, Object.assign({ 'BUCKET AWAL': awal, DPD: 5, 'FLOW EVER': ever }, extra || {}));
+  const master = [
+    k('1', 'P001_030', 'A', 'P001_030'), k('2', 'P001_030', 'A', 'P031_060'), k('3', 'P001_030', 'A', ''),
+    k('4', 'P031_060', 'B', 'P031_060'), k('5', 'P031_060', 'B', 'P061_090'), k('6', 'P001_030', 'A', 'P001_030', { 'FLEET/NON FLEET': 'FLEET' })
+  ];
+  const cfg = [{ NAMA_CO: 'A', ROLE: 'FE' }, { NAMA_CO: 'B', ROLE: 'MR' }];
+  assert.deepStrictEqual(kandidat(cariCO(master, cfg, 'a@x.id')).map(x => x.noKontrak), ['1']);
+  assert.deepStrictEqual(kandidat(cariCO(master, cfg, 'b@x.id')).map(x => x.noKontrak).sort(), ['4']);
+});
+
 test('usulan terbaru per CO dan status assign terbaru per kontrak', () => {
   const r = (co, no, batch) => ({ UNTUK_TANGGAL: '2026-10-13', CO: co, EMAIL: 'e', ROLE: 'FE', NO_KONTRAK: no, NAMA: 'n', SIPOK: 10, BUCKET: 'P001_030', BATCH: batch, WAKTU: 'w' });
   const per = usulanTerbaru([r('A', '1', 'b1'), r('A', '2', 'b1'), r('A', '3', 'b2')], '2026-10-13');
