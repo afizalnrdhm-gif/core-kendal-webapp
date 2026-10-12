@@ -94,11 +94,17 @@ function cariCO(master, cfg, email) {
   return { nama, role, kontrak: mine };
 }
 
-// Kontrak yang boleh diusulkan: milik CO, bukan FLEET, BUCKET UPDATE masih di bucket balance role-nya
+// Kontrak yang boleh diusulkan: milik CO, bukan FLEET, BUCKET UPDATE masih di bucket balance role-nya, dan SUDAH jatuh tempo
+// (JATUH TEMPO <= hari ini WIB; kalau tanggalnya kosong, dianggap jatuh tempo bila DPD > 0). Yang belum jatuh tempo tidak ditampilkan.
+function sudahJatuhTempo(r) {
+  const jt = toMs(r['JATUH TEMPO']);
+  if (jt !== null) return jt <= Date.parse(tglStr(waktuWIB()) + 'T00:00:00Z');
+  return Number(r['DPD']) > 0;
+}
 function kandidat(co) {
   const b = BUCKET_ROLE[co.role];
   if (!b) return [];
-  return co.kontrak.filter(r => r['BUCKET UPDATE'] === b && r['FLEET/NON FLEET'] !== 'FLEET')
+  return co.kontrak.filter(r => r['BUCKET UPDATE'] === b && r['FLEET/NON FLEET'] !== 'FLEET' && sudahJatuhTempo(r))
     .map(r => ({ jt: toMs(r['JATUH TEMPO']), jh: hariDariCell(r['JANJI BAYAR']), bh: hariDariCell(r['TGL BYR']), noKontrak: String(r['NO KONTRAK']), nama: String(r['NAMA KONSUMEN'] || '-'), sipok: Number(r['SIPOK']) || 0, dpd: r['DPD'] === undefined || r['DPD'] === '' ? null : Number(r['DPD']), janji: r['JANJI BAYAR'] ? String(r['JANJI BAYAR']) : '', proyeksi: r['PROYEKSI'] ? String(r['PROYEKSI']) : '' }))
     .sort((a, c) => c.sipok - a.sipok);
 }

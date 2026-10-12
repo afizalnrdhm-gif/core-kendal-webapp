@@ -1196,6 +1196,10 @@
 .ud-row.on .ud-pick{background:var(--navy,#0b3d62);border-color:var(--navy,#0b3d62);color:#fff;}
 .ud-row.on .ud-pick::before{content:'\2713  Dipilih';}
 .ud-row.done{cursor:default;}
+
+.td-wait{background:#fff3d9;color:#8a5a00;border-radius:10px;padding:10px 12px;margin:0 0 12px;font-size:13px;}
+:root[data-theme="dark"] .td-wait{background:#4a3a14;color:#ffd98a;}
+#tdRefreeze{margin:0 0 12px;}
 </style>
 </head>
 <body>
@@ -2299,7 +2303,7 @@ function renderUsulanCO(){
   const d = UD_DATA, w = document.getElementById('wrap');
   if(!d.bisa){ w.innerHTML = '<div class="state-box">'+esc(d.pesan||'Menu ini tidak tersedia untuk akunmu.')+'</div>'; return; }
   let h = '<div class="rk-header"><h1>Usulan DKH</h1></div>';
-  h += '<div class="pg-card"><p>Pilih <b>' + d.minEfektif + '–' + d.max + ' kontrak</b> balance ' + udBucketLabel(d.bucket) + ' (BUCKET UPDATE masih ' + udBucketLabel(d.bucket) + ') yang akan kamu kunjungi. Usulan untuk <b>' + udTgl(d.untuk) + '</b>; admin/head yang menetapkan DKH-nya.</p></div>';
+  h += '<div class="pg-card"><p>Pilih <b>' + d.minEfektif + '–' + d.max + ' kontrak</b> balance ' + udBucketLabel(d.bucket) + ' (BUCKET UPDATE masih ' + udBucketLabel(d.bucket) + ') yang sudah jatuh tempo dan akan kamu kunjungi. Usulan untuk <b>' + udTgl(d.untuk) + '</b>; admin/head yang menetapkan DKH-nya.</p></div>';
   if(d.sudahKirim && !UD_EDIT){
     const ada = d.sudahKirim.kontrak.some(x => x.assign);
     h += '<div class="ud-ok"><b>Usulan terkirim</b> · ' + fmtWaktu(d.sudahKirim.waktu) + ' · ' + d.sudahKirim.kontrak.length + ' kontrak' + (ada ? '' : ' <button class="btn" onclick="UD_EDIT=true;renderUsulanCO()">Ubah usulan</button>') + '</div>';
@@ -4260,7 +4264,7 @@ function renderAchv(){
     const open = '<button type="button" class="btn" id="achvOpen">Buka Target Daily</button>';
     const goTD = () => { TD_SEL = 'ALL'; switchView('targetdaily'); };
     if(!pics.length){
-      b2.innerHTML = `<div class="achv-head"><div><small>Pencapaian vs target hari ini</small><h2>Belum ada progres</h2></div>${open}</div><p class="achv-note">Target hari ini belum dibekukan. Progres muncul setelah target pagi tersimpan dan admin update data bayar.</p>`;
+      b2.innerHTML = `<div class="achv-head"><div><small>Pencapaian vs target hari ini</small><h2>Belum ada progres</h2></div>${open}</div><p class="achv-note">${TD_DATA.tertunda ? 'Target hari ini baru dibekukan pukul 09.00, setelah data pagi masuk. Sebelum itu progres belum dihitung.' : 'Target hari ini belum dibekukan. Progres muncul setelah target pagi tersimpan dan admin update data bayar.'}</p>`;
       document.getElementById('achvOpen').onclick = goTD;
       return;
     }
@@ -4355,9 +4359,17 @@ function tdPoinHtml(p, q, idx){
 function tdPicHtml(p){
   return `<div class="td-pichead"><div><b>${esc(tdShort(p.namaCO, p.role))}</b><small>${esc(TD_SHORT_ROLE[p.role] || p.role)} · ${esc(p.namaCO)}</small></div></div><div class="td-grid">${p.poin.map((q, i) => tdPoinHtml(p, q, i)).join('')}</div>`;
 }
+function tdBekukanUlang(){
+  if(!window.confirm('Bekukan ulang target hari ini dari data sekarang? Progres hari ini akan mulai dari 0 lagi.')) return;
+  const b = document.getElementById('tdRefreeze'); if(b){ b.disabled = true; b.textContent = 'Membekukan…'; }
+  fetch('/api/insentif?target=1&bekukan=1', { headers: { Authorization: 'Bearer ' + ID_TOKEN } })
+    .then(r => r.json().then(body => ({ ok: r.ok, body })))
+    .then(({ok, body}) => { if(!ok){ alert(body.error || 'Gagal membekukan ulang.'); } TD_DATA = ok ? body : TD_DATA; renderTargetDaily(); if(typeof renderAchv === 'function') try{ renderAchv(); }catch(e){} })
+    .catch(err => { alert(pesanErr(err)); renderTargetDaily(); });
+}
 function renderTargetDaily(){
   const wrap = document.getElementById('wrap');
-  const head = `<div class="td-intro"><h2>Target daily</h2><p>Target dibekukan tiap pagi, progres naik setiap admin update data bayar.</p><details class="td-info"><summary>Cara hitung</summary><p>Target harian = (belum bayar - batas yang boleh flow) ÷ sisa hari, sama seperti REPORT DAILY di Excel. Balance FE = target NOOD cabang 88%, dibagi sesuai beban awal. Data adalah kondisi kemarin, jadi hari ini ikut dihitung.</p></details></div>`;
+  const head = `<div class="td-intro"><h2>Target daily</h2><p>Target dibekukan tiap pagi pukul 09.00 dari data pagi, progres naik setiap admin update data bayar.</p>${TD_DATA && TD_DATA.tertunda ? '<div class="td-wait">Target hari ini baru dibekukan pukul 09.00, setelah data pagi masuk. Sebelum itu progres belum dihitung.</div>' : ''}${IS_ADMIN && TD_DATA && !TD_DATA.tertunda ? '<button type="button" class="btn" id="tdRefreeze" onclick="tdBekukanUlang()">Bekukan ulang dari data sekarang</button>' : ''}<details class="td-info"><summary>Cara hitung</summary><p>Target harian = (belum bayar - batas yang boleh flow) ÷ sisa hari, sama seperti REPORT DAILY di Excel. Balance FE = target NOOD cabang 88%, dibagi sesuai beban awal. Data adalah kondisi kemarin, jadi hari ini ikut dihitung.</p></details></div>`;
   if(!TD_DATA){
     wrap.innerHTML = head + (TD_ERR ? `<div class="state-box error"><div class="err-icon">${ic('alert')}</div>${esc(TD_ERR)}<br><br><button class="btn" onclick="TD_ERR='';renderTargetDaily()">Coba lagi</button></div>` : `<div class="skeleton-row"><div class="skel"></div><div class="skel"></div></div><div class="skel tall"></div>`);
     if(!TD_ERR) ensureTD(() => { if(VIEW_MODE === 'targetdaily') renderTargetDaily(); });

@@ -453,14 +453,15 @@ module.exports = async (req, res) => {
       const td = hitungTargetDaily(masterList, petaKA, configRows);
       // Target hari ini dibekukan sekali sehari; progres dihitung dari kontrak baseline yang sudah bayar. Kalau tab belum bisa dipakai, tampil tanpa progres.
       let adaBaseline = true;
-      try { const { base } = await pastikanBaseline(accessToken, sheetId, td, baseAwal); terapkanProgres(td, base); }
+      const paksa = !!(req.query && req.query.bekukan) && admin; // tombol admin "Bekukan ulang dari data sekarang"
+      try { const r = await pastikanBaseline(accessToken, sheetId, td, baseAwal, { paksa }); td.tertunda = !!r.tertunda; terapkanProgres(td, r.base); }
       catch (e) { adaBaseline = false; console.error('Baseline target harian gagal:', e.message); terapkanProgres(td, {}); }
       td.adaBaseline = adaBaseline;
       try { td.streak = hitungStreak(hasilAwal || []); } catch (e) { td.streak = { daftar: [], riwayatHari: 0 }; }
       if (admin) { res.status(200).json(Object.assign({ isAdmin: true }, td)); return; }
       const rec = masterList.find(m => (m['EMAIL CO'] || '').toString().trim().toLowerCase() === email);
       const nama = rec ? rec['CO ALL'] : null;
-      res.status(200).json({ isAdmin: false, tanggal: td.tanggal, adaBaseline: td.adaBaseline, streak: { daftar: td.streak.daftar.filter(x => x.pic === nama), riwayatHari: td.streak.riwayatHari }, pic: td.pic.filter(p => p.namaCO === nama) });
+      res.status(200).json({ isAdmin: false, tanggal: td.tanggal, adaBaseline: td.adaBaseline, tertunda: !!td.tertunda, streak: { daftar: td.streak.daftar.filter(x => x.pic === nama), riwayatHari: td.streak.riwayatHari }, pic: td.pic.filter(p => p.namaCO === nama) });
       return;
     }
 
@@ -526,6 +527,6 @@ module.exports.bekukanTargetHariIni = async (accessToken, sheetId) => {
   // Catat hasil final kemarin DULU (pakai salinan), baru bekukan baseline hari ini.
   let hasilKemarin = 0;
   try { hasilKemarin = await finalkanKemarin(accessToken, sheetId, td); } catch (e) { console.error('Gagal catat hasil kemarin:', e.message); }
-  const { baru } = await pastikanBaseline(accessToken, sheetId, td);
+  const { baru } = await pastikanBaseline(accessToken, sheetId, td, null, { paksa: true }); // data pagi sudah ditarik: selalu bekukan ulang jam 09.00
   return { baru, pic: td.pic.length, hasilKemarin };
 };
