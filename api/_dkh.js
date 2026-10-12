@@ -37,6 +37,30 @@ function hariDariCell(v) {
   const n = parseInt(s, 10); return n >= 1 && n <= 31 ? n : 0;
 }
 
+function toMs(v) {
+  if (v === undefined || v === null || v === '') return null;
+  if (typeof v === 'number') return v > 20000 ? Math.round((v - 25569) * 86400000) : null;
+  const t = String(v).trim();
+  let m = t.match(/^(\d{4})-(\d{2})-(\d{2})/); if (m) return Date.UTC(+m[1], +m[2] - 1, +m[3]);
+  m = t.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/); if (m) return Date.UTC(+m[3], +m[2] - 1, +m[1]);
+  return null;
+}
+const BLN = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+function labelTgl(ms) { const d = new Date(ms); return d.getUTCDate() + ' ' + BLN[d.getUTCMonth()]; }
+
+// Kontrak yang pernah terbentuk DKH = muncul di tab PRODUCTIVITY (tarikan sistem, header "Agreement No"). null kalau tab belum ada/kosong.
+async function bacaPernahTerbentuk(token, sheetId) {
+  const r = await sf(BASE(sheetId) + '/values/' + encodeURIComponent('PRODUCTIVITY') + '?valueRenderOption=UNFORMATTED_VALUE', token);
+  const v = r.ok && r.json.values ? r.json.values : [];
+  let h = -1;
+  for (let i = 0; i < Math.min(8, v.length); i++) if ((v[i] || []).some(c => String(c == null ? '' : c).trim().toUpperCase() === 'AGREEMENT NO')) { h = i; break; }
+  if (h === -1) return null;
+  const idx = v[h].findIndex(c => String(c == null ? '' : c).trim().toUpperCase() === 'AGREEMENT NO');
+  const set = new Set();
+  for (let i = h + 1; i < v.length; i++) { let k = String((v[i] || [])[idx] == null ? '' : v[i][idx]).trim(); const m = k.match(/^="(.*)"$/); if (m) k = m[1]; if (k) set.add(k); }
+  return set;
+}
+
 function parse(values) {
   const header = (values[0] || []).map(h => String(h == null ? '' : h).trim());
   return values.slice(1).map(r => { const o = {}; header.forEach((h, i) => { if (h) o[h] = cleanCell(h, r[i] === undefined ? '' : r[i]); }); return o; });
@@ -75,7 +99,7 @@ function kandidat(co) {
   const b = BUCKET_ROLE[co.role];
   if (!b) return [];
   return co.kontrak.filter(r => r['BUCKET UPDATE'] === b && r['FLEET/NON FLEET'] !== 'FLEET')
-    .map(r => ({ jh: hariDariCell(r['JANJI BAYAR']), bh: hariDariCell(r['TGL BYR']), noKontrak: String(r['NO KONTRAK']), nama: String(r['NAMA KONSUMEN'] || '-'), sipok: Number(r['SIPOK']) || 0, dpd: r['DPD'] === undefined || r['DPD'] === '' ? null : Number(r['DPD']), janji: r['JANJI BAYAR'] ? String(r['JANJI BAYAR']) : '', proyeksi: r['PROYEKSI'] ? String(r['PROYEKSI']) : '' }))
+    .map(r => ({ jt: toMs(r['JATUH TEMPO']), jh: hariDariCell(r['JANJI BAYAR']), bh: hariDariCell(r['TGL BYR']), noKontrak: String(r['NO KONTRAK']), nama: String(r['NAMA KONSUMEN'] || '-'), sipok: Number(r['SIPOK']) || 0, dpd: r['DPD'] === undefined || r['DPD'] === '' ? null : Number(r['DPD']), janji: r['JANJI BAYAR'] ? String(r['JANJI BAYAR']) : '', proyeksi: r['PROYEKSI'] ? String(r['PROYEKSI']) : '' }))
     .sort((a, c) => c.sipok - a.sipok);
 }
 
@@ -88,16 +112,18 @@ function cariCOByNama(master, cfg, nama) {
 
 // Rekomendasi tambahan untuk DKH tanggal `untuk`: prioritas janji bayar yang jatuh pada/dekat tanggal DKH,
 // lalu kontrak yang bulan lalu biasa bayar di sekitar tanggal itu, lalu SIPOK terbesar.
-function rekomendasi(kand, dipakai, untuk) {
+function rekomendasi(kand, dipakai, untuk, pernah) {
   const hari = parseInt(String(untuk).slice(8, 10), 10) || 0;
+  const hariIni = Date.parse(tglStr(waktuWIB()) + 'T00:00:00Z');
   const dekat = (h) => h > 0 && h >= hari && h <= hari + 3;
   return kand.filter(x => !dipakai.has(x.noKontrak)).map(x => {
-    let grup = 3, alasan = 'SIPOK besar';
-    if (dekat(x.jh)) { grup = 0; alasan = 'Janji bayar tgl ' + x.jh; }
-    else if (x.bh > 0 && Math.abs(x.bh - hari) <= 2) { grup = 1; alasan = 'Biasa bayar tgl ' + x.bh; }
-    else if (x.jh > 0 && x.jh < hari) { grup = 2; alasan = 'Janji tgl ' + x.jh + ' sudah lewat, kejar'; }
-    return { noKontrak: x.noKontrak, nama: x.nama, sipok: x.sipok, dpd: x.dpd, alasan, grup };
-  }).sort((a, b) => a.grup - b.grup || b.sipok - a.sipok);
+    let grup = 4, alasan = 'SIPOK besar';
+    if (pernah && x.jt !== null && x.jt !== undefined && x.jt <= hariIni && !pernah.has(x.noKontrak)) { grup = 0; alasan = 'Jatuh tempo ' + labelTgl(x.jt) + ', belum pernah terbentuk DKH'; }
+    else if (dekat(x.jh)) { grup = 1; alasan = 'Janji bayar tgl ' + x.jh; }
+    else if (x.bh > 0 && Math.abs(x.bh - hari) <= 2) { grup = 2; alasan = 'Biasa bayar tgl ' + x.bh; }
+    else if (x.jh > 0 && x.jh < hari) { grup = 3; alasan = 'Janji tgl ' + x.jh + ' sudah lewat, kejar'; }
+    return { noKontrak: x.noKontrak, nama: x.nama, sipok: x.sipok, dpd: x.dpd, alasan, grup, jt: x.jt || 0 };
+  }).sort((a, b) => a.grup - b.grup || (a.grup === 0 ? a.jt - b.jt : 0) || b.sipok - a.sipok);
 }
 
 // Batch terbaru per CO untuk satu tanggal
@@ -172,7 +198,7 @@ async function tangani(req, res, ctx) {
 
   if (mode === 'admin') {
     const untuk = tglValid(req.query && req.query.tanggal) ? req.query.tanggal : untukDefault;
-    const [master, cfg, usul, asg] = await Promise.all([bacaTab(token, sheetId, 'MASTER'), bacaTab(token, sheetId, 'CONFIG_ROLE'), bacaTab(token, sheetId, TAB_USUL), bacaTab(token, sheetId, TAB_ASSIGN)]);
+    const [master, cfg, usul, asg, pernah] = await Promise.all([bacaTab(token, sheetId, 'MASTER'), bacaTab(token, sheetId, 'CONFIG_ROLE'), bacaTab(token, sheetId, TAB_USUL), bacaTab(token, sheetId, TAB_ASSIGN), bacaPernahTerbentuk(token, sheetId)]);
     const per = usulanTerbaru(usul, untuk); const asgS = statusAssign(asg, untuk);
     // Bucket kontrak saat ini, supaya terlihat kalau sudah berubah sejak diusulkan
     const bucketNow = {}; master.forEach(r => { bucketNow[String(r['NO KONTRAK'])] = r['BUCKET UPDATE']; });
@@ -186,12 +212,12 @@ async function tangani(req, res, ctx) {
       const total = kontrak.length;
       const kurang = Math.max(0, TARGET_DKH - total);
       const co = cariCOByNama(master, cfg, p.nama);
-      const rek = kurang > 0 && co ? rekomendasi(kandidat(co), ada, untuk).slice(0, Math.max(kurang + 5, 8)) : [];
+      const rek = kurang > 0 && co ? rekomendasi(kandidat(co), ada, untuk, pernah).slice(0, Math.max(kurang + 5, 8)) : [];
       return { nama: p.nama, role: p.role, sudahKirim: !!u, waktu: u ? u.waktu : '', kontrak, kurang, rekomendasi: rek };
     });
     const tanggalTersedia = Array.from(new Set(usul.map(r => String(r['UNTUK_TANGGAL'])).filter(tglValid))).sort().reverse().slice(0, 14);
     if (tanggalTersedia.indexOf(untuk) === -1) tanggalTersedia.unshift(untuk);
-    res.status(200).json({ untuk, tanggalTersedia, target: TARGET_DKH, co: dataCO });
+    res.status(200).json({ untuk, tanggalTersedia, target: TARGET_DKH, produktivitasAda: !!pernah, co: dataCO });
     return;
   }
 
