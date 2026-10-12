@@ -9,6 +9,7 @@ const TAB_USUL = 'USULAN_DKH', TAB_ASSIGN = 'DKH_ASSIGN';
 const H_USUL = ['UNTUK_TANGGAL', 'CO', 'EMAIL', 'ROLE', 'NO_KONTRAK', 'NAMA', 'SIPOK', 'BUCKET', 'BATCH', 'WAKTU'];
 const H_ASSIGN = ['UNTUK_TANGGAL', 'CO', 'ROLE', 'NO_KONTRAK', 'NAMA', 'SIPOK', 'STATUS', 'OLEH', 'WAKTU'];
 const BUCKET_ROLE = { FE: 'P001_030', MR: 'P031_060' };
+const URUT = ['NOOD','P001_030','P031_060','P061_090','P091_120','P121_150','P151_180','P181_210','P211_240'];
 const ASAL_FLOW = { FE: 'NOOD', MR: 'P001_030' };
 const safe = v => { const s = v == null ? '' : String(v); return /^[=+\-@]/.test(s) ? "'" + s : s; };
 
@@ -72,6 +73,21 @@ async function bacaTab(token, sheetId, tab) {
   return r.ok && r.json.values ? parse(r.json.values) : [];
 }
 
+// MASTER + FLOW EVER dari KA HARIAN (header baris ke-16), ditempel sebagai r['FLOW EVER'] untuk menentukan "belum ever".
+async function bacaMaster(token, sheetId) {
+  const [master, ka] = await Promise.all([
+    bacaTab(token, sheetId, 'MASTER'),
+    sf(BASE(sheetId) + '/values/' + encodeURIComponent('KA HARIAN') + '?valueRenderOption=UNFORMATTED_VALUE', token)
+  ]);
+  const v = ka.ok && ka.json.values ? ka.json.values : [];
+  const hdr = (v[15] || []).map(h => String(h == null ? '' : h).trim());
+  const iNo = hdr.indexOf('NO KONTRAK'), iEv = hdr.indexOf('FLOW EVER');
+  const peta = {};
+  if (iNo > -1 && iEv > -1) for (let i = 16; i < v.length; i++) { const r = v[i] || []; if (r[iNo]) peta[String(r[iNo]).trim()] = String(r[iEv] == null ? '' : r[iEv]).trim(); }
+  master.forEach(m => { m['FLOW EVER'] = peta[String(m['NO KONTRAK']).trim()] || ''; });
+  return master;
+}
+
 async function pastikanTab(token, sheetId, tab, header) {
   const add = await sf(BASE(sheetId) + ':batchUpdate', token, { method: 'POST', body: JSON.stringify({ requests: [{ addSheet: { properties: { title: tab } } }] }) });
   if (add.ok) await sf(BASE(sheetId) + '/values/' + encodeURIComponent(tab + '!A1') + '?valueInputOption=RAW', token, { method: 'PUT', body: JSON.stringify({ values: [header] }) });
@@ -100,15 +116,19 @@ function cariCO(master, cfg, email) {
 // (JATUH TEMPO <= hari ini WIB; kalau tanggalnya kosong, dianggap jatuh tempo bila DPD > 0). Yang belum jatuh tempo tidak ditampilkan.
 function sudahJatuhTempo(r) {
   const jt = toMs(r['JATUH TEMPO']);
+  // DPD > 0 = masih menunggak (mis. sudah bayar 1x atau stay, JATUH TEMPO sudah bergeser ke depan) -> tetap tampil.
+  if (Number(r['DPD']) > 0) return true;
   if (jt !== null) return jt <= Date.parse(tglStr(waktuWIB()) + 'T00:00:00Z');
-  return Number(r['DPD']) > 0;
+  return false;
 }
 function kandidat(co) {
   const b = BUCKET_ROLE[co.role];
   if (!b) return [];
   // Logika sama dengan KPI Flow: FE = bucket awal NOOD dengan DPD > 0; MR = bucket awal 1-30 dengan DPD >= 31.
   const awal = ASAL_FLOW[co.role], minDpd = co.role === 'MR' ? 31 : 1;
-  return co.kontrak.filter(r => r['BUCKET AWAL'] === awal && Number(r['DPD']) >= minDpd && r['FLEET/NON FLEET'] !== 'FLEET' && sudahJatuhTempo(r))
+  // Ditambah kontrak BELUM EVER: bucket awal = bucket penyelesaian role-nya (FE 1-30, MR 31-60) dan FLOW EVER belum melewati bucket itu.
+  const belumEver = r => r['BUCKET AWAL'] === b && r['FLOW EVER'] && URUT.indexOf(r['FLOW EVER']) > -1 && URUT.indexOf(r['FLOW EVER']) <= URUT.indexOf(b);
+  return co.kontrak.filter(r => ((r['BUCKET AWAL'] === awal && Number(r['DPD']) >= minDpd) || belumEver(r)) && r['FLEET/NON FLEET'] !== 'FLEET' && sudahJatuhTempo(r))
     .map(r => ({ jt: toMs(r['JATUH TEMPO']), jh: hariDariCell(r['JANJI BAYAR']), bh: hariDariCell(r['TGL BYR']), noKontrak: String(r['NO KONTRAK']), nama: String(r['NAMA KONSUMEN'] || '-'), sipok: Number(r['SIPOK']) || 0, dpd: r['DPD'] === undefined || r['DPD'] === '' ? null : Number(r['DPD']), janji: r['JANJI BAYAR'] ? String(r['JANJI BAYAR']) : '', proyeksi: r['PROYEKSI'] ? String(r['PROYEKSI']) : '' }))
     .sort((a, c) => c.sipok - a.sipok);
 }
@@ -165,7 +185,7 @@ async function tangani(req, res, ctx) {
   const untukDefault = besok();
 
   if (mode === 'saya') {
-    const [master, cfg, usul, asg] = await Promise.all([bacaTab(token, sheetId, 'MASTER'), bacaTab(token, sheetId, 'CONFIG_ROLE'), bacaTab(token, sheetId, TAB_USUL), bacaTab(token, sheetId, TAB_ASSIGN)]);
+    const [master, cfg, usul, asg] = await Promise.all([bacaMaster(token, sheetId), bacaTab(token, sheetId, 'CONFIG_ROLE'), bacaTab(token, sheetId, TAB_USUL), bacaTab(token, sheetId, TAB_ASSIGN)]);
     const co = cariCO(master, cfg, email);
     if (!co) { res.status(200).json({ bisa: false, pesan: 'Akun ini tidak terdaftar sebagai CO di data MASTER.' }); return; }
     if (!BUCKET_ROLE[co.role]) { res.status(200).json({ bisa: false, pesan: 'Usulan DKH hanya untuk CO Front End dan Mid Range.' }); return; }
@@ -184,7 +204,7 @@ async function tangani(req, res, ctx) {
   if (mode === 'kirim') {
     if (req.method !== 'POST') { res.status(405).json({ error: 'Metode tidak didukung.' }); return; }
     const pilih = Array.isArray(body.kontrak) ? Array.from(new Set(body.kontrak.map(x => String(x)))) : [];
-    const [master, cfg, usul, asg] = await Promise.all([bacaTab(token, sheetId, 'MASTER'), bacaTab(token, sheetId, 'CONFIG_ROLE'), bacaTab(token, sheetId, TAB_USUL), bacaTab(token, sheetId, TAB_ASSIGN)]);
+    const [master, cfg, usul, asg] = await Promise.all([bacaMaster(token, sheetId), bacaTab(token, sheetId, 'CONFIG_ROLE'), bacaTab(token, sheetId, TAB_USUL), bacaTab(token, sheetId, TAB_ASSIGN)]);
     const co = cariCO(master, cfg, email);
     if (!co || !BUCKET_ROLE[co.role]) { res.status(403).json({ error: 'Akun ini tidak bisa mengirim usulan DKH.' }); return; }
     const k = kandidat(co); const peta = {}; k.forEach(x => { peta[x.noKontrak] = x; });
@@ -209,7 +229,7 @@ async function tangani(req, res, ctx) {
 
   if (mode === 'admin') {
     const untuk = tglValid(req.query && req.query.tanggal) ? req.query.tanggal : untukDefault;
-    const [master, cfg, usul, asg, pernah] = await Promise.all([bacaTab(token, sheetId, 'MASTER'), bacaTab(token, sheetId, 'CONFIG_ROLE'), bacaTab(token, sheetId, TAB_USUL), bacaTab(token, sheetId, TAB_ASSIGN), bacaPernahTerbentuk(token, sheetId)]);
+    const [master, cfg, usul, asg, pernah] = await Promise.all([bacaMaster(token, sheetId), bacaTab(token, sheetId, 'CONFIG_ROLE'), bacaTab(token, sheetId, TAB_USUL), bacaTab(token, sheetId, TAB_ASSIGN), bacaPernahTerbentuk(token, sheetId)]);
     const per = usulanTerbaru(usul, untuk); const asgS = statusAssign(asg, untuk);
     // Bucket kontrak saat ini, supaya terlihat kalau sudah berubah sejak diusulkan
     const bucketNow = {}; master.forEach(r => { bucketNow[String(r['NO KONTRAK'])] = r['BUCKET UPDATE']; });
@@ -257,7 +277,7 @@ async function tangani(req, res, ctx) {
     const untuk = body.untuk, namaCO = String(body.co || '');
     const daftar = Array.isArray(body.kontrak) ? Array.from(new Set(body.kontrak.map(x => String(x)))).slice(0, 30) : [];
     if (!tglValid(untuk) || !namaCO || !daftar.length) { res.status(400).json({ error: 'Data tambahan tidak lengkap.' }); return; }
-    const [master, cfg] = await Promise.all([bacaTab(token, sheetId, 'MASTER'), bacaTab(token, sheetId, 'CONFIG_ROLE')]);
+    const [master, cfg] = await Promise.all([bacaMaster(token, sheetId), bacaTab(token, sheetId, 'CONFIG_ROLE')]);
     const co = cariCOByNama(master, cfg, namaCO);
     if (!co || !BUCKET_ROLE[co.role]) { res.status(400).json({ error: 'CO tidak ditemukan atau bukan FE/MR.' }); return; }
     const peta = {}; kandidat(co).forEach(x => { peta[x.noKontrak] = x; });
