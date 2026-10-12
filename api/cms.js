@@ -146,6 +146,11 @@ module.exports = async (req, res) => {
     // verifikasi login & token Sheets tidak saling bergantung: jalankan bersamaan
     const [email, accessToken] = await Promise.all([verifyIdToken(idToken), getAccessToken()]);
     const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(x => x.trim().toLowerCase());
+    const mode = String((req.query && req.query.usulan) || '');
+    if (mode) { // Usulan DKH: CO boleh 'saya' & 'kirim'; sisanya khusus admin (dicek di _dkh.js)
+      await require('./_dkh').tangani(req, res, { email, token: accessToken, sheetId: process.env.GOOGLE_SHEET_ID, isAdmin: adminEmails.indexOf(email) > -1, mode });
+      return;
+    }
     if (adminEmails.indexOf(email) === -1) { res.status(403).json({ error: 'Menu ini khusus admin/head.' }); return; }
 
     const sheetId = process.env.GOOGLE_SHEET_ID;
