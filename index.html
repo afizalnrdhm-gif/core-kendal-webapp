@@ -1176,6 +1176,15 @@
 :root[data-theme="dark"] .ud-kurang{background:#4a3a14;color:#ffd98a;}
 .ud-rek{margin-top:14px;padding-top:12px;border-top:1px dashed var(--line);}
 .ud-rek-t{font-weight:700;font-size:14px;}
+
+/* Usulan DKH: tata letak baris yang rapi (nama bisa 2 baris, info tambahan di bawah, nominal di kanan) */
+.ud-row{align-items:flex-start;}
+.ud-row input[type=checkbox]{margin-top:2px;}
+.ud-main{gap:3px;}
+.ud-main b{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;line-height:1.3;}
+.ud-main .mono{overflow-wrap:anywhere;}
+.ud-tags{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+.ud-side{white-space:nowrap;align-self:flex-start;padding-top:1px;font-weight:700;}
 </style>
 </head>
 <body>
@@ -2283,7 +2292,7 @@ function renderUsulanCO(){
   if(d.sudahKirim && !UD_EDIT){
     const ada = d.sudahKirim.kontrak.some(x => x.assign);
     h += '<div class="ud-ok"><b>Usulan terkirim</b> · ' + fmtWaktu(d.sudahKirim.waktu) + ' · ' + d.sudahKirim.kontrak.length + ' kontrak' + (ada ? '' : ' <button class="btn" onclick="UD_EDIT=true;renderUsulanCO()">Ubah usulan</button>') + '</div>';
-    h += '<div class="ud-list">' + d.sudahKirim.kontrak.map(x => '<div class="ud-row ud-static"><div class="ud-main"><b>' + esc(x.nama) + '</b><span class="mono">' + esc(x.noKontrak) + '</span></div><div class="ud-side"><span class="mono">' + fmtRupiah(x.sipok) + '</span>' + (x.assign ? '<span class="ud-chip ok">Masuk DKH</span>' : '<span class="ud-chip">Menunggu</span>') + '</div></div>').join('') + '</div>';
+    h += '<div class="ud-list">' + d.sudahKirim.kontrak.map(x => '<div class="ud-row ud-static"><div class="ud-main"><b>' + esc(x.nama) + '</b><span class="mono">' + esc(x.noKontrak) + '</span><span class="ud-tags">' + (x.assign ? '<span class="ud-chip ok">Masuk DKH</span>' : '<span class="ud-chip">Menunggu</span>') + '</span></div><div class="ud-side"><span class="mono">' + fmtRupiah(x.sipok) + '</span></div></div>').join('') + '</div>';
     w.innerHTML = h; return;
   }
   if(!d.kandidat.length){ w.innerHTML = h + '<div class="state-box">Tidak ada kontrak balance ' + udBucketLabel(d.bucket) + ' di datamu saat ini.</div>'; return; }
@@ -2291,8 +2300,8 @@ function renderUsulanCO(){
   h += '<div class="ud-list" id="udList">' + d.kandidat.map(x => {
     const on = UD_SEL.has(x.noKontrak);
     return '<label class="ud-row' + (on ? ' on' : '') + '" data-q="' + esc((x.nama + ' ' + x.noKontrak).toLowerCase()) + '"><input type="checkbox" data-no="' + esc(x.noKontrak) + '"' + (on ? ' checked' : '') + ' onchange="udToggle(this)">' +
-      '<div class="ud-main"><b>' + esc(x.nama) + '</b><span class="mono">' + esc(x.noKontrak) + '</span></div>' +
-      '<div class="ud-side"><span class="mono">' + fmtRupiah(x.sipok) + '</span><span class="ud-sub">' + (x.dpd !== null && !isNaN(x.dpd) ? 'DPD ' + x.dpd : '') + (x.janji ? ' · janji ' + esc(x.janji) : '') + '</span></div></label>';
+      '<div class="ud-main"><b>' + esc(x.nama) + '</b><span class="mono">' + esc(x.noKontrak) + '</span><span class="ud-sub">' + (x.dpd !== null && !isNaN(x.dpd) ? 'DPD ' + x.dpd : '') + (x.janji ? ' · janji tgl ' + esc(x.janji) : '') + '</span></div>' +
+      '<div class="ud-side"><span class="mono">' + fmtRupiah(x.sipok) + '</span></div></label>';
   }).join('') + '</div>';
   h += '<div class="ud-bar" id="udBar"><div class="ud-count" id="udCount"></div><button class="btn primary" id="udKirim" onclick="udKirim()">Kirim usulan</button></div><div class="ud-msg" id="udMsg" role="status"></div>';
   w.innerHTML = h; udBar();
@@ -2340,16 +2349,17 @@ function renderUsulanAdmin(){
       h += '<div class="ud-list">' + c.kontrak.map(x => {
         const berubah = x.bucketSekarang && x.bucketSekarang !== exp;
         return '<label class="ud-row' + (x.assign ? ' done' : '') + '"><input type="checkbox" data-co="' + ci + '" data-no="' + esc(x.noKontrak) + '"' + (x.assign ? ' disabled' : '') + '>' +
-          '<div class="ud-main"><b>' + esc(x.nama) + '</b><span class="mono">' + esc(x.noKontrak) + '</span></div>' +
-          '<div class="ud-side"><span class="mono">' + fmtRupiah(x.sipok) + '</span>' + (x.assign ? '<span class="ud-chip ok">Masuk DKH</span>' + (x.tambahan ? '<span class="ud-chip">Tambahan head</span>' : '') + ' <button type="button" class="ud-link" onclick="event.preventDefault();udAssign([\'' + esc(x.noKontrak) + '\'],\'batal\')">batalkan</button>' : '') + (berubah ? '<span class="ud-chip warn">bucket ' + esc(x.bucketSekarang) + '</span>' : '') + '</div></label>';
+          '<div class="ud-main"><b>' + esc(x.nama) + '</b><span class="mono">' + esc(x.noKontrak) + '</span>' +
+          ((x.assign || x.tambahan || berubah) ? '<span class="ud-tags">' + (x.assign ? '<span class="ud-chip ok">Masuk DKH</span>' : '') + (x.tambahan ? '<span class="ud-chip">Tambahan head</span>' : '') + (berubah ? '<span class="ud-chip warn">bucket ' + esc(x.bucketSekarang) + '</span>' : '') + (x.assign ? '<button type="button" class="ud-link" onclick="event.preventDefault();udAssign([\'' + esc(x.noKontrak) + '\'],\'batal\')">batalkan</button>' : '') + '</span>' : '') + '</div>' +
+          '<div class="ud-side"><span class="mono">' + fmtRupiah(x.sipok) + '</span></div></label>';
       }).join('') + '</div>' +
       '<div class="ud-actions"><button class="btn primary" onclick="udAssignPilih(' + ci + ')">Assign yang dicentang</button> <button class="btn" onclick="udAssignSemua(' + ci + ')">Assign semua</button> <button class="btn" onclick="udSalin(' + ci + ')">Salin daftar DKH</button></div>';
     }
     if(c.rekomendasi && c.rekomendasi.length){
       h += '<div class="ud-rek"><div class="ud-rek-t">Rekomendasi tambahan <span class="ud-sub">(urut: janji bayar dekat tanggal DKH, biasa bayar, lalu SIPOK terbesar)</span></div><div class="ud-list">' + c.rekomendasi.map((x, i) =>
         '<label class="ud-row"><input type="checkbox" data-rek="' + ci + '" data-no="' + esc(x.noKontrak) + '"' + (i < c.kurang ? ' checked' : '') + '>' +
-        '<div class="ud-main"><b>' + esc(x.nama) + '</b><span class="mono">' + esc(x.noKontrak) + '</span></div>' +
-        '<div class="ud-side"><span class="mono">' + fmtRupiah(x.sipok) + '</span><span class="ud-sub">' + esc(x.alasan) + (x.dpd !== null && !isNaN(x.dpd) ? ' · DPD ' + x.dpd : '') + '</span></div></label>').join('') + '</div>' +
+        '<div class="ud-main"><b>' + esc(x.nama) + '</b><span class="mono">' + esc(x.noKontrak) + '</span><span class="ud-sub">' + esc(x.alasan) + (x.dpd !== null && !isNaN(x.dpd) ? ' · DPD ' + x.dpd : '') + '</span></div>' +
+        '<div class="ud-side"><span class="mono">' + fmtRupiah(x.sipok) + '</span></div></label>').join('') + '</div>' +
         '<div class="ud-actions"><button class="btn primary" onclick="udTambah(' + ci + ')">Tambah &amp; assign yang dicentang</button></div></div>';
     }
     h += '</section>';
