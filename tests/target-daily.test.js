@@ -114,3 +114,14 @@ test('Balance NOOD FE: tercapai = kenaikan NOOD milik FE dari baseline (KA HARIA
   assert.equal(td.pic[0].poin[0].progres.persen, 30);
   assert.equal(td.pic[0].poin[0].nilaiFE, undefined);
 });
+
+test('baseline tidak dibekukan sebelum jam 09.00 WIB (data pagi belum tentu masuk)', async () => {
+  const { pastikanBaseline } = require('../api/_tdsnap');
+  const asli = Date.now;
+  Date.now = () => Date.UTC(2026, 9, 12, 1, 0, 0); // 08.00 WIB
+  try {
+    const r = await pastikanBaseline('x', 'y', { tanggal: { tahun: 2026, bulan: 10, hari: 12 }, pic: [] }, {});
+    assert.strictEqual(r.tertunda, true);
+    assert.deepStrictEqual(r.base, {});
+  } finally { Date.now = asli; }
+});

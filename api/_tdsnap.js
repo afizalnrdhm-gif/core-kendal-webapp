@@ -23,7 +23,7 @@ async function ensureTab(token, sheetId) {
   }
 }
 
-// Baca baseline untuk tanggal tertentu → { 'PIC|kunci': { targetHari, baseNilai, kontrak:[[no,sipok,nama],...] } } (baris pertama menang)
+// Baca baseline untuk tanggal tertentu → { 'PIC|kunci': { targetHari, baseNilai, kontrak:[[no,sipok,nama],...] } } (baris TERAKHIR menang)
 async function bacaBaseline(token, sheetId, kunciTgl) {
   const r = await sf('https://sheets.googleapis.com/v4/spreadsheets/' + sheetId + '/values/' + encodeURIComponent(TAB) + '?valueRenderOption=UNFORMATTED_VALUE', token);
   if (!r.ok || !r.json.values) return {};
@@ -31,7 +31,7 @@ async function bacaBaseline(token, sheetId, kunciTgl) {
   r.json.values.slice(1).forEach(row => {
     if (String(row[0] || '') !== kunciTgl) return;
     const k = row[1] + '|' + row[2];
-    if (out[k]) return;
+    // baris terakhir menang: pembekuan ulang (cron 09.00 / tombol admin) menimpa yang lebih awal
     let kontrak = []; try { kontrak = JSON.parse(row[5] || '[]'); } catch (e) {}
     out[k] = { targetHari: Number(row[3]) || 0, baseNilai: Number(row[4]) || 0, kontrak };
   });
@@ -50,18 +50,26 @@ function barisBaseline(td, kunciTgl) {
   return rows;
 }
 
-// Pastikan baseline hari ini ada; kalau belum, bekukan dari kondisi saat ini. Mengembalikan baseline-nya + status.
-async function pastikanBaseline(token, sheetId, td, baseAwal) {
+// Jam (WIB) mulai baseline boleh dibekukan otomatis. Sebelum jam ini data pagi mungkin belum ditarik admin, jadi baseline ditunda
+// supaya hasil tarikan pagi tidak terhitung sebagai "progres". Cron 09.00 WIB selalu membekukan ulang.
+const JAM_BEKU = 9;
+function jamWIB() { return new Date(Date.now() + 7 * 3600 * 1000).getUTCHours(); }
+
+// Pastikan baseline hari ini ada; kalau belum, bekukan dari kondisi saat ini (hanya setelah JAM_BEKU). Mengembalikan baseline-nya + status.
+// opsi.paksa = bekukan ulang sekarang walau sudah ada (cron / tombol admin).
+async function pastikanBaseline(token, sheetId, td, baseAwal, opsi) {
+  opsi = opsi || {};
   const kunciTgl = kunciTanggal(td.tanggal);
   // baseAwal = hasil baca yang sudah dilakukan paralel oleh pemanggil (hemat 1 round trip); null/undefined = baca di sini
   let base = baseAwal || await bacaBaseline(token, sheetId, kunciTgl);
-  if (Object.keys(base).length) return { base, baru: false };
+  if (!opsi.paksa && Object.keys(base).length) return { base, baru: false };
+  if (!opsi.paksa && jamWIB() < JAM_BEKU) return { base: {}, baru: false, tertunda: true };
   await ensureTab(token, sheetId);
   const rows = barisBaseline(td, kunciTgl);
   const url = 'https://sheets.googleapis.com/v4/spreadsheets/' + sheetId + '/values/' + encodeURIComponent(TAB + '!A:G') + ':append?valueInputOption=RAW&insertDataOption=INSERT_ROWS';
   const ap = await sf(url, token, { method: 'POST', body: JSON.stringify({ values: rows }) });
   if (!ap.ok) throw new Error('Gagal menyimpan baseline target harian.');
-  // Baca ulang supaya kalau ada dua permintaan bersamaan, semuanya memakai baris pertama yang sama
+  // Baca ulang supaya semua permintaan memakai baris terakhir yang sama
   base = await bacaBaseline(token, sheetId, kunciTgl);
   return { base, baru: true };
 }
@@ -139,4 +147,4 @@ function hitungStreak(hasil) {
   return { daftar: out.filter(x => x.hari > 0).sort((a, b) => b.hari - a.hari), riwayatHari: tanggal.length };
 }
 
-module.exports = { TAB, HASIL_TAB, kemarin, bacaHasil, finalkanKemarin, hitungStreak, kunciTanggal, bacaBaseline, pastikanBaseline, terapkanProgres, barisBaseline };
+module.exports = { JAM_BEKU, jamWIB, TAB, HASIL_TAB, kemarin, bacaHasil, finalkanKemarin, hitungStreak, kunciTanggal, bacaBaseline, pastikanBaseline, terapkanProgres, barisBaseline };
