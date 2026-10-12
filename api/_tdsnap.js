@@ -1,6 +1,6 @@
 // Baseline harian Target Daily. Target hari ini DIBEKUKAN sekali per hari (tab LOG_TARGET_DAILY, dibuat otomatis),
 // supaya selama admin update data bayar 3x sehari, target tidak ikut bergeser — yang bergerak hanya progresnya.
-// Progres = jumlah SIPOK kontrak yang pagi tadi masih belum bayar (ada di baseline) dan sekarang sudah tidak ada di daftar belum bayar.
+// Progres = SIPOK kontrak di daftar yang dikunci pagi yang sudah bayar hari ini (LPC / REALISASI) atau sudah keluar dari daftar belum bayar.
 // File berawalan "_" tidak dihitung Vercel sebagai function.
 const TAB = 'LOG_TARGET_DAILY';
 const HEADER = ['TANGGAL', 'PIC', 'KUNCI', 'TARGET_HARI', 'BASE_NILAI', 'KONTRAK', 'WAKTU'];
@@ -74,21 +74,24 @@ async function pastikanBaseline(token, sheetId, td, baseAwal, opsi) {
   return { base, baru: true };
 }
 
-// Tempelkan progres ke tiap poin: target dibekukan dari baseline, tercapai = SIPOK kontrak baseline yang sekarang sudah tidak belum-bayar.
+// Tempelkan progres ke tiap poin. Target & daftar kontrak DIKUNCI dari baseline pagi (seperti kolom pengunci di Excel).
+// Realisasi = kontrak di daftar yang dikunci pagi yang sudah bayar hari ini (LPC / kolom REALISASI) atau sudah keluar dari daftar
+// (BUCKET UPDATE-nya sudah kembali setelah data KA di-update). Dihitung dengan SIPOK pagi-nya, tiap kontrak sekali.
 function terapkanProgres(td, base) {
   td.pic.forEach(p => p.poin.forEach(q => {
     const b = base[p.namaCO + '|' + q.kunci];
-    const sekarang = new Set((q.semuaKandidat || []).map(x => x[0]));
+    const sekarang = new Set((q.semuaKandidat || []).map(x => String(x[0])));
+    const bayarHariIni = new Set((q.realisasi || []).map(x => String(x[0])));
     if (b) {
-      // Realisasi = kontrak dengan kolom REALISASI (KA HARIAN) > 0, SIPOK-nya dijumlahkan (logika sama dengan /realisasi Telegram).
-      const bayar = (q.realisasi || []).slice();
+      const dilihat = new Set();
+      const bayar = (b.kontrak || []).filter(x => { const k = String(x[0]); if (dilihat.has(k)) return false; dilihat.add(k); return bayarHariIni.has(k) || !sekarang.has(k); });
       const tercapai = bayar.reduce((t, x) => t + (Number(x[1]) || 0), 0);
       q.progres = {
         targetHari: b.targetHari, baseNilai: b.baseNilai, tercapai,
         persen: b.targetHari > 0 ? tercapai / b.targetHari * 100 : (tercapai > 0 ? 100 : 0),
         sisa: Math.max(0, b.targetHari - tercapai), tuntas: tercapai >= b.targetHari,
         jumlahBayar: bayar.length, jumlahBase: (b.kontrak || []).length, jumlahSekarang: sekarang.size, waktuBase: b.waktu || '',
-        kontrakBayar: bayar.sort((a, c) => c[1] - a[1]).slice(0, 15).map(x => ({ noKontrak: x[0], sipok: x[1], nama: x[2] || '-' }))
+        kontrakBayar: bayar.slice().sort((a, c) => c[1] - a[1]).slice(0, 15).map(x => ({ noKontrak: x[0], sipok: x[1], nama: x[2] || '-' }))
       };
     }
     delete q.semuaKandidat; delete q.nilaiFE; delete q.realisasi;
@@ -110,7 +113,7 @@ async function bacaHasil(token, sheetId) {
   return Object.values(peta).map(x => ({ tanggal: String(x[0]), pic: String(x[1] || ''), kunci: String(x[2] || ''), target: Number(x[3]) || 0, tercapai: Number(x[4]) || 0, persen: Number(x[5]) || 0, tuntas: x[6] === true || String(x[6]).toUpperCase() === 'TRUE' || x[6] === 1 }));
 }
 
-// Realisasi (kolom REALISASI di KA HARIAN) di-nol-kan tiap pagi, jadi hasil harian TIDAK bisa dihitung ulang esok harinya.
+// LPC berganti tiap hari, jadi hasil harian TIDAK bisa dihitung ulang esok harinya.
 // Hasil hari ini dicatat saat halaman Target Daily dibuka (baris pertama hari itu, lalu hanya kalau TERCAPAI naik); baris terakhir menang saat dibaca.
 async function catatHasilHariIni(token, sheetId, td, hasilAda) {
   const tgl = kunciTanggal(td.tanggal);

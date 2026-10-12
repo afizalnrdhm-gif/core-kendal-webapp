@@ -1,6 +1,6 @@
 const { catatHasilHariIni, pastikanBaseline, terapkanProgres, finalkanKemarin, bacaHasil, bacaBaseline, kunciTanggal, hitungStreak } = require('./_tdsnap');
 const { getAccessToken, sendError, verifyIdToken } = require('./_auth');
-const { cleanCell } = require('./_sheet');
+const { cleanCell, bayarLPC } = require('./_sheet');
 
 // ============================================================
 // AUTH HELPERS (sama seperti di api/data.js)
@@ -337,7 +337,8 @@ function tdSusunKontrak(kandidat, perHari, D, akhirBulan) {
   };
 }
 
-function hitungTargetDaily(masterList, petaKA, configRows) {
+function hitungTargetDaily(masterList, petaKA, configRows, lpc) {
+  lpc = lpc || new Map();
   const w = tdHariIni(); const D = w.hari;
   const arAll = (filterKA) => { let t = 0; Object.values(petaKA).forEach(ka => { if (!filterKA(ka)) return; const i = bucketIndex(ka['BUCKET UPDATE']); const sisa = typeof ka['SISA PIUTANG'] === 'number' ? ka['SISA PIUTANG'] : 0; if (i !== -1 && i <= bucketIndex('P181_210')) t += sisa; }); return t; };
   // Balance NOOD cabang (non-fleet): target 88% dari total AR, selisihnya dibagi ke FE sesuai beban awal masing-masing
@@ -357,8 +358,10 @@ function hitungTargetDaily(masterList, petaKA, configRows) {
     if (role === 'BCH') { asal = 'P031_060'; balBuckets = ['P001_030', 'P031_060']; }
     const incFleet = role === 'BCH';
     const scopeM = m => (incFleet || m['FLEET/NON FLEET'] !== 'FLEET') && (role !== 'FE' || m['CO ALL'] === namaCO);
-    // Realisasi = kontrak dengan kolom REALISASI (KA HARIAN, formula; 0 saat pagi) > 0, dihitung dengan SIPOK-nya (sama seperti /realisasi di Telegram).
-    const realisasiDari = awalList => masterList.filter(m => scopeM(m) && awalList.includes(m['BUCKET AWAL']) && petaKA[m['NO KONTRAK']] && Number(petaKA[m['NO KONTRAK']]['REALISASI']) > 0)
+    // Realisasi = kontrak yang sudah bayar hari ini: kolom REALISASI (KA HARIAN) > 0 ATAU ada angsuran di LPC hari ini. Dihitung dengan SIPOK-nya.
+    const sudahBayar = no => lpc.has(String(no).trim()) || (petaKA[no] && Number(petaKA[no]['REALISASI']) > 0);
+    // Bucket awal tidak dibatasi di sini: progres hanya menghitung kontrak yang ada di daftar pagi poin itu (lihat terapkanProgres).
+    const realisasiDari = () => masterList.filter(m => scopeM(m) && sudahBayar(m['NO KONTRAK']))
       .map(m => [m['NO KONTRAK'], sipokOf(m), m['NAMA KONSUMEN'] || '-']);
     const scopeKA = ka => (incFleet || ka['FLEET/NON FLEET'] !== 'FLEET') && (role !== 'FE' || ka['NAMA COLLECTOR'] === namaCO);
 
@@ -371,7 +374,6 @@ function hitungTargetDaily(masterList, petaKA, configRows) {
     const perluBal = Math.max(0, arBucket - arTotal * batasBal / 100);
     const kandBal = masterList.filter(m => scopeM(m) && (role === 'FE' ? m['BUCKET UPDATE'] === 'P001_030' : balBuckets.includes(m['BUCKET UPDATE'])));
     let balance;
-    const awalBalance = role === 'FE' ? ['P001_030'] : balBuckets;
     if (role === 'FE') {
       const porsi = bebanFETotal > 0 ? bebanFE[namaCO] / bebanFETotal : 0;
       const perlu = gapNood * porsi;
@@ -412,10 +414,8 @@ function hitungTargetDaily(masterList, petaKA, configRows) {
       perluAmt: perluFlow, perHari: perluFlow / w.sisaHari, jumlahBelumBayar: kandFlow.length,
       ...tdSusunKontrak(kandFlow, perluFlow / w.sisaHari, D, w.akhirBulan)
     };
-    // Progres hanya memakai BUCKET UPDATE (bucket actual = bucket update): kontrak flow yang BUCKET UPDATE-nya sudah kembali ke bucket awal = sudah realisasi,
-    // yang masih di bucket lebih tinggi (mis. 1-30) berarti belum realisasi dan masih menjadi flow. Tidak memakai REALISASI/POTENSIAL.
-    balance.realisasi = realisasiDari(awalBalance);
-    flow.realisasi = realisasiDari([bAsal]);
+    balance.realisasi = realisasiDari();
+    flow.realisasi = realisasiDari();
     return { namaCO, role, poin: [balance, flow] };
   });
   return { tanggal: w, pic: hasil };
@@ -435,14 +435,16 @@ module.exports = async (req, res) => {
     const modeTarget = !!(req.query && req.query.target);
 
     // Mode target: baseline hari ini & hasil harian dibaca BERSAMAAN dengan MASTER/KA/CONFIG (dulu berurutan setelahnya), dan LOG_MINGGUAN tidak dibaca.
-    const [masterRaw, kaRaw, roleRaw, baseAwal, hasilAwal, logRaw] = await Promise.all([
+    const [masterRaw, kaRaw, roleRaw, baseAwal, hasilAwal, logRaw, lpcRaw] = await Promise.all([
       fetchSheetRange(sheetId, 'MASTER', accessToken),
       fetchSheetRange(sheetId, 'KA HARIAN', accessToken),
       fetchSheetRange(sheetId, 'CONFIG_ROLE', accessToken),
       modeTarget ? bacaBaseline(accessToken, sheetId, kunciTanggal(tdHariIni())).catch(() => null) : null,
       modeTarget ? bacaHasil(accessToken, sheetId).catch(() => []) : null,
       // LOG_MINGGUAN opsional — kalau belum ada/gagal dibaca, lanjut tanpa data historis W1-W4
-      modeTarget ? null : fetchSheetRange(sheetId, 'LOG_MINGGUAN', accessToken).catch(() => null)
+      modeTarget ? null : fetchSheetRange(sheetId, 'LOG_MINGGUAN', accessToken).catch(() => null),
+      // LPC = laporan bayar yang di-update admin; sumber realisasi Target Daily (kolom REALISASI KA HARIAN tidak terisi di Sheet)
+      modeTarget ? fetchSheetRange(sheetId, 'LPC', accessToken).catch(() => null) : null
     ]);
     let logRows = [];
     try { logRows = logRaw ? parseSheetGeneric(logRaw, 0) : []; } catch (e) { logRows = []; }
@@ -456,7 +458,8 @@ module.exports = async (req, res) => {
     if (req.query && req.query.target) {
       const adminList = (process.env.ADMIN_EMAILS || '').split(',').map(x => x.trim().toLowerCase());
       const admin = adminList.indexOf(email) > -1;
-      const td = hitungTargetDaily(masterList, petaKA, configRows);
+      const w0 = tdHariIni();
+      const td = hitungTargetDaily(masterList, petaKA, configRows, bayarLPC(lpcRaw, w0.hari, w0.bulan));
       // Target hari ini dibekukan sekali sehari; progres dihitung dari kontrak baseline yang sudah bayar. Kalau tab belum bisa dipakai, tampil tanpa progres.
       let adaBaseline = true;
       const paksa = !!(req.query && req.query.bekukan) && admin; // tombol admin "Bekukan ulang dari data sekarang"

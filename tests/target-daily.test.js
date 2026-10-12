@@ -92,7 +92,12 @@ test('Realisasi dari KA HARIAN: Flow = REALISASI>0 pada bucket awal asal flow; B
   const cfg = [{ NAMA_CO: 'FE1', ROLE: 'FE', BUCKET_PENYELESAIAN: 'P001_030', BUCKET_ASAL_FLOW: 'NOOD', BUCKET_BALANCE: 'P001_030' }];
   const master = [mk('A', 'NOOD'), mk('B', 'NOOD'), mk('C', 'NOOD'), mk('D', 'P001_030'), mk('E', 'NOOD', 'FE2')];
   const td = hitungTargetDaily(master, { A: ka('A', 5), B: ka('B', 0), C: ka('C', ''), D: ka('D', 3), E: ka('E', 9) }, cfg);
-  terapkanProgres(td, { 'FE1|balance': { targetHari: 500, baseNilai: 0, kontrak: [] }, 'FE1|flow': { targetHari: 200, baseNilai: 0, kontrak: [] } });
+  // daftar pagi dikunci: semua kontrak FE1 ada di baseline, dan masih ada di daftar sekarang (belum keluar)
+  const tetap = q => q.semuaKandidat.map(x => x.slice()).filter(x => !['A', 'B', 'C', 'D'].includes(x[0]));
+  const bf = tetap(td.pic[0].poin[1]).concat([['A', 100, 'A'], ['B', 100, 'B'], ['C', 100, 'C']]);
+  const bb = tetap(td.pic[0].poin[0]).concat([['D', 100, 'D']]);
+  td.pic[0].poin[1].semuaKandidat = bf.slice(); td.pic[0].poin[0].semuaKandidat = bb.slice();
+  terapkanProgres(td, { 'FE1|balance': { targetHari: 500, baseNilai: 0, kontrak: bb }, 'FE1|flow': { targetHari: 200, baseNilai: 0, kontrak: bf } });
   assert.equal(td.pic[0].poin[1].progres.tercapai, 100); // hanya A (E milik FE lain)
   assert.equal(td.pic[0].poin[1].progres.jumlahBayar, 1);
   assert.equal(td.pic[0].poin[0].progres.tercapai, 100); // hanya D (awal 1-30)
@@ -107,4 +112,25 @@ test('baseline tidak dibekukan sebelum jam 09.00 WIB (data pagi belum tentu masu
     assert.strictEqual(r.tertunda, true);
     assert.deepStrictEqual(r.base, {});
   } finally { Date.now = asli; }
+});
+
+test('LPC: bayar angsuran hari ini (tanggal tertukar pun cocok), denda saja tidak dihitung', () => {
+  const { bayarLPC } = require('../api/_sheet');
+  const serial = (y, m, d) => Date.UTC(y, m - 1, d) / 86400000 + 25569;
+  const v = [['NAMA KONSUMEN', 'NO KONTRAK', 'TGL BYR', 'PEMBIAYAAN ANGSURAN', 'PEMBAYARAN DENDA', 'PELUNASAN'],
+    ['a', '111', serial(2026, 12, 10), 500, 0, 0],   // 12/10 terbaca 10 Des -> tetap 12 Okt
+    ['b', '222', '12/10/2026', 0, 2000, 0],          // denda saja
+    ['c', '333', serial(2026, 11, 10), 700, 0, 0],    // 11 Okt (kemarin)
+    ['d', '444', serial(2026, 10, 12), 0, 0, 9000]];  // pelunasan
+  const m = bayarLPC(v, 12, 10);
+  assert.deepStrictEqual(Array.from(m.keys()).sort(), ['111', '444']);
+});
+
+test('pengunci pagi: realisasi hanya kontrak di daftar pagi yang bayar (LPC) atau keluar dari daftar', () => {
+  const { terapkanProgres } = require('../api/_tdsnap');
+  const td = { pic: [{ namaCO: 'A', poin: [{ kunci: 'flow', semuaKandidat: [['K1', 60, 'x'], ['K2', 40, 'y'], ['K9', 999, 'baru']], realisasi: [['K1', 60, 'x'], ['K8', 500, 'tidak di pagi']] }] }] };
+  terapkanProgres(td, { 'A|flow': { targetHari: 200, baseNilai: 0, kontrak: [['K1', 60, 'x'], ['K2', 40, 'y'], ['K3', 30, 'z']] } });
+  const g = td.pic[0].poin[0].progres;
+  assert.equal(g.tercapai, 90); // K1 (LPC) + K3 (keluar dari daftar); K8 tidak di daftar pagi
+  assert.equal(g.jumlahBayar, 2);
 });
