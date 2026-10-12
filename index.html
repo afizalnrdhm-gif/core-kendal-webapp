@@ -4359,6 +4359,14 @@ function tdPoinHtml(p, q, idx){
 function tdPicHtml(p){
   return `<div class="td-pichead"><div><b>${esc(tdShort(p.namaCO, p.role))}</b><small>${esc(TD_SHORT_ROLE[p.role] || p.role)} · ${esc(p.namaCO)}</small></div></div><div class="td-grid">${p.poin.map((q, i) => tdPoinHtml(p, q, i)).join('')}</div>`;
 }
+function tdInfoBaseline(){
+  try {
+    let w = '', b = 0, n = 0, k = 0;
+    ((TD_DATA && TD_DATA.pic) || []).forEach(p => (p.poin || []).forEach(q => { const g = q.progres; if (!g) return; k++; if (g.waktuBase && g.waktuBase > w) w = g.waktuBase; b += g.jumlahBase || 0; n += g.jumlahSekarang || 0; }));
+    if (!k || !w) return '';
+    return '<p class="td-note" style="font-size:12px;opacity:.75;margin:6px 0 10px">Titik nol dibekukan ' + String(w).slice(11, 16).replace(':', '.') + ' WIB · ' + b + ' kontrak waktu itu, ' + n + ' sekarang (progres = kontrak yang keluar dari daftar).</p>';
+  } catch (e) { return ''; }
+}
 function tdBekukanUlang(){
   if(!window.confirm('Bekukan ulang target hari ini dari data sekarang? Progres hari ini akan mulai dari 0 lagi.')) return;
   const b = document.getElementById('tdRefreeze'); if(b){ b.disabled = true; b.textContent = 'Membekukan…'; }
@@ -4369,7 +4377,7 @@ function tdBekukanUlang(){
 }
 function renderTargetDaily(){
   const wrap = document.getElementById('wrap');
-  const head = `<div class="td-intro"><h2>Target daily</h2><p>Target dibekukan tiap pagi pukul 09.00 dari data pagi, progres naik setiap admin update data bayar.</p>${TD_DATA && TD_DATA.tertunda ? '<div class="td-wait">Target hari ini baru dibekukan pukul 09.00, setelah data pagi masuk. Sebelum itu progres belum dihitung.</div>' : ''}${IS_ADMIN && TD_DATA && !TD_DATA.tertunda ? '<button type="button" class="btn" id="tdRefreeze" onclick="tdBekukanUlang()">Bekukan ulang dari data sekarang</button>' : ''}<details class="td-info"><summary>Cara hitung</summary><p>Target harian = (belum bayar - batas yang boleh flow) ÷ sisa hari, sama seperti REPORT DAILY di Excel. Balance FE = target NOOD cabang 88%, dibagi sesuai beban awal. Data adalah kondisi kemarin, jadi hari ini ikut dihitung.</p></details></div>`;
+  const head = `<div class="td-intro"><h2>Target daily</h2><p>Target dibekukan tiap pagi pukul 09.00 dari data pagi, progres naik setiap admin update data bayar.</p>${TD_DATA && TD_DATA.tertunda ? '<div class="td-wait">Target hari ini baru dibekukan pukul 09.00, setelah data pagi masuk. Sebelum itu progres belum dihitung.</div>' : ''}${IS_ADMIN && TD_DATA && !TD_DATA.tertunda ? '<button type="button" class="btn" id="tdRefreeze" onclick="tdBekukanUlang()">Bekukan ulang dari data sekarang</button>' : ''}${tdInfoBaseline()}<details class="td-info"><summary>Cara hitung</summary><p>Target harian = (belum bayar - batas yang boleh flow) ÷ sisa hari, sama seperti REPORT DAILY di Excel. Balance FE = target NOOD cabang 88%, dibagi sesuai beban awal. Data adalah kondisi kemarin, jadi hari ini ikut dihitung.</p></details></div>`;
   if(!TD_DATA){
     wrap.innerHTML = head + (TD_ERR ? `<div class="state-box error"><div class="err-icon">${ic('alert')}</div>${esc(TD_ERR)}<br><br><button class="btn" onclick="TD_ERR='';renderTargetDaily()">Coba lagi</button></div>` : `<div class="skeleton-row"><div class="skel"></div><div class="skel"></div></div><div class="skel tall"></div>`);
     if(!TD_ERR) ensureTD(() => { if(VIEW_MODE === 'targetdaily') renderTargetDaily(); });
