@@ -1143,6 +1143,34 @@
   #tbody tr[data-kontrak]{cursor:pointer;}
   #tbody tr[data-kontrak]::after{content:'Ketuk untuk detail ›';display:block;grid-column:1/-1;font-size:12px;color:var(--ink-soft);text-align:right;padding:0 0 2px;}
 }
+
+/* ===== Usulan DKH ===== */
+.ud-list{display:flex;flex-direction:column;gap:8px;margin:12px 0;}
+.ud-row{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;min-height:56px;cursor:pointer;}
+.ud-row.on{border-color:var(--navy-lighter,#1d6fa5);background:color-mix(in srgb,var(--navy-lighter,#1d6fa5) 8%,var(--surface));}
+.ud-row.done{opacity:.85;}
+.ud-row.ud-static{cursor:default;}
+.ud-row input[type=checkbox]{width:22px;height:22px;flex:none;accent-color:var(--navy-lighter,#1d6fa5);}
+.ud-main{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;}
+.ud-main b{font-size:14.5px;overflow:hidden;text-overflow:ellipsis;}
+.ud-main .mono{font-size:12px;color:var(--ink-soft);}
+.ud-side{display:flex;flex-direction:column;align-items:flex-end;gap:3px;font-size:13px;flex:none;}
+.ud-sub{font-size:12px;color:var(--ink-soft);}
+.ud-chip{display:inline-block;font-size:12px;font-weight:700;padding:3px 9px;border-radius:99px;background:var(--surface-alt,#eef2f6);color:var(--ink-soft);}
+.ud-chip.ok{background:#dff3e6;color:#1b6b3a;} .ud-chip.bad{background:#fde3e3;color:#a61f1f;} .ud-chip.warn{background:#fff0d6;color:#8a5a00;}
+.ud-ok{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#e6f5ec;color:#1b6b3a;border-radius:12px;padding:12px 14px;margin-bottom:8px;}
+.ud-search{margin-top:6px;}
+.ud-bar{position:sticky;bottom:calc(88px + env(safe-area-inset-bottom));display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px 14px;box-shadow:var(--shadow-1);z-index:5;}
+@media(min-width:901px){.ud-bar{bottom:12px;}}
+.ud-count{font-size:14px;}
+.ud-msg{min-height:20px;margin:10px 2px;font-size:13px;color:var(--ink-soft);} .ud-msg.bad{color:var(--bad,#b3261e);}
+.ud-top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;}
+.ud-tgl select{margin-left:6px;padding:8px 10px;border-radius:9px;border:1px solid var(--line);background:var(--surface);color:var(--ink);min-height:40px;}
+.ud-co-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;}
+.ud-actions{display:flex;gap:8px;flex-wrap:wrap;}
+.ud-link{background:none;border:none;color:var(--navy-lighter,#1d6fa5);font-size:12px;text-decoration:underline;cursor:pointer;padding:2px;}
+:root[data-theme="dark"] .ud-chip.ok,:root[data-theme="dark"] .ud-ok{background:#16382a;color:#8fe0b0;}
+:root[data-theme="dark"] .ud-chip.bad{background:#4a1f1f;color:#ffb4b4;} :root[data-theme="dark"] .ud-chip.warn{background:#4a3a14;color:#ffd98a;}
 </style>
 </head>
 <body>
@@ -1209,6 +1237,10 @@
         <button class="nav-item nav-hidden" data-view="targetdaily" id="navTargetDaily">
           <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg>
           <span>Target Daily</span>
+        </button>
+        <button class="nav-item nav-hidden" data-view="usulan" id="navUsulan">
+          <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          <span>Usulan DKH</span>
         </button>
         <button class="nav-item nav-hidden" data-view="cms" id="navCMS">
           <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
@@ -1539,6 +1571,7 @@ function doLogout() {
 document.getElementById('logoutBtn').addEventListener('click', doLogout);
 document.getElementById('navRingkasan').addEventListener('click', () => switchView('ringkasan'));
 document.getElementById('navCMS').addEventListener('click', () => switchView('cms'));
+document.getElementById('navUsulan').addEventListener('click', () => switchView('usulan'));
 document.getElementById('navDashboard').addEventListener('click', () => switchView('dashboard'));
 document.getElementById('navTargetDaily').addEventListener('click', () => switchView('targetdaily'));
 document.getElementById('navNBQ').addEventListener('click', () => switchView('nbq'));
@@ -1624,6 +1657,7 @@ function onDataLoaded(res){
   const navRingkasan = document.getElementById('navRingkasan');
   navRingkasan.classList.toggle('nav-hidden', !IS_ADMIN);
   document.getElementById('navCMS').classList.toggle('nav-hidden', !IS_ADMIN);
+  document.getElementById('navUsulan').classList.toggle('nav-hidden', !(IS_ADMIN || (!IS_DESKCALL && ROLE_INFO && (ROLE_INFO.role === 'FE' || ROLE_INFO.role === 'MR'))));
   const navNBQ = document.getElementById('navNBQ');
   const navFEEver = document.getElementById('navFEEver');
   const navInsentif = document.getElementById('navInsentif');
@@ -1920,7 +1954,8 @@ function buildLayout(){
   const filterDrawerPanel = document.getElementById('filterDrawerPanel');
   filterTriggerBtn.addEventListener('click', (e) => { e.stopPropagation(); filterDrawerPanel.classList.toggle('show'); });
   document.addEventListener('click', (e) => {
-    if(!document.getElementById('filterDrawer').contains(e.target)) filterDrawerPanel.classList.remove('show');
+    const fd = document.getElementById('filterDrawer');
+    if(!fd || !fd.contains(e.target)) filterDrawerPanel.classList.remove('show');
   });
   ['bucketSelect','kriteriaSelect','tipeSelect','kecamatanSelect','everSelect'].forEach(id => {
     document.getElementById(id).addEventListener('change', updateFilterBadge);
@@ -2000,7 +2035,7 @@ function updateFilterBadge(){
 let VIEW_MODE = 'dashboard';
 let INSENTIF_DATA = null;
 
-const VIEW_TITLES = { ringkasan: 'Ringkasan Cabang', cms: 'CMS Produktivitas', dashboard: 'Beban Awal', targetdaily: 'Target Daily', nbq: 'NBQ', feever: 'FE Ever', tglbayar: 'Tgl Bayar Bulan Lalu', insentif: 'Insentif', dekscall: 'Deskcall', simulasi: 'Simulasi Penawaran', simulasirapor: 'Simulasi Rapor', panduan: 'Panduan KPI' };
+const VIEW_TITLES = { ringkasan: 'Ringkasan Cabang', cms: 'CMS Produktivitas', usulan: 'Usulan DKH', dashboard: 'Beban Awal', targetdaily: 'Target Daily', nbq: 'NBQ', feever: 'FE Ever', tglbayar: 'Tgl Bayar Bulan Lalu', insentif: 'Insentif', dekscall: 'Deskcall', simulasi: 'Simulasi Penawaran', simulasirapor: 'Simulasi Rapor', panduan: 'Panduan KPI' };
 
 function triggerFadeIn(){
   const el = document.getElementById('wrap');
@@ -2015,6 +2050,7 @@ function switchView(view){
   VIEW_MODE = view;
   document.getElementById('navRingkasan').classList.toggle('active', view === 'ringkasan');
   document.getElementById('navCMS').classList.toggle('active', view === 'cms');
+  document.getElementById('navUsulan').classList.toggle('active', view === 'usulan');
   document.getElementById('navDashboard').classList.toggle('active', view === 'dashboard');
   document.getElementById('navTargetDaily').classList.toggle('active', view === 'targetdaily');
   document.getElementById('navNBQ').classList.toggle('active', view === 'nbq');
@@ -2059,6 +2095,8 @@ function switchView(view){
     if(INSENTIF_DATA){ renderInsentifView(); triggerFadeIn(); } else { loadInsentif(); }
   } else if(view === 'simulasirapor'){
     if(SIMULASI_RAPOR_DATA){ renderSimulasiRapor(); triggerFadeIn(); } else { loadSimulasiRapor(); }
+  } else if(view === 'usulan'){
+    loadUsulan();
   } else if(view === 'cms'){
     if(CMS_DATA){ renderCms(); triggerFadeIn(); } else { loadCms(); }
   } else if(view === 'panduan'){
@@ -2202,6 +2240,130 @@ function renderPanduan(){
       if(el){ el.scrollIntoView({behavior:'smooth', block:'start'}); el.classList.add('flash'); setTimeout(() => el.classList.remove('flash'), 1800); }
     }, 60);
   }
+}
+
+
+// ============================================================
+// USULAN DKH — CO memilih 12-15 kontrak balance (FE: BUCKET UPDATE 1-30, MR: 31-60) untuk DKH besok; admin/head meng-assign.
+// Data lewat /api/cms?usulan=saya|kirim|admin|assign (tab USULAN_DKH & DKH_ASSIGN dibuat otomatis).
+// ============================================================
+let UD_DATA = null, UD_ADM = null, UD_EDIT = false, UD_ADM_TGL = '';
+const UD_SEL = new Set();
+function udApi(q, opt){
+  return fetch('/api/cms?usulan=' + q, Object.assign({ headers: { Authorization: 'Bearer ' + ID_TOKEN, 'Content-Type': 'application/json' } }, opt || {}))
+    .then(r => r.json().then(b => ({ ok: r.ok, b })));
+}
+function udTgl(s){ const m = String(s||'').split('-'); return m.length === 3 ? (+m[2] + ' ' + BLN[+m[1]-1] + ' ' + m[0]) : esc(s); }
+function udBucketLabel(b){ return b === 'P001_030' ? '1-30' : (b === 'P031_060' ? '31-60' : esc(b)); }
+function udErr(msg, retry){
+  document.getElementById('wrap').innerHTML = '<div class="state-box error"><div class="err-icon">'+ic('alert')+'</div>'+esc(msg)+'<br><br><button class="btn" onclick="'+retry+'">Coba lagi</button></div>';
+}
+function loadUsulan(){
+  document.getElementById('wrap').innerHTML = '<div class="skeleton-row"><div class="skel"></div><div class="skel"></div></div><div class="skel tall"></div>';
+  const req = IS_ADMIN ? udApi('admin' + (UD_ADM_TGL ? '&tanggal=' + encodeURIComponent(UD_ADM_TGL) : '')) : udApi('saya');
+  req.then(({ok, b}) => {
+    if(VIEW_MODE !== 'usulan') return;
+    if(!ok){ udErr(b.error || 'Gagal memuat usulan DKH.', 'loadUsulan()'); return; }
+    if(IS_ADMIN){ UD_ADM = b; UD_ADM_TGL = b.untuk; renderUsulanAdmin(); }
+    else { UD_DATA = b; UD_SEL.clear(); if(b.sudahKirim) b.sudahKirim.kontrak.forEach(x => UD_SEL.add(x.noKontrak)); UD_EDIT = false; renderUsulanCO(); }
+    triggerFadeIn();
+  }).catch(err => { if(VIEW_MODE === 'usulan') udErr(pesanErr(err), 'loadUsulan()'); });
+}
+
+function renderUsulanCO(){
+  const d = UD_DATA, w = document.getElementById('wrap');
+  if(!d.bisa){ w.innerHTML = '<div class="state-box">'+esc(d.pesan||'Menu ini tidak tersedia untuk akunmu.')+'</div>'; return; }
+  let h = '<div class="rk-header"><h1>Usulan DKH</h1></div>';
+  h += '<div class="pg-card"><p>Pilih <b>' + d.minEfektif + '–' + d.max + ' kontrak</b> balance ' + udBucketLabel(d.bucket) + ' (BUCKET UPDATE masih ' + udBucketLabel(d.bucket) + ') yang akan kamu kunjungi. Usulan untuk <b>' + udTgl(d.untuk) + '</b>; admin/head yang menetapkan DKH-nya.</p></div>';
+  if(d.sudahKirim && !UD_EDIT){
+    const ada = d.sudahKirim.kontrak.some(x => x.assign);
+    h += '<div class="ud-ok"><b>Usulan terkirim</b> · ' + fmtWaktu(d.sudahKirim.waktu) + ' · ' + d.sudahKirim.kontrak.length + ' kontrak' + (ada ? '' : ' <button class="btn" onclick="UD_EDIT=true;renderUsulanCO()">Ubah usulan</button>') + '</div>';
+    h += '<div class="ud-list">' + d.sudahKirim.kontrak.map(x => '<div class="ud-row ud-static"><div class="ud-main"><b>' + esc(x.nama) + '</b><span class="mono">' + esc(x.noKontrak) + '</span></div><div class="ud-side"><span class="mono">' + fmtRupiah(x.sipok) + '</span>' + (x.assign ? '<span class="ud-chip ok">Masuk DKH</span>' : '<span class="ud-chip">Menunggu</span>') + '</div></div>').join('') + '</div>';
+    w.innerHTML = h; return;
+  }
+  if(!d.kandidat.length){ w.innerHTML = h + '<div class="state-box">Tidak ada kontrak balance ' + udBucketLabel(d.bucket) + ' di datamu saat ini.</div>'; return; }
+  h += '<div class="search-box ud-search"><input id="udSearch" type="text" placeholder="Cari nama atau no kontrak…" oninput="udFilter(this.value)" aria-label="Cari kontrak"></div>';
+  h += '<div class="ud-list" id="udList">' + d.kandidat.map(x => {
+    const on = UD_SEL.has(x.noKontrak);
+    return '<label class="ud-row' + (on ? ' on' : '') + '" data-q="' + esc((x.nama + ' ' + x.noKontrak).toLowerCase()) + '"><input type="checkbox" data-no="' + esc(x.noKontrak) + '"' + (on ? ' checked' : '') + ' onchange="udToggle(this)">' +
+      '<div class="ud-main"><b>' + esc(x.nama) + '</b><span class="mono">' + esc(x.noKontrak) + '</span></div>' +
+      '<div class="ud-side"><span class="mono">' + fmtRupiah(x.sipok) + '</span><span class="ud-sub">' + (x.dpd !== null && !isNaN(x.dpd) ? 'DPD ' + x.dpd : '') + (x.janji ? ' · janji ' + esc(x.janji) : '') + '</span></div></label>';
+  }).join('') + '</div>';
+  h += '<div class="ud-bar" id="udBar"><div class="ud-count" id="udCount"></div><button class="btn primary" id="udKirim" onclick="udKirim()">Kirim usulan</button></div><div class="ud-msg" id="udMsg" role="status"></div>';
+  w.innerHTML = h; udBar();
+}
+function udBar(){
+  const d = UD_DATA; if(!d) return; const n = UD_SEL.size;
+  const c = document.getElementById('udCount'), b = document.getElementById('udKirim'); if(!c || !b) return;
+  c.innerHTML = 'Dipilih <b>' + n + '</b> / ' + d.max + ' <span class="ud-sub">(minimal ' + d.minEfektif + ')</span>';
+  b.disabled = n < d.minEfektif || n > d.max;
+  document.querySelectorAll('#udList input[type=checkbox]').forEach(i => { i.disabled = !i.checked && n >= d.max; });
+}
+function udToggle(el){
+  const no = el.dataset.no;
+  if(el.checked) UD_SEL.add(no); else UD_SEL.delete(no);
+  const row = el.closest('.ud-row'); if(row) row.classList.toggle('on', el.checked);
+  udBar();
+}
+function udFilter(v){
+  const q = String(v||'').trim().toLowerCase();
+  document.querySelectorAll('#udList .ud-row').forEach(r => { r.style.display = !q || r.dataset.q.indexOf(q) > -1 ? '' : 'none'; });
+}
+function udKirim(){
+  const btn = document.getElementById('udKirim'), msg = document.getElementById('udMsg');
+  btn.disabled = true; btn.textContent = 'Mengirim…'; msg.textContent = '';
+  udApi('kirim', { method: 'POST', body: JSON.stringify({ kontrak: Array.from(UD_SEL) }) }).then(({ok, b}) => {
+    if(!ok){ msg.className = 'ud-msg bad'; msg.textContent = b.error || 'Gagal mengirim usulan.'; btn.textContent = 'Kirim usulan'; udBar(); return; }
+    loadUsulan();
+  }).catch(err => { msg.className = 'ud-msg bad'; msg.textContent = pesanErr(err); btn.textContent = 'Kirim usulan'; udBar(); });
+}
+
+function renderUsulanAdmin(){
+  const d = UD_ADM, w = document.getElementById('wrap');
+  const kirim = d.co.filter(c => c.sudahKirim).length;
+  let h = '<div class="rk-header"><h1>Usulan DKH</h1></div>';
+  h += '<div class="ud-top"><label class="ud-tgl">DKH untuk <select onchange="UD_ADM_TGL=this.value;loadUsulan()">' + d.tanggalTersedia.map(t => '<option value="' + esc(t) + '"' + (t === d.untuk ? ' selected' : '') + '>' + udTgl(t) + '</option>').join('') + '</select></label>' +
+    '<span class="ud-chip ' + (kirim === d.co.length && kirim ? 'ok' : '') + '">' + kirim + ' dari ' + d.co.length + ' CO sudah kirim</span></div>';
+  if(!d.co.length) h += '<div class="state-box">Belum ada CO FE/MR di CONFIG_ROLE.</div>';
+  d.co.forEach((c, ci) => {
+    const exp = c.role === 'FE' ? 'P001_030' : 'P031_060';
+    const nAsg = c.kontrak.filter(x => x.assign).length;
+    h += '<section class="pg-card ud-co"><div class="ud-co-head"><div><b>' + esc(c.nama) + '</b> <span class="ud-chip">' + esc(c.role) + '</span></div>' +
+      (c.sudahKirim ? '<span class="ud-sub">' + c.kontrak.length + ' kontrak · ' + nAsg + ' masuk DKH · terkirim ' + fmtWaktu(c.waktu) + '</span>' : '<span class="ud-chip bad">Belum kirim usulan</span>') + '</div>';
+    if(c.sudahKirim){
+      h += '<div class="ud-list">' + c.kontrak.map(x => {
+        const berubah = x.bucketSekarang && x.bucketSekarang !== exp;
+        return '<label class="ud-row' + (x.assign ? ' done' : '') + '"><input type="checkbox" data-co="' + ci + '" data-no="' + esc(x.noKontrak) + '"' + (x.assign ? ' disabled' : '') + '>' +
+          '<div class="ud-main"><b>' + esc(x.nama) + '</b><span class="mono">' + esc(x.noKontrak) + '</span></div>' +
+          '<div class="ud-side"><span class="mono">' + fmtRupiah(x.sipok) + '</span>' + (x.assign ? '<span class="ud-chip ok">Masuk DKH</span> <button type="button" class="ud-link" onclick="event.preventDefault();udAssign([\'' + esc(x.noKontrak) + '\'],\'batal\')">batalkan</button>' : '') + (berubah ? '<span class="ud-chip warn">bucket ' + esc(x.bucketSekarang) + '</span>' : '') + '</div></label>';
+      }).join('') + '</div>' +
+      '<div class="ud-actions"><button class="btn primary" onclick="udAssignPilih(' + ci + ')">Assign yang dicentang</button> <button class="btn" onclick="udAssignSemua(' + ci + ')">Assign semua</button> <button class="btn" onclick="udSalin(' + ci + ')">Salin daftar DKH</button></div>';
+    }
+    h += '</section>';
+  });
+  h += '<div class="ud-msg" id="udMsg" role="status"></div>';
+  w.innerHTML = h;
+}
+function udAssign(list, aksi){
+  const msg = document.getElementById('udMsg'); if(msg){ msg.className = 'ud-msg'; msg.textContent = 'Menyimpan…'; }
+  udApi('assign', { method: 'POST', body: JSON.stringify({ untuk: UD_ADM.untuk, aksi, kontrak: list }) }).then(({ok, b}) => {
+    if(!ok){ const m = document.getElementById('udMsg'); if(m){ m.className = 'ud-msg bad'; m.textContent = b.error || 'Gagal menyimpan.'; } return; }
+    loadUsulan();
+  }).catch(err => { const m = document.getElementById('udMsg'); if(m){ m.className = 'ud-msg bad'; m.textContent = pesanErr(err); } });
+}
+function udAssignPilih(ci){
+  const list = Array.from(document.querySelectorAll('.ud-co input[data-co="' + ci + '"]:checked')).map(i => i.dataset.no);
+  if(!list.length){ const m = document.getElementById('udMsg'); if(m){ m.className = 'ud-msg bad'; m.textContent = 'Centang dulu kontrak yang mau di-assign.'; } return; }
+  udAssign(list, 'assign');
+}
+function udAssignSemua(ci){ udAssign(UD_ADM.co[ci].kontrak.filter(x => !x.assign).map(x => x.noKontrak), 'assign'); }
+function udSalin(ci){
+  const c = UD_ADM.co[ci]; const list = c.kontrak.filter(x => x.assign);
+  const m = document.getElementById('udMsg');
+  if(!list.length){ if(m){ m.className = 'ud-msg bad'; m.textContent = 'Belum ada kontrak yang di-assign untuk ' + c.nama + '.'; } return; }
+  const teks = c.nama + ' — DKH ' + udTgl(UD_ADM.untuk) + '\n' + list.map((x, i) => (i + 1) + '. ' + x.noKontrak + ' ' + x.nama).join('\n');
+  const ok = () => { if(m){ m.className = 'ud-msg'; m.textContent = 'Daftar ' + list.length + ' kontrak disalin.'; } };
+  try { navigator.clipboard.writeText(teks).then(ok, () => { if(m){ m.className = 'ud-msg bad'; m.textContent = 'Gagal menyalin. Izinkan akses clipboard di browser.'; } }); } catch(e){ if(m){ m.className = 'ud-msg bad'; m.textContent = 'Browser tidak mendukung salin otomatis.'; } }
 }
 
 function fmtDec(n,d){ return (Number(n)||0).toFixed(d).replace('.', ','); }
@@ -4655,14 +4817,14 @@ document.getElementById('overlay').onclick = document.getElementById('panelClose
   const dateEl = document.getElementById('topDate');
   if(!sidebar || !nav) return;
 
-  const HINT = { targetdaily:'Target daily balance dan flow per PIC, kontrak potensial, dan rekomendasi kejar', cms:'Produktivitas collection: balance 1-30 dan 31-60, DKH terbentuk, dikerjakan, bertemu, risk code', ringkasan:'Ringkasan performa cabang: sebaran bucket, flow, dan tren mingguan', dashboard:'Beban awal: daftar kontrak per bucket beserta status bayarnya', nbq:'Kontrak NBQ (new booking quality) dan status bayarnya', feever:'Kontrak limpahan 31+ hari', tglbayar:'Kontrak yang bulan lalu dibayar pada tanggal hari ini', insentif:'Proyeksi insentif mingguan', dekscall:'Daftar tugas deskcall', simulasirapor:'Simulasi nilai rapor jika kontrak tertentu flow/stay/lunas', simulasi:'Simulasi penawaran MotorKu', panduan:'Panduan membaca KPI dan insentif' };
+  const HINT = { usulan:'CO memilih 12-15 kontrak balance untuk DKH besok; admin meng-assign', targetdaily:'Target daily balance dan flow per PIC, kontrak potensial, dan rekomendasi kejar', cms:'Produktivitas collection: balance 1-30 dan 31-60, DKH terbentuk, dikerjakan, bertemu, risk code', ringkasan:'Ringkasan performa cabang: sebaran bucket, flow, dan tren mingguan', dashboard:'Beban awal: daftar kontrak per bucket beserta status bayarnya', nbq:'Kontrak NBQ (new booking quality) dan status bayarnya', feever:'Kontrak limpahan 31+ hari', tglbayar:'Kontrak yang bulan lalu dibayar pada tanggal hari ini', insentif:'Proyeksi insentif mingguan', dekscall:'Daftar tugas deskcall', simulasirapor:'Simulasi nilai rapor jika kontrak tertentu flow/stay/lunas', simulasi:'Simulasi penawaran MotorKu', panduan:'Panduan membaca KPI dan insentif' };
   sidebar.querySelectorAll('.nav-item[data-view]').forEach(b => { if(HINT[b.dataset.view]) b.title = HINT[b.dataset.view]; });
   function orderFor(){
     if(IS_DESKCALL) return ['dashboard','dekscall','tglbayar','simulasi','panduan'];
-    if(IS_ADMIN) return ['ringkasan','targetdaily','dashboard','cms','nbq','insentif','feever','tglbayar','simulasirapor','simulasi','panduan'];
-    return ['dashboard','targetdaily','nbq','insentif','feever','tglbayar','simulasirapor','simulasi','panduan'];
+    if(IS_ADMIN) return ['ringkasan','targetdaily','dashboard','usulan','cms','nbq','insentif','feever','tglbayar','simulasirapor','simulasi','panduan'];
+    return ['dashboard','targetdaily','usulan','nbq','insentif','feever','tglbayar','simulasirapor','simulasi','panduan'];
   }
-  const SHORT = { cms:'CMS', ringkasan:'Ringkasan', dashboard:'Beban', targetdaily:'Target', nbq:'NBQ', feever:'FE Ever', tglbayar:'Tgl Bayar', insentif:'Insentif', dekscall:'Deskcall', simulasirapor:'Rapor', simulasi:'Simulasi', panduan:'Panduan' };
+  const SHORT = { usulan:'Usulan', cms:'CMS', ringkasan:'Ringkasan', dashboard:'Beban', targetdaily:'Target', nbq:'NBQ', feever:'FE Ever', tglbayar:'Tgl Bayar', insentif:'Insentif', dekscall:'Deskcall', simulasirapor:'Rapor', simulasi:'Simulasi', panduan:'Panduan' };
   const MORE_ICON = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/></svg>';
 
   function items(){
@@ -4762,7 +4924,7 @@ document.getElementById('overlay').onclick = document.getElementById('panelClose
 /* V4 — gerak halus: transisi antar menu, reveal saat gulir, top bar adaptif, pil bottom nav */
 (function(){
   const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const ORDER = ['ringkasan','dashboard','cms','nbq','feever','dekscall','tglbayar','insentif','simulasirapor','simulasi','panduan'];
+  const ORDER = ['ringkasan','dashboard','usulan','cms','nbq','feever','dekscall','tglbayar','insentif','simulasirapor','simulasi','panduan'];
   let prevView = null, io = null, holdTimer = null;
 
   function revealAll(){ document.querySelectorAll('#wrap > .m-hold').forEach(el => { el.classList.add('m-show'); }); }
