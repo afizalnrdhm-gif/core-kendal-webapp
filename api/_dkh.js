@@ -91,7 +91,8 @@ function cariCO(master, cfg, email) {
   const nama = mine[0]['CO ALL'];
   const c = cfg.find(r => r['NAMA_CO'] === nama);
   const role = c ? String(c['ROLE'] || '').trim().toUpperCase() : '';
-  return { nama, role, kontrak: mine };
+  // MR memegang balance 31-60 SE-CABANG (kontrak FE yang sudah naik ke 31-60 juga jadi tanggung jawab MR), FE hanya kontraknya sendiri
+  return { nama, role, kontrak: role === 'MR' ? master : mine };
 }
 
 // Kontrak yang boleh diusulkan: milik CO, bukan FLEET, BUCKET UPDATE masih di bucket balance role-nya, dan SUDAH jatuh tempo
@@ -113,7 +114,8 @@ function cariCOByNama(master, cfg, nama) {
   const mine = master.filter(r => String(r['CO ALL'] || '') === nama);
   if (!mine.length) return null;
   const c = cfg.find(r => r['NAMA_CO'] === nama);
-  return { nama, role: c ? String(c['ROLE'] || '').trim().toUpperCase() : '', kontrak: mine };
+  const role = c ? String(c['ROLE'] || '').trim().toUpperCase() : '';
+  return { nama, role, kontrak: role === 'MR' ? master : mine };
 }
 
 // Rekomendasi tambahan untuk DKH tanggal `untuk`: prioritas janji bayar yang jatuh pada/dekat tanggal DKH,

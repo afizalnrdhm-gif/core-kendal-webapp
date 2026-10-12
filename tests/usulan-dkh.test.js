@@ -10,7 +10,7 @@ test('kandidat FE = BUCKET UPDATE 1-30 milik sendiri, bukan fleet; MR = 31-60', 
   const fe = cariCO(master, cfg, 'a@x.id');
   assert.deepStrictEqual(kandidat(fe).map(x => x.noKontrak).sort(), ['1', '7']); // 6 belum jatuh tempo -> tidak tampil; 7 tanpa tanggal tapi DPD>0 -> tampil
   const mr = cariCO(master, cfg, 'b@x.id');
-  assert.deepStrictEqual(kandidat(mr).map(x => x.noKontrak), []); // B hanya punya kontrak 1-30, bukan 31-60
+  assert.deepStrictEqual(kandidat(mr).map(x => x.noKontrak), ['2']); // MR memegang 31-60 se-cabang (kontrak '2' milik FE A), bukan hanya miliknya
   assert.strictEqual(cariCO(master, cfg, 'z@x.id'), null);
 });
 
