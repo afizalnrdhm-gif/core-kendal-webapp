@@ -4,13 +4,18 @@ const { kandidat, cariCO, usulanTerbaru, statusAssign } = require('../api/_dkh.j
 
 const m = (no, upd, co, extra) => Object.assign({ 'NO KONTRAK': no, 'NAMA KONSUMEN': 'N' + no, 'CO ALL': co, 'EMAIL CO': co.toLowerCase() + '@x.id', 'BUCKET UPDATE': upd, SIPOK: 100, 'FLEET/NON FLEET': 'NON FLEET', 'JATUH TEMPO': '2020-01-01' }, extra || {});
 
-test('kandidat FE = BUCKET UPDATE 1-30 milik sendiri, bukan fleet; MR = 31-60', () => {
-  const master = [m('1', 'P001_030', 'A'), m('2', 'P031_060', 'A'), m('3', 'P001_030', 'A', { 'FLEET/NON FLEET': 'FLEET' }), m('4', 'P001_030', 'B'), m('5', 'NOOD', 'A'), m('6', 'P001_030', 'A', { 'JATUH TEMPO': '2999-01-01' }), m('7', 'P001_030', 'A', { 'JATUH TEMPO': '', DPD: 4 })];
+test('kandidat FE = BUCKET AWAL NOOD & DPD>0 milik sendiri; MR = BUCKET AWAL 1-30 & DPD>=31 se-cabang', () => {
+  const k = (no, awal, co, extra) => m(no, 'X', co, Object.assign({ 'BUCKET AWAL': awal, DPD: 5 }, extra || {}));
+  const master = [
+    k('1', 'NOOD', 'A'), k('2', 'NOOD', 'A', { DPD: 0 }), k('3', 'NOOD', 'A', { 'FLEET/NON FLEET': 'FLEET' }),
+    k('4', 'NOOD', 'B'), k('5', 'P001_030', 'A', { DPD: 40 }), k('6', 'P001_030', 'A', { DPD: 20 }),
+    k('7', 'NOOD', 'A', { 'JATUH TEMPO': '2999-01-01' }), k('8', 'P001_030', 'C', { DPD: 31 })
+  ];
   const cfg = [{ NAMA_CO: 'A', ROLE: 'FE' }, { NAMA_CO: 'B', ROLE: 'MR' }];
   const fe = cariCO(master, cfg, 'a@x.id');
-  assert.deepStrictEqual(kandidat(fe).map(x => x.noKontrak).sort(), ['1', '7']); // 6 belum jatuh tempo -> tidak tampil; 7 tanpa tanggal tapi DPD>0 -> tampil
+  assert.deepStrictEqual(kandidat(fe).map(x => x.noKontrak), ['1']); // 2 DPD 0, 3 fleet, 7 belum jatuh tempo
   const mr = cariCO(master, cfg, 'b@x.id');
-  assert.deepStrictEqual(kandidat(mr).map(x => x.noKontrak), ['2']); // MR memegang 31-60 se-cabang (kontrak '2' milik FE A), bukan hanya miliknya
+  assert.deepStrictEqual(kandidat(mr).map(x => x.noKontrak).sort(), ['5', '8']); // DPD>=31 saja, milik FE mana pun
   assert.strictEqual(cariCO(master, cfg, 'z@x.id'), null);
 });
 

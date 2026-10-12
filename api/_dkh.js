@@ -9,6 +9,7 @@ const TAB_USUL = 'USULAN_DKH', TAB_ASSIGN = 'DKH_ASSIGN';
 const H_USUL = ['UNTUK_TANGGAL', 'CO', 'EMAIL', 'ROLE', 'NO_KONTRAK', 'NAMA', 'SIPOK', 'BUCKET', 'BATCH', 'WAKTU'];
 const H_ASSIGN = ['UNTUK_TANGGAL', 'CO', 'ROLE', 'NO_KONTRAK', 'NAMA', 'SIPOK', 'STATUS', 'OLEH', 'WAKTU'];
 const BUCKET_ROLE = { FE: 'P001_030', MR: 'P031_060' };
+const ASAL_FLOW = { FE: 'NOOD', MR: 'P001_030' };
 const safe = v => { const s = v == null ? '' : String(v); return /^[=+\-@]/.test(s) ? "'" + s : s; };
 
 async function sf(url, token, opts) {
@@ -105,7 +106,9 @@ function sudahJatuhTempo(r) {
 function kandidat(co) {
   const b = BUCKET_ROLE[co.role];
   if (!b) return [];
-  return co.kontrak.filter(r => r['BUCKET UPDATE'] === b && r['FLEET/NON FLEET'] !== 'FLEET' && sudahJatuhTempo(r))
+  // Logika sama dengan KPI Flow: FE = bucket awal NOOD dengan DPD > 0; MR = bucket awal 1-30 dengan DPD >= 31.
+  const awal = ASAL_FLOW[co.role], minDpd = co.role === 'MR' ? 31 : 1;
+  return co.kontrak.filter(r => r['BUCKET AWAL'] === awal && Number(r['DPD']) >= minDpd && r['FLEET/NON FLEET'] !== 'FLEET' && sudahJatuhTempo(r))
     .map(r => ({ jt: toMs(r['JATUH TEMPO']), jh: hariDariCell(r['JANJI BAYAR']), bh: hariDariCell(r['TGL BYR']), noKontrak: String(r['NO KONTRAK']), nama: String(r['NAMA KONSUMEN'] || '-'), sipok: Number(r['SIPOK']) || 0, dpd: r['DPD'] === undefined || r['DPD'] === '' ? null : Number(r['DPD']), janji: r['JANJI BAYAR'] ? String(r['JANJI BAYAR']) : '', proyeksi: r['PROYEKSI'] ? String(r['PROYEKSI']) : '' }))
     .sort((a, c) => c.sipok - a.sipok);
 }
