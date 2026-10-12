@@ -2366,7 +2366,7 @@ function renderUsulanAdmin(){
       '<div class="ud-actions"><button class="btn primary" onclick="udAssignPilih(' + ci + ')">Assign yang dipilih</button> <button class="btn" onclick="udAssignSemua(' + ci + ')">Assign semua</button> <button class="btn" onclick="udSalin(' + ci + ')">Salin daftar DKH</button></div>';
     }
     if(c.rekomendasi && c.rekomendasi.length){
-      h += '<div class="ud-rek"><div class="ud-rek-t">Rekomendasi tambahan <span class="ud-sub">(urut: janji bayar dekat tanggal DKH, biasa bayar, lalu SIPOK terbesar)</span></div><div class="ud-list">' + c.rekomendasi.map((x, i) =>
+      h += '<div class="ud-rek"><div class="ud-rek-t">Rekomendasi tambahan <span class="ud-sub">(utamakan yang sudah jatuh tempo dan belum pernah terbentuk DKH, lalu janji bayar dekat tanggal DKH, biasa bayar, SIPOK terbesar)'+(d.produktivitasAda?'':' <br><span class="ud-sub">Tab PRODUCTIVITY belum terbaca, jadi status "belum pernah terbentuk" belum bisa dipakai.</span>')+'</span></div><div class="ud-list">' + c.rekomendasi.map((x, i) =>
         '<label class="ud-row"><input type="checkbox" data-rek="' + ci + '" data-no="' + esc(x.noKontrak) + '"' + ' onchange="this.closest(\'.ud-row\').classList.toggle(\'on\',this.checked)">' +
         '<div class="ud-main"><b>' + esc(x.nama) + '</b><span class="mono">' + esc(x.noKontrak) + '</span><span class="ud-sub">' + esc(x.alasan) + (x.dpd !== null && !isNaN(x.dpd) ? ' · DPD ' + x.dpd : '') + '</span></div>' +
         '<div class="ud-side"><span class="mono">' + fmtRupiah(x.sipok) + '</span><span class="ud-pick"></span></div></label>').join('') + '</div>' +

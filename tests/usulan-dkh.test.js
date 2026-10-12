@@ -29,3 +29,17 @@ test('rekomendasi: janji dekat tanggal DKH dulu, lalu biasa bayar, lalu SIPOK; y
   assert.deepStrictEqual(r.map(x => x.noKontrak), ['B', 'C', 'D', 'A']);
   assert.match(r[0].alasan, /Janji bayar tgl 14/);
 });
+
+test('rekomendasi: jatuh tempo & belum pernah terbentuk DKH diutamakan (paling lama jatuh tempo dulu)', () => {
+  const { rekomendasi } = require('../api/_dkh.js');
+  const hariIni = Date.parse(new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 10) + 'T00:00:00Z');
+  const d = n => hariIni - n * 86400000;
+  const k = (no, sipok, jt, jh) => ({ noKontrak: no, nama: no, sipok, dpd: 1, jt, jh: jh || 0, bh: 0 });
+  const pernah = new Set(['P']); // P sudah pernah terbentuk
+  const r = rekomendasi([k('P', 900, d(5)), k('A', 100, d(3)), k('B', 50, d(9)), k('C', 999, d(-2)), k('D', 800, d(4), 14)], new Set(), '2026-10-13', pernah);
+  assert.deepStrictEqual(r.slice(0, 3).map(x => x.noKontrak), ['B', 'D', 'A']);
+  assert.match(r[0].alasan, /belum pernah terbentuk DKH/);
+  // D punya janji dekat tapi sudah jatuh tempo & belum terbentuk, jadi tetap grup utama; tanpa data PRODUCTIVITY aturan ini dilewati
+  const tanpa = rekomendasi([k('A', 100, d(3)), k('C', 999, d(3))], new Set(), '2026-10-13', null);
+  assert.strictEqual(tanpa[0].noKontrak, 'C');
+});
