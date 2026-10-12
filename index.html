@@ -2373,7 +2373,7 @@ function udAssignSemua(ci){ udAssign(UD_ADM.co[ci].kontrak.filter(x => !x.assign
 function udSalin(ci){
   const c = UD_ADM.co[ci]; const t = udTeksCO(c); const m = document.getElementById('udMsg');
   if(!t){ if(m){ m.className = 'ud-msg bad'; m.textContent = 'Belum ada kontrak yang di-assign untuk ' + c.nama + '.'; } return; }
-  udSalinTeks('*DKH ' + udTgl(UD_ADM.untuk) + '*\n\n' + t, 'Daftar DKH ' + c.nama + ' disalin. Tinggal tempel di WhatsApp.');
+  udSalinTeks(t, 'Daftar DKH ' + c.nama + ' disalin. Tinggal tempel di WhatsApp.');
 }
 
 function udTambah(ci){
@@ -2390,7 +2390,7 @@ function udTambah(ci){
 function udTeksCO(c){
   const list = c.kontrak.filter(x => x.assign);
   if(!list.length) return '';
-  return '*' + c.nama + ' (' + c.role + ')* — ' + list.length + ' kontrak\n' + list.map((x, i) => (i + 1) + '. ' + x.noKontrak + ' ' + x.nama + ' — ' + fmtRupiah(x.sipok)).join('\n');
+  return '*' + c.nama + '*\n' + list.map((x, i) => (i + 1) + '. ' + x.nama + ' - ' + x.noKontrak).join('\n');
 }
 function udSalinTeks(teks, okMsg){
   const m = document.getElementById('udMsg');
@@ -2403,7 +2403,7 @@ function udSalinSemua(){
   const d = UD_ADM; const bagian = d.co.map(udTeksCO).filter(Boolean);
   const m = document.getElementById('udMsg');
   if(!bagian.length){ if(m){ m.className = 'ud-msg bad'; m.textContent = 'Belum ada kontrak yang di-assign untuk disalin.'; } return; }
-  udSalinTeks('*DKH ' + udTgl(d.untuk) + '*\n\n' + bagian.join('\n\n'), 'Daftar DKH semua CO disalin. Tinggal tempel di WhatsApp.');
+  udSalinTeks(bagian.join('\n\n'), 'Daftar DKH semua CO disalin. Tinggal tempel di WhatsApp.');
 }
 
 function fmtDec(n,d){ return (Number(n)||0).toFixed(d).replace('.', ','); }
