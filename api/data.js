@@ -178,12 +178,10 @@ module.exports = async (req, res) => {
       const mrEntry = Object.values(roleMap).find(r => r.role === 'MR');
       if (!mrEntry) return [];
       const asal = mrEntry.asalFlow[0];
-      const URUT = ['NOOD', 'P001_030', 'P031_060', 'P061_090', 'P091_120', 'P121_150', 'P151_180', 'P181_210', 'P211_240', 'P241_270'];
-      const iAsal = URUT.indexOf(asal);
-      // Limpahan FE ke MR: bucket awal = bucket asal flow, dan sekarang sudah lebih tinggi (BUCKET UPDATE) atau DPD sudah > 31.
+      // Hanya kontrak FE yang benar-benar sudah "ever" (STATUS EVER dari FLOW EVER KA HARIAN) dan belum lunas.
       return allRecords.filter(r =>
         r['BUCKET AWAL'] === asal &&
-        ((iAsal > -1 && URUT.indexOf(r['BUCKET UPDATE']) > iAsal) || (typeof r['DPD'] === 'number' && r['DPD'] > 31)) &&
+        r['STATUS EVER'] === 'SUDAH EVER' &&
         ['SUDAH BAYAR', 'LUNAS'].indexOf((r['STATUS BAYAR'] || '').toString().toUpperCase()) === -1
       );
     }
