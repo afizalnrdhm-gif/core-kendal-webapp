@@ -4361,10 +4361,10 @@ function tdPicHtml(p){
 }
 function tdInfoBaseline(){
   try {
-    let w = '', b = 0, n = 0, k = 0;
-    ((TD_DATA && TD_DATA.pic) || []).forEach(p => (p.poin || []).forEach(q => { const g = q.progres; if (!g) return; k++; if (g.waktuBase && g.waktuBase > w) w = g.waktuBase; b += g.jumlahBase || 0; n += g.jumlahSekarang || 0; }));
+    let w = '', k = 0;
+    ((TD_DATA && TD_DATA.pic) || []).forEach(p => (p.poin || []).forEach(q => { const g = q.progres; if (!g) return; k++; if (g.waktuBase && g.waktuBase > w) w = g.waktuBase; }));
     if (!k || !w) return '';
-    return '<p class="td-note" style="font-size:12px;opacity:.75;margin:6px 0 10px">Titik nol dibekukan ' + String(w).slice(11, 16).replace(':', '.') + ' WIB · ' + b + ' kontrak waktu itu, ' + n + ' sekarang (progres = kontrak yang keluar dari daftar).</p>';
+    return '<p class="td-note" style="font-size:12px;opacity:.75;margin:6px 0 10px">Titik nol dibekukan ' + String(w).slice(11, 16).replace(':', '.') + ' WIB. Progres = SIPOK kontrak yang kolom REALISASI-nya di KA HARIAN sudah lebih dari 0.</p>';
   } catch (e) { return ''; }
 }
 function tdBekukanUlang(){
