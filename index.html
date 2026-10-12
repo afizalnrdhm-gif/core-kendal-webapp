@@ -1171,6 +1171,11 @@
 .ud-link{background:none;border:none;color:var(--navy-lighter,#1d6fa5);font-size:12px;text-decoration:underline;cursor:pointer;padding:2px;}
 :root[data-theme="dark"] .ud-chip.ok,:root[data-theme="dark"] .ud-ok{background:#16382a;color:#8fe0b0;}
 :root[data-theme="dark"] .ud-chip.bad{background:#4a1f1f;color:#ffb4b4;} :root[data-theme="dark"] .ud-chip.warn{background:#4a3a14;color:#ffd98a;}
+
+.ud-kurang{background:#fff3d9;color:#8a5a00;border-radius:10px;padding:8px 12px;margin:10px 0;font-size:13px;}
+:root[data-theme="dark"] .ud-kurang{background:#4a3a14;color:#ffd98a;}
+.ud-rek{margin-top:14px;padding-top:12px;border-top:1px dashed var(--line);}
+.ud-rek-t{font-weight:700;font-size:14px;}
 </style>
 </head>
 <body>
@@ -2323,21 +2328,29 @@ function renderUsulanAdmin(){
   const kirim = d.co.filter(c => c.sudahKirim).length;
   let h = '<div class="rk-header"><h1>Usulan DKH</h1></div>';
   h += '<div class="ud-top"><label class="ud-tgl">DKH untuk <select onchange="UD_ADM_TGL=this.value;loadUsulan()">' + d.tanggalTersedia.map(t => '<option value="' + esc(t) + '"' + (t === d.untuk ? ' selected' : '') + '>' + udTgl(t) + '</option>').join('') + '</select></label>' +
-    '<span class="ud-chip ' + (kirim === d.co.length && kirim ? 'ok' : '') + '">' + kirim + ' dari ' + d.co.length + ' CO sudah kirim</span></div>';
+    '<span class="ud-chip ' + (kirim === d.co.length && kirim ? 'ok' : '') + '">' + kirim + ' dari ' + d.co.length + ' CO sudah kirim</span><button class="btn primary" onclick="udSalinSemua()">Salin semua untuk WA</button></div>';
   if(!d.co.length) h += '<div class="state-box">Belum ada CO FE/MR di CONFIG_ROLE.</div>';
   d.co.forEach((c, ci) => {
     const exp = c.role === 'FE' ? 'P001_030' : 'P031_060';
     const nAsg = c.kontrak.filter(x => x.assign).length;
     h += '<section class="pg-card ud-co"><div class="ud-co-head"><div><b>' + esc(c.nama) + '</b> <span class="ud-chip">' + esc(c.role) + '</span></div>' +
       (c.sudahKirim ? '<span class="ud-sub">' + c.kontrak.length + ' kontrak · ' + nAsg + ' masuk DKH · terkirim ' + fmtWaktu(c.waktu) + '</span>' : '<span class="ud-chip bad">Belum kirim usulan</span>') + '</div>';
-    if(c.sudahKirim){
+    if(c.kurang > 0) h += '<div class="ud-kurang">Target DKH ' + d.target + ' kontrak, <b>kurang ' + c.kurang + '</b>.</div>';
+    if(c.sudahKirim || c.kontrak.length){
       h += '<div class="ud-list">' + c.kontrak.map(x => {
         const berubah = x.bucketSekarang && x.bucketSekarang !== exp;
         return '<label class="ud-row' + (x.assign ? ' done' : '') + '"><input type="checkbox" data-co="' + ci + '" data-no="' + esc(x.noKontrak) + '"' + (x.assign ? ' disabled' : '') + '>' +
           '<div class="ud-main"><b>' + esc(x.nama) + '</b><span class="mono">' + esc(x.noKontrak) + '</span></div>' +
-          '<div class="ud-side"><span class="mono">' + fmtRupiah(x.sipok) + '</span>' + (x.assign ? '<span class="ud-chip ok">Masuk DKH</span> <button type="button" class="ud-link" onclick="event.preventDefault();udAssign([\'' + esc(x.noKontrak) + '\'],\'batal\')">batalkan</button>' : '') + (berubah ? '<span class="ud-chip warn">bucket ' + esc(x.bucketSekarang) + '</span>' : '') + '</div></label>';
+          '<div class="ud-side"><span class="mono">' + fmtRupiah(x.sipok) + '</span>' + (x.assign ? '<span class="ud-chip ok">Masuk DKH</span>' + (x.tambahan ? '<span class="ud-chip">Tambahan head</span>' : '') + ' <button type="button" class="ud-link" onclick="event.preventDefault();udAssign([\'' + esc(x.noKontrak) + '\'],\'batal\')">batalkan</button>' : '') + (berubah ? '<span class="ud-chip warn">bucket ' + esc(x.bucketSekarang) + '</span>' : '') + '</div></label>';
       }).join('') + '</div>' +
       '<div class="ud-actions"><button class="btn primary" onclick="udAssignPilih(' + ci + ')">Assign yang dicentang</button> <button class="btn" onclick="udAssignSemua(' + ci + ')">Assign semua</button> <button class="btn" onclick="udSalin(' + ci + ')">Salin daftar DKH</button></div>';
+    }
+    if(c.rekomendasi && c.rekomendasi.length){
+      h += '<div class="ud-rek"><div class="ud-rek-t">Rekomendasi tambahan <span class="ud-sub">(urut: janji bayar dekat tanggal DKH, biasa bayar, lalu SIPOK terbesar)</span></div><div class="ud-list">' + c.rekomendasi.map((x, i) =>
+        '<label class="ud-row"><input type="checkbox" data-rek="' + ci + '" data-no="' + esc(x.noKontrak) + '"' + (i < c.kurang ? ' checked' : '') + '>' +
+        '<div class="ud-main"><b>' + esc(x.nama) + '</b><span class="mono">' + esc(x.noKontrak) + '</span></div>' +
+        '<div class="ud-side"><span class="mono">' + fmtRupiah(x.sipok) + '</span><span class="ud-sub">' + esc(x.alasan) + (x.dpd !== null && !isNaN(x.dpd) ? ' · DPD ' + x.dpd : '') + '</span></div></label>').join('') + '</div>' +
+        '<div class="ud-actions"><button class="btn primary" onclick="udTambah(' + ci + ')">Tambah &amp; assign yang dicentang</button></div></div>';
     }
     h += '</section>';
   });
@@ -2358,12 +2371,39 @@ function udAssignPilih(ci){
 }
 function udAssignSemua(ci){ udAssign(UD_ADM.co[ci].kontrak.filter(x => !x.assign).map(x => x.noKontrak), 'assign'); }
 function udSalin(ci){
-  const c = UD_ADM.co[ci]; const list = c.kontrak.filter(x => x.assign);
+  const c = UD_ADM.co[ci]; const t = udTeksCO(c); const m = document.getElementById('udMsg');
+  if(!t){ if(m){ m.className = 'ud-msg bad'; m.textContent = 'Belum ada kontrak yang di-assign untuk ' + c.nama + '.'; } return; }
+  udSalinTeks('*DKH ' + udTgl(UD_ADM.untuk) + '*\n\n' + t, 'Daftar DKH ' + c.nama + ' disalin. Tinggal tempel di WhatsApp.');
+}
+
+function udTambah(ci){
+  const c = UD_ADM.co[ci]; const m = document.getElementById('udMsg');
+  const list = Array.from(document.querySelectorAll('input[data-rek="' + ci + '"]:checked')).map(i => i.dataset.no);
+  if(!list.length){ if(m){ m.className = 'ud-msg bad'; m.textContent = 'Centang dulu kontrak rekomendasi yang mau ditambahkan.'; } return; }
+  if(m){ m.className = 'ud-msg'; m.textContent = 'Menyimpan…'; }
+  udApi('tambah', { method: 'POST', body: JSON.stringify({ untuk: UD_ADM.untuk, co: c.nama, kontrak: list }) }).then(({ok, b}) => {
+    if(!ok){ const mm = document.getElementById('udMsg'); if(mm){ mm.className = 'ud-msg bad'; mm.textContent = b.error || 'Gagal menambahkan.'; } return; }
+    loadUsulan();
+  }).catch(err => { const mm = document.getElementById('udMsg'); if(mm){ mm.className = 'ud-msg bad'; mm.textContent = pesanErr(err); } });
+}
+// Format untuk dikirim ke WhatsApp (*tebal* ala WA)
+function udTeksCO(c){
+  const list = c.kontrak.filter(x => x.assign);
+  if(!list.length) return '';
+  return '*' + c.nama + ' (' + c.role + ')* — ' + list.length + ' kontrak\n' + list.map((x, i) => (i + 1) + '. ' + x.noKontrak + ' ' + x.nama + ' — ' + fmtRupiah(x.sipok)).join('\n');
+}
+function udSalinTeks(teks, okMsg){
   const m = document.getElementById('udMsg');
-  if(!list.length){ if(m){ m.className = 'ud-msg bad'; m.textContent = 'Belum ada kontrak yang di-assign untuk ' + c.nama + '.'; } return; }
-  const teks = c.nama + ' — DKH ' + udTgl(UD_ADM.untuk) + '\n' + list.map((x, i) => (i + 1) + '. ' + x.noKontrak + ' ' + x.nama).join('\n');
-  const ok = () => { if(m){ m.className = 'ud-msg'; m.textContent = 'Daftar ' + list.length + ' kontrak disalin.'; } };
-  try { navigator.clipboard.writeText(teks).then(ok, () => { if(m){ m.className = 'ud-msg bad'; m.textContent = 'Gagal menyalin. Izinkan akses clipboard di browser.'; } }); } catch(e){ if(m){ m.className = 'ud-msg bad'; m.textContent = 'Browser tidak mendukung salin otomatis.'; } }
+  const gagal = t => { if(m){ m.className = 'ud-msg bad'; m.textContent = t; } };
+  const sukses = () => { if(m){ m.className = 'ud-msg'; m.textContent = okMsg; } };
+  const cadangan = () => { try { const ta = document.createElement('textarea'); ta.value = teks; ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select(); const ok = document.execCommand('copy'); document.body.removeChild(ta); ok ? sukses() : gagal('Gagal menyalin. Salin manual dari kotak teks.'); } catch(e){ gagal('Gagal menyalin.'); } };
+  try { navigator.clipboard.writeText(teks).then(sukses, cadangan); } catch(e){ cadangan(); }
+}
+function udSalinSemua(){
+  const d = UD_ADM; const bagian = d.co.map(udTeksCO).filter(Boolean);
+  const m = document.getElementById('udMsg');
+  if(!bagian.length){ if(m){ m.className = 'ud-msg bad'; m.textContent = 'Belum ada kontrak yang di-assign untuk disalin.'; } return; }
+  udSalinTeks('*DKH ' + udTgl(d.untuk) + '*\n\n' + bagian.join('\n\n'), 'Daftar DKH semua CO disalin. Tinggal tempel di WhatsApp.');
 }
 
 function fmtDec(n,d){ return (Number(n)||0).toFixed(d).replace('.', ','); }

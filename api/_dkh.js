@@ -4,7 +4,7 @@
 // File berawalan "_" tidak dihitung Vercel sebagai function.
 const { cleanCell } = require('./_sheet');
 
-const MIN = 12, MAX = 15;
+const MIN = 12, MAX = 15, TARGET_DKH = 15;
 const TAB_USUL = 'USULAN_DKH', TAB_ASSIGN = 'DKH_ASSIGN';
 const H_USUL = ['UNTUK_TANGGAL', 'CO', 'EMAIL', 'ROLE', 'NO_KONTRAK', 'NAMA', 'SIPOK', 'BUCKET', 'BATCH', 'WAKTU'];
 const H_ASSIGN = ['UNTUK_TANGGAL', 'CO', 'ROLE', 'NO_KONTRAK', 'NAMA', 'SIPOK', 'STATUS', 'OLEH', 'WAKTU'];
@@ -23,6 +23,19 @@ function tglStr(d) { return d.toISOString().slice(0, 10); }
 // Tanggal "besok" menurut WIB
 function besok() { return tglStr(new Date(waktuWIB().getTime() + 86400000)); }
 const tglValid = s => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ''));
+
+function hariDariCell(v) {
+  if (v === '' || v === null || v === undefined) return 0;
+  if (typeof v === 'number') {
+    if (v >= 1 && v <= 31) return Math.floor(v);
+    if (v > 1000) return new Date(Math.floor(v - 25569) * 86400000).getUTCDate();
+    return 0;
+  }
+  const s = String(v).trim();
+  let mt = s.match(/^(\d{4})-(\d{2})-(\d{2})/); if (mt) return parseInt(mt[3], 10);
+  mt = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/); if (mt) return parseInt(mt[1], 10);
+  const n = parseInt(s, 10); return n >= 1 && n <= 31 ? n : 0;
+}
 
 function parse(values) {
   const header = (values[0] || []).map(h => String(h == null ? '' : h).trim());
@@ -62,8 +75,29 @@ function kandidat(co) {
   const b = BUCKET_ROLE[co.role];
   if (!b) return [];
   return co.kontrak.filter(r => r['BUCKET UPDATE'] === b && r['FLEET/NON FLEET'] !== 'FLEET')
-    .map(r => ({ noKontrak: String(r['NO KONTRAK']), nama: String(r['NAMA KONSUMEN'] || '-'), sipok: Number(r['SIPOK']) || 0, dpd: r['DPD'] === undefined || r['DPD'] === '' ? null : Number(r['DPD']), janji: r['JANJI BAYAR'] ? String(r['JANJI BAYAR']) : '', proyeksi: r['PROYEKSI'] ? String(r['PROYEKSI']) : '' }))
+    .map(r => ({ jh: hariDariCell(r['JANJI BAYAR']), bh: hariDariCell(r['TGL BYR']), noKontrak: String(r['NO KONTRAK']), nama: String(r['NAMA KONSUMEN'] || '-'), sipok: Number(r['SIPOK']) || 0, dpd: r['DPD'] === undefined || r['DPD'] === '' ? null : Number(r['DPD']), janji: r['JANJI BAYAR'] ? String(r['JANJI BAYAR']) : '', proyeksi: r['PROYEKSI'] ? String(r['PROYEKSI']) : '' }))
     .sort((a, c) => c.sipok - a.sipok);
+}
+
+function cariCOByNama(master, cfg, nama) {
+  const mine = master.filter(r => String(r['CO ALL'] || '') === nama);
+  if (!mine.length) return null;
+  const c = cfg.find(r => r['NAMA_CO'] === nama);
+  return { nama, role: c ? String(c['ROLE'] || '').trim().toUpperCase() : '', kontrak: mine };
+}
+
+// Rekomendasi tambahan untuk DKH tanggal `untuk`: prioritas janji bayar yang jatuh pada/dekat tanggal DKH,
+// lalu kontrak yang bulan lalu biasa bayar di sekitar tanggal itu, lalu SIPOK terbesar.
+function rekomendasi(kand, dipakai, untuk) {
+  const hari = parseInt(String(untuk).slice(8, 10), 10) || 0;
+  const dekat = (h) => h > 0 && h >= hari && h <= hari + 3;
+  return kand.filter(x => !dipakai.has(x.noKontrak)).map(x => {
+    let grup = 3, alasan = 'SIPOK besar';
+    if (dekat(x.jh)) { grup = 0; alasan = 'Janji bayar tgl ' + x.jh; }
+    else if (x.bh > 0 && Math.abs(x.bh - hari) <= 2) { grup = 1; alasan = 'Biasa bayar tgl ' + x.bh; }
+    else if (x.jh > 0 && x.jh < hari) { grup = 2; alasan = 'Janji tgl ' + x.jh + ' sudah lewat, kejar'; }
+    return { noKontrak: x.noKontrak, nama: x.nama, sipok: x.sipok, dpd: x.dpd, alasan, grup };
+  }).sort((a, b) => a.grup - b.grup || b.sipok - a.sipok);
 }
 
 // Batch terbaru per CO untuk satu tanggal
@@ -83,7 +117,7 @@ function usulanTerbaru(rows, untuk) {
 // Status assign terbaru per kontrak untuk satu tanggal → { noKontrak: {status, oleh} }
 function statusAssign(rows, untuk) {
   const out = {};
-  rows.forEach(r => { if (String(r['UNTUK_TANGGAL']) === untuk) out[String(r['NO_KONTRAK'])] = { status: String(r['STATUS']), oleh: String(r['OLEH'] || ''), waktu: String(r['WAKTU'] || '') }; });
+  rows.forEach(r => { if (String(r['UNTUK_TANGGAL']) === untuk) out[String(r['NO_KONTRAK'])] = { status: String(r['STATUS']), oleh: String(r['OLEH'] || ''), waktu: String(r['WAKTU'] || ''), co: String(r['CO'] || ''), role: String(r['ROLE'] || ''), nama: String(r['NAMA'] || '-'), sipok: Number(r['SIPOK']) || 0 }; });
   return out;
 }
 
@@ -145,14 +179,19 @@ async function tangani(req, res, ctx) {
     const picList = cfg.filter(r => BUCKET_ROLE[String(r['ROLE'] || '').trim().toUpperCase()] && r['NAMA_CO']).map(r => ({ nama: String(r['NAMA_CO']), role: String(r['ROLE']).trim().toUpperCase() }));
     const dataCO = picList.map(p => {
       const u = per[p.nama];
-      return {
-        nama: p.nama, role: p.role, sudahKirim: !!u, waktu: u ? u.waktu : '',
-        kontrak: u ? u.kontrak.map(x => ({ noKontrak: x.noKontrak, nama: x.nama, sipok: x.sipok, bucketSekarang: bucketNow[x.noKontrak] || '', assign: !!(asgS[x.noKontrak] && asgS[x.noKontrak].status === 'ASSIGN') })) : []
-      };
+      const kontrak = u ? u.kontrak.map(x => ({ noKontrak: x.noKontrak, nama: x.nama, sipok: x.sipok, bucketSekarang: bucketNow[x.noKontrak] || '', assign: !!(asgS[x.noKontrak] && asgS[x.noKontrak].status === 'ASSIGN'), tambahan: false })) : [];
+      const ada = new Set(kontrak.map(x => x.noKontrak));
+      // Kontrak tambahan dari admin/head (di-assign tapi tidak ada di usulan CO)
+      Object.keys(asgS).forEach(no => { const a = asgS[no]; if (a.co === p.nama && a.status === 'ASSIGN' && !ada.has(no)) { kontrak.push({ noKontrak: no, nama: a.nama, sipok: a.sipok, bucketSekarang: bucketNow[no] || '', assign: true, tambahan: true }); ada.add(no); } });
+      const total = kontrak.length;
+      const kurang = Math.max(0, TARGET_DKH - total);
+      const co = cariCOByNama(master, cfg, p.nama);
+      const rek = kurang > 0 && co ? rekomendasi(kandidat(co), ada, untuk).slice(0, Math.max(kurang + 5, 8)) : [];
+      return { nama: p.nama, role: p.role, sudahKirim: !!u, waktu: u ? u.waktu : '', kontrak, kurang, rekomendasi: rek };
     });
     const tanggalTersedia = Array.from(new Set(usul.map(r => String(r['UNTUK_TANGGAL'])).filter(tglValid))).sort().reverse().slice(0, 14);
     if (tanggalTersedia.indexOf(untuk) === -1) tanggalTersedia.unshift(untuk);
-    res.status(200).json({ untuk, tanggalTersedia, co: dataCO });
+    res.status(200).json({ untuk, tanggalTersedia, target: TARGET_DKH, co: dataCO });
     return;
   }
 
@@ -161,9 +200,11 @@ async function tangani(req, res, ctx) {
     const untuk = body.untuk, aksi = body.aksi === 'batal' ? 'BATAL' : 'ASSIGN';
     const daftar = Array.isArray(body.kontrak) ? body.kontrak.slice(0, 300) : [];
     if (!tglValid(untuk) || !daftar.length) { res.status(400).json({ error: 'Data assign tidak lengkap.' }); return; }
-    const usul = await bacaTab(token, sheetId, TAB_USUL);
+    const [usul, asgRows] = await Promise.all([bacaTab(token, sheetId, TAB_USUL), bacaTab(token, sheetId, TAB_ASSIGN)]);
     const per = usulanTerbaru(usul, untuk);
     const sah = {};
+    const asgS0 = statusAssign(asgRows, untuk);
+    Object.keys(asgS0).forEach(no => { const a = asgS0[no]; sah[no] = { co: a.co, role: a.role, nama: a.nama, sipok: a.sipok }; });
     Object.keys(per).forEach(co => per[co].kontrak.forEach(x => { sah[x.noKontrak] = { co, role: per[co].role, nama: x.nama, sipok: x.sipok }; }));
     const waktu = waktuWIB().toISOString().replace('T', ' ').slice(0, 19);
     const rows = [];
@@ -174,7 +215,25 @@ async function tangani(req, res, ctx) {
     return;
   }
 
+  if (mode === 'tambah') {
+    if (req.method !== 'POST') { res.status(405).json({ error: 'Metode tidak didukung.' }); return; }
+    const untuk = body.untuk, namaCO = String(body.co || '');
+    const daftar = Array.isArray(body.kontrak) ? Array.from(new Set(body.kontrak.map(x => String(x)))).slice(0, 30) : [];
+    if (!tglValid(untuk) || !namaCO || !daftar.length) { res.status(400).json({ error: 'Data tambahan tidak lengkap.' }); return; }
+    const [master, cfg] = await Promise.all([bacaTab(token, sheetId, 'MASTER'), bacaTab(token, sheetId, 'CONFIG_ROLE')]);
+    const co = cariCOByNama(master, cfg, namaCO);
+    if (!co || !BUCKET_ROLE[co.role]) { res.status(400).json({ error: 'CO tidak ditemukan atau bukan FE/MR.' }); return; }
+    const peta = {}; kandidat(co).forEach(x => { peta[x.noKontrak] = x; });
+    const waktu = waktuWIB().toISOString().replace('T', ' ').slice(0, 19);
+    const rows = [];
+    daftar.forEach(n => { const k = peta[n]; if (k) rows.push([untuk, safe(co.nama), co.role, safe(n), safe(k.nama), Math.round(k.sipok), 'ASSIGN', email, waktu]); });
+    if (!rows.length) { res.status(400).json({ error: 'Kontrak tidak memenuhi syarat balance milik CO tersebut.' }); return; }
+    await tambahBaris(token, sheetId, TAB_ASSIGN, H_ASSIGN, rows);
+    res.status(200).json({ ok: true, jumlah: rows.length });
+    return;
+  }
+
   res.status(400).json({ error: 'Mode tidak dikenal.' });
 }
 
-module.exports = { tangani, MIN, MAX, BUCKET_ROLE, kandidat, cariCO, usulanTerbaru, statusAssign, besok };
+module.exports = { rekomendasi, cariCOByNama, hariDariCell, TARGET_DKH, tangani, MIN, MAX, BUCKET_ROLE, kandidat, cariCO, usulanTerbaru, statusAssign, besok };

@@ -21,3 +21,11 @@ test('usulan terbaru per CO dan status assign terbaru per kontrak', () => {
   const a = statusAssign([{ UNTUK_TANGGAL: '2026-10-13', NO_KONTRAK: '3', STATUS: 'ASSIGN', OLEH: 'x' }, { UNTUK_TANGGAL: '2026-10-13', NO_KONTRAK: '3', STATUS: 'BATAL', OLEH: 'x' }], '2026-10-13');
   assert.strictEqual(a['3'].status, 'BATAL');
 });
+
+test('rekomendasi: janji dekat tanggal DKH dulu, lalu biasa bayar, lalu SIPOK; yang sudah dipakai dibuang', () => {
+  const { rekomendasi } = require('../api/_dkh.js');
+  const k = (no, sipok, jh, bh) => ({ noKontrak: no, nama: no, sipok, dpd: 1, jh, bh });
+  const r = rekomendasi([k('A', 900, 0, 0), k('B', 100, 14, 0), k('C', 200, 0, 13), k('D', 50, 5, 0), k('E', 999, 0, 0)], new Set(['E']), '2026-10-13');
+  assert.deepStrictEqual(r.map(x => x.noKontrak), ['B', 'C', 'D', 'A']);
+  assert.match(r[0].alasan, /Janji bayar tgl 14/);
+});
