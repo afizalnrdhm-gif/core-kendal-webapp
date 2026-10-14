@@ -1,5 +1,6 @@
 const { appendLog } = require('./_tl');
 const { getAccessToken, sendError, verifyIdToken } = require('./_auth');
+const { normBucket } = require('./_sheet');
 
 // Ubah index kolom (0-based) jadi huruf kolom A1 notation (0->A, 1->B, ..., 26->AA, dst)
 function colLetter(index) {
@@ -97,8 +98,24 @@ module.exports = async (req, res) => {
     if (!isAdmin) {
       const ownerEmail = (targetRow[idxEmailCo] || '').toString().trim().toLowerCase();
       if (ownerEmail !== email) {
-        res.status(403).json({ error: 'Kamu tidak punya akses untuk mengubah kontrak ini.' });
-        return;
+        // Pengecualian: CO Mid Range boleh mengisi kontrak FE yang bucket awalnya = bucket asal flow-nya (menu FE Ever).
+        let boleh = false;
+        const idxAwal = header.findIndex(h => (h || '').toString().trim() === 'BUCKET AWAL');
+        if (idxAwal > -1) {
+          const cfgRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/CONFIG_ROLE?valueRenderOption=UNFORMATTED_VALUE`, { headers: { Authorization: 'Bearer ' + accessToken } });
+          const cfgVals = ((await cfgRes.json()).values) || [];
+          const ch = (cfgVals[0] || []).map(h => (h || '').toString().trim());
+          const iE = ch.indexOf('EMAIL'), iR = ch.indexOf('ROLE'), iA = ch.indexOf('BUCKET_ASAL_FLOW');
+          const baris = cfgVals.slice(1).find(r => iE > -1 && (r[iE] || '').toString().trim().toLowerCase() === email);
+          if (baris && iR > -1 && (baris[iR] || '').toString().trim().toUpperCase() === 'MR' && iA > -1) {
+            const asal = normBucket((baris[iA] || '').toString().split(',')[0].trim());
+            boleh = !!asal && normBucket((targetRow[idxAwal] || '').toString().trim()) === asal;
+          }
+        }
+        if (!boleh) {
+          res.status(403).json({ error: 'Kamu tidak punya akses untuk mengubah kontrak ini.' });
+          return;
+        }
       }
     }
 
