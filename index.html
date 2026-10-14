@@ -1205,6 +1205,31 @@
 .td-wait{background:#fff3d9;color:#8a5a00;border-radius:10px;padding:10px 12px;margin:0 0 12px;font-size:13px;}
 :root[data-theme="dark"] .td-wait{background:#4a3a14;color:#ffd98a;}
 #tdRefreeze{margin:0 0 12px;}
+  /* Grafik realisasi bulan lalu per segmen (Tgl Bayar Bulan Lalu) */
+  .tbchart{--tb1:#2a78d6;--tb2:#eb6834;--tb3:#1baf7a;--tbgrid:var(--line);background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px 14px;margin-bottom:22px;position:relative;}
+  :root[data-theme="dark"] .tbchart{--tb1:#3987e5;--tb2:#d95926;--tb3:#199e70;}
+  @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .tbchart{--tb1:#3987e5;--tb2:#d95926;--tb3:#199e70;}}
+  .tbchart h3{margin:0 0 2px;font-size:15px;font-weight:700;color:var(--ink);}
+  .tbchart .sub{font-size:12px;color:var(--ink-soft);margin:0 0 12px;}
+  .tbchart .tb-ctl{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;}
+  .tbchart .tb-seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:var(--radius-sm);overflow:hidden;}
+  .tbchart .tb-seg button{font:inherit;font-size:12px;font-weight:600;padding:6px 12px;border:0;background:var(--surface);color:var(--ink-soft);cursor:pointer;}
+  .tbchart .tb-seg button.on{background:var(--ink);color:var(--surface);}
+  .tbchart .tb-leg{display:flex;flex-wrap:wrap;gap:6px 18px;margin:4px 0 6px;font-size:12px;color:var(--ink);}
+  .tbchart .tb-leg i{display:inline-block;width:14px;height:3px;border-radius:2px;margin-right:6px;vertical-align:middle;}
+  .tbchart svg{width:100%;height:auto;display:block;overflow:visible;}
+  .tbchart .tb-axis{font-size:11px;fill:var(--ink-soft);font-family:var(--sans);}
+  .tbchart .tb-line{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round;}
+  .tbchart .tb-dot{stroke:var(--surface);stroke-width:2;}
+  .tbchart .tb-tip{position:absolute;pointer-events:none;background:var(--surface);color:var(--ink);border:1px solid var(--line-strong);border-radius:8px;padding:8px 10px;font-size:12px;box-shadow:0 6px 18px rgba(0,0,0,.18);display:none;z-index:5;min-width:170px;}
+  .tbchart .tb-tip b{display:block;margin-bottom:4px;}
+  .tbchart .tb-tip div{display:flex;justify-content:space-between;gap:12px;}
+  .tbchart .tb-tip i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;}
+  .tbchart table{width:100%;border-collapse:collapse;font-size:12px;margin-top:10px;}
+  .tbchart th,.tbchart td{text-align:right;padding:5px 8px;border-top:1px solid var(--line);color:var(--ink);}
+  .tbchart th:first-child,.tbchart td:first-child{text-align:left;}
+  .tbchart thead th{color:var(--ink-soft);font-weight:600;border-top:0;}
+  .tbchart .tb-note{font-size:11.5px;color:var(--ink-soft);margin-top:8px;}
 </style>
 </head>
 <body>
@@ -3137,6 +3162,99 @@ function getTglBayarBase(){
   return [];
 }
 
+
+// ---- Grafik realisasi bucket 1-30 bulan lalu per segmen pekerjaan, dibagi minggu insentif (W1 1-7, W2 8-14, W3 15-21, W4 22-28, EOM 29-akhir)
+var tbChartState = { metric:'pct', fleet:false };
+const TB_MINGGU = [['W1','1-7',1,7],['W2','8-14',8,14],['W3','15-21',15,21],['W4','22-28',22,28],['EOM','29-akhir',29,31]];
+const TB_SEGMEN = [['KARYAWAN','Karyawan','--tb1'],['WIRASWASTA','Wiraswasta','--tb2'],['SERABUTAN','Serabutan','--tb3']];
+function tbHari_(v){
+  if(!v) return null;
+  const m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(m) return parseInt(m[3],10);
+  const d = new Date(v); return isNaN(d) ? null : d.getDate();
+}
+function tbHitung_(){
+  const out = {}; let tanpaSegmen = 0, tanpaTgl = 0;
+  TB_SEGMEN.forEach(([k]) => { out[k] = { total:0, totalSipok:0, minggu: TB_MINGGU.map(() => ({ n:0, sipok:0 })) }; });
+  DATA.forEach(r => {
+    if(r['BUCKET AWAL'] !== 'P001_030') return;
+    if(!tbChartState.fleet && tglBayarIsFleet_(r)) return;
+    const seg = String(r['SEGMEN PEKERJAAN'] || '').toUpperCase();
+    if(!out[seg]){ tanpaSegmen++; return; }
+    const sip = typeof r['SIPOK'] === 'number' ? r['SIPOK'] : 0;
+    out[seg].total++; out[seg].totalSipok += sip;
+    const h = tbHari_(r['TANGGAL BAYAR BULAN LALU']);
+    if(h === null){ tanpaTgl++; return; }
+    const w = TB_MINGGU.findIndex(x => h >= x[2] && h <= x[3]);
+    if(w > -1){ out[seg].minggu[w].n++; out[seg].minggu[w].sipok += sip; }
+  });
+  return { out, tanpaSegmen, tanpaTgl };
+}
+function tbNilai_(seg, w){
+  const m = seg.minggu[w];
+  if(tbChartState.metric === 'sipok') return m.sipok;
+  if(tbChartState.metric === 'n') return m.n;
+  return seg.total ? m.n / seg.total * 100 : 0;
+}
+function tbFmt_(v){
+  if(tbChartState.metric === 'sipok') return fmtRupiah(v);
+  if(tbChartState.metric === 'n') return String(v);
+  return v.toFixed(1).replace('.', ',') + '%';
+}
+function tglBayarChartHtml(){
+  return '<div class="tbchart" id="tbChart"></div>';
+}
+function tglBayarChartRender(){
+  const el = document.getElementById('tbChart'); if(!el) return;
+  const { out, tanpaSegmen, tanpaTgl } = tbHitung_();
+  const W = 720, H = 280, L = 56, R = 20, T = 14, B = 34;
+  const vals = []; TB_SEGMEN.forEach(([k]) => TB_MINGGU.forEach((_, i) => vals.push(tbNilai_(out[k], i))));
+  let max = Math.max.apply(null, vals.concat([0]));
+  if(max <= 0) max = 1;
+  const step = Math.pow(10, Math.floor(Math.log10(max / 4))); const mult = [1,2,2.5,5,10].find(m => max / (step * m) <= 4) || 10;
+  const unit = step * mult, top = Math.ceil(max / unit) * unit;
+  const x = i => L + (W - L - R) * i / (TB_MINGGU.length - 1);
+  const y = v => T + (H - T - B) * (1 - v / top);
+  const short = v => tbChartState.metric === 'sipok' ? (v >= 1e9 ? (v/1e9).toFixed(1).replace('.',',')+' M' : v >= 1e6 ? Math.round(v/1e6)+' jt' : String(Math.round(v))) : tbChartState.metric === 'pct' ? (Math.round(v*10)/10).toString().replace('.',',')+'%' : String(Math.round(v));
+  let grid = '';
+  for(let v = 0; v <= top + 1e-9; v += unit){ grid += `<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--tbgrid)" stroke-width="1"/><text class="tb-axis" x="${L-8}" y="${y(v)+4}" text-anchor="end">${short(v)}</text>`; }
+  const xl = TB_MINGGU.map((m, i) => `<text class="tb-axis" x="${x(i)}" y="${H-12}" text-anchor="${i === TB_MINGGU.length - 1 ? 'end' : 'middle'}">${m[0]} · ${i === TB_MINGGU.length - 1 ? '29+' : m[1]}</text>`).join('');
+  const lines = TB_SEGMEN.map(([k,, c]) => {
+    const pts = TB_MINGGU.map((_, i) => [x(i), y(tbNilai_(out[k], i))]);
+    return `<polyline class="tb-line" style="stroke:var(${c})" points="${pts.map(p => p.join(',')).join(' ')}"/>` + pts.map(p => `<circle class="tb-dot" style="fill:var(${c})" cx="${p[0]}" cy="${p[1]}" r="4.5"/>`).join('');
+  }).join('');
+  const hit = TB_MINGGU.map((_, i) => `<rect data-i="${i}" x="${x(i) - (W-L-R)/8}" y="${T}" width="${(W-L-R)/4}" height="${H-T-B}" fill="transparent"/>`).join('');
+  const legend = TB_SEGMEN.map(([k, nm, c]) => `<span><i style="background:var(${c})"></i>${nm} <span style="color:var(--ink-soft)">(${out[k].total} kontrak)</span></span>`).join('');
+  const metricBtn = (k, t) => `<button data-metric="${k}" class="${tbChartState.metric === k ? 'on' : ''}">${t}</button>`;
+  const rows = TB_MINGGU.map((m, i) => `<tr><td>${m[0]} (tgl ${m[1]})</td>` + TB_SEGMEN.map(([k]) => { const c = out[k].minggu[i]; return `<td>${c.n} (${out[k].total ? (c.n / out[k].total * 100).toFixed(1).replace('.', ',') : '0,0'}%)</td>`; }).join('') + '</tr>').join('');
+  el.innerHTML = `
+    <h3>Pergerakan realisasi bucket 1-30 bulan lalu per segmen</h3>
+    <p class="sub">Kontrak bucket awal 1-30 yang dibayar pada tanggal bulan lalu, dikelompokkan menurut minggu insentif.</p>
+    <div class="tb-ctl">
+      <div class="tb-seg">${metricBtn('pct','% dari segmen')}${metricBtn('n','Jumlah kontrak')}${metricBtn('sipok','Sisa piutang')}</div>
+      <div class="tb-seg"><button data-fleet="0" class="${tbChartState.fleet ? '' : 'on'}">Non-Fleet</button><button data-fleet="1" class="${tbChartState.fleet ? 'on' : ''}">Semua (+Fleet)</button></div>
+    </div>
+    <div class="tb-leg">${legend}</div>
+    <div style="position:relative">
+      <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Grafik garis realisasi bulan lalu per segmen pekerjaan">${grid}${xl}${lines}<line id="tbCross" y1="${T}" y2="${H-B}" stroke="var(--ink-soft)" stroke-width="1" stroke-dasharray="3 3" style="display:none"/>${hit}</svg>
+      <div class="tb-tip" id="tbTip"></div>
+    </div>
+    <table><thead><tr><th>Minggu</th>${TB_SEGMEN.map(s => `<th>${s[1]}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>
+    <div class="tb-note">Persen = kontrak yang bayar di minggu itu dibanding seluruh kontrak 1-30 segmen tersebut. ${tanpaTgl ? tanpaTgl + ' kontrak tidak punya tanggal bayar bulan lalu. ' : ''}${tanpaSegmen ? tanpaSegmen + ' kontrak belum masuk segmen dan tidak ikut dihitung.' : ''}</div>`;
+  el.querySelectorAll('[data-metric]').forEach(b => b.onclick = () => { tbChartState.metric = b.getAttribute('data-metric'); tglBayarChartRender(); });
+  el.querySelectorAll('[data-fleet]').forEach(b => b.onclick = () => { tbChartState.fleet = b.getAttribute('data-fleet') === '1'; tglBayarChartRender(); });
+  const svg = el.querySelector('svg'), tip = el.querySelector('#tbTip'), cross = el.querySelector('#tbCross');
+  const show = (i, ev) => {
+    cross.setAttribute('x1', x(i)); cross.setAttribute('x2', x(i)); cross.style.display = '';
+    tip.innerHTML = `<b>${TB_MINGGU[i][0]} · tgl ${TB_MINGGU[i][1]}</b>` + TB_SEGMEN.map(([k, nm, c]) => `<div><span><i style="background:var(${c})"></i>${nm}</span><span>${tbFmt_(tbNilai_(out[k], i))}</span></div>`).join('');
+    tip.style.display = 'block';
+    const box = svg.getBoundingClientRect(), px = (x(i) / W) * box.width;
+    tip.style.left = Math.min(Math.max(px + 12, 0), box.width - 180) + 'px'; tip.style.top = '8px';
+  };
+  svg.querySelectorAll('rect[data-i]').forEach(r => { r.addEventListener('mousemove', e => show(+r.getAttribute('data-i'), e)); r.addEventListener('touchstart', e => show(+r.getAttribute('data-i'), e), { passive:true }); });
+  svg.addEventListener('mouseleave', () => { tip.style.display = 'none'; cross.style.display = 'none'; });
+}
+
 function buildTglBayarLayout(){
   const base = getTglBayarBase();
   const stat = { count: base.length, sipok: base.reduce((s,r)=> s + (typeof r['SIPOK']==='number' ? r['SIPOK'] : 0), 0) };
@@ -3148,6 +3266,7 @@ function buildTglBayarLayout(){
       <div class="grand-card"><div class="lbl">Jumlah Kontrak</div><div class="val" id="tglBayarValKontrak">0</div></div>
       <div class="grand-card"><div class="lbl">Total Sisa Piutang</div><div class="val" id="tglBayarValSipok">Rp0</div></div>
     </div>
+    ${tglBayarChartHtml()}
     <div class="controls">
       <div class="search-box">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4C6272" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -3176,6 +3295,7 @@ function buildTglBayarLayout(){
     </div>
   `;
 
+  tglBayarChartRender();
   animateCount(document.getElementById('tglBayarValKontrak'), stat.count, false);
   animateCount(document.getElementById('tglBayarValSipok'), stat.sipok, true);
 
