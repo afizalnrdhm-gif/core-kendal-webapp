@@ -212,7 +212,7 @@ module.exports = async (req, res) => {
     const escalations = (roleCfg && roleCfg.role === 'MR') ? computeEscalations() : [];
 
     res.status(200).json({
-      email, isAdmin: false, records: stripFields(myRecords, HIDE_NON_ADMIN), roleInfo: roleCfg, escalations: stripFields(escalations, HIDE_DESKCALL),
+      email, isAdmin: false, records: stripFields(myRecords, HIDE_NON_ADMIN), roleInfo: roleCfg, escalations: stripFields(escalations, HIDE_DESKCALL).map(e => Object.assign(e, { _BISA_EDIT: true })), // MR boleh isi Proyeksi/Janji Bayar/Kronologis di FE Ever
       generatedAt: new Date().toISOString()
     });
   } catch (err) {

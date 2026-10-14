@@ -4795,7 +4795,7 @@ function openPanel(noKontrak){
   const waBtn = document.getElementById('panelWaBtn');
   if(wa){ waBtn.style.display='inline-flex'; waBtn.href = wa; } else { waBtn.style.display='none'; }
   const moneyFields = new Set(['SIPOK','ANGSURAN']); const dateFields = new Set(['TANGGAL BAYAR BULAN LALU','JATUH TEMPO']);
-  const canEdit = IS_ADMIN || (r['EMAIL CO']||'').toString().trim().toLowerCase() === USER_EMAIL.toLowerCase();
+  const canEdit = IS_ADMIN || r['_BISA_EDIT'] === true || (r['EMAIL CO']||'').toString().trim().toLowerCase() === USER_EMAIL.toLowerCase();
   document.getElementById('panelBody').innerHTML = FIELD_GROUPS.map(g => {
     const rowsHtml = g.fields.map(f => {
         if(f !== 'KONTAK' && !(f in r)) return ''; // kolom tidak dikirim server untuk akun ini
