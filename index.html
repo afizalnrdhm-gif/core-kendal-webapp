@@ -1467,7 +1467,7 @@ const FIELD_GROUPS = [
   { title:'Identitas & Alamat', fields:['KELURAHAN','KECAMATAN','ALAMAT','KONTAK'] },
   { title:'Kontrak & Unit', fields:['TYPE BARANG','NOPOL','TYPE UNIT','GROUP PRODUCT','FLEET/NON FLEET','KRITERIA ACCT'] },
   { title:'Keuangan', fields:['SIPOK','ANGSURAN','ANGS KE','TENOR','JATUH TEMPO','TANGGAL BAYAR BULAN LALU'] },
-  { title:'Tim & Status', fields:['CO FE','CO TAMBAHAN','CMO','FLAG TARGET BULAN INI','BUCKET EVER','PEKERJAAN KONSUMEN'] },
+  { title:'Tim & Status', fields:['CO FE','CO TAMBAHAN','CMO','FLAG TARGET BULAN INI','BUCKET EVER','PEKERJAAN KONSUMEN','SEGMEN PEKERJAAN'] },
 ];
 
 let DATA = [];
@@ -1477,7 +1477,7 @@ let IS_ADMIN = false;
 let IS_DESKCALL = false;
 let USER_EMAIL = '';
 let ID_TOKEN = null;
-let state = { quick:'', proy:'', search:'', co:'ALL', bucket:'ALL', kriteria:'ALL', tipe:'ALL', kecamatan:'ALL', ever:'ALL', janjiList:[], sortKey:'JATUH TEMPO', sortDir:1, tab:'own' };
+let state = { quick:'', proy:'', search:'', co:'ALL', bucket:'ALL', kriteria:'ALL', tipe:'ALL', kecamatan:'ALL', ever:'ALL', segmen:'ALL', janjiList:[], sortKey:'JATUH TEMPO', sortDir:1, tab:'own' };
 
 function fmtBucket(b){ if(!b) return '-'; const m = String(b).match(/^P0*(\d+)[_-]0*(\d+)$/); return m ? m[1] + '-' + m[2] : String(b); }
 function fmtRupiah(n){ if(typeof n !== 'number') return '-'; return 'Rp' + Math.round(n).toLocaleString('id-ID'); }
@@ -1896,6 +1896,17 @@ function buildLayout(){
             </select>
           </div>
           <div class="fd-field">
+            <label class="edit-label">Segmen Pekerjaan</label>
+            <select class="filter-select" id="segmenSelect" style="width:100%;">
+              <option value="ALL">Semua Segmen</option>
+              <option value="KARYAWAN">Karyawan</option>
+              <option value="WIRASWASTA">Wiraswasta / wirausaha</option>
+              <option value="SERABUTAN">Serabutan</option>
+              <option value="NONE">Belum terklasifikasi</option>
+            </select>
+            ${IS_ADMIN ? '<button type="button" class="ms-link-btn" style="margin-top:6px;" onclick="segmenCek()">Cek &amp; isi kolom segmen di Sheet</button>' : ''}
+          </div>
+          <div class="fd-field">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
               <label class="edit-label" style="margin:0;">Janji Bayar</label>
               <div style="display:flex;gap:10px;">
@@ -1948,7 +1959,7 @@ function buildLayout(){
   document.getElementById('searchInput').addEventListener('input', e => { state.search = e.target.value; renderTable(); });
   document.getElementById('resetBtn').addEventListener('click', () => {
     const keepTab = state.tab;
-    state = { quick:'', proy:'', search:'', co:'ALL', bucket:'ALL', kriteria:'ALL', tipe:'ALL', kecamatan:'ALL', ever:'ALL', janjiList:[], sortKey:'JATUH TEMPO', sortDir:1, tab:keepTab };
+    state = { quick:'', proy:'', search:'', co:'ALL', bucket:'ALL', kriteria:'ALL', tipe:'ALL', kecamatan:'ALL', ever:'ALL', segmen:'ALL', janjiList:[], sortKey:'JATUH TEMPO', sortDir:1, tab:keepTab };
     buildLayout();
     render();
   });
@@ -1958,6 +1969,7 @@ function buildLayout(){
   document.getElementById('tipeSelect').addEventListener('change', e => { state.tipe = e.target.value; renderTable(); });
   document.getElementById('kecamatanSelect').addEventListener('change', e => { state.kecamatan = e.target.value; renderTable(); });
   document.getElementById('everSelect').addEventListener('change', e => { state.ever = e.target.value; renderTable(); });
+  document.getElementById('segmenSelect').addEventListener('change', e => { state.segmen = e.target.value; updateFilterBadge(); renderTable(); });
 
   // Pilihan Janji Bayar mengikuti data yang sedang tampil (filter lain ikut diterapkan): hanya yang ada isinya, plus "Belum ada janji" bila ada yang kosong.
   document.getElementById('janjiGrid').addEventListener('change', e => {
@@ -2057,6 +2069,7 @@ function updateFilterBadge(){
   if(state.tipe!=='ALL') n++;
   if(state.kecamatan!=='ALL') n++;
   if(state.ever!=='ALL') n++;
+  if(state.segmen!=='ALL') n++;
   if(state.janjiList.length>0) n++;
   if(n>0){ badge.style.display='inline-flex'; badge.textContent=n; } else { badge.style.display='none'; }
 }
@@ -2383,6 +2396,32 @@ function renderUsulanAdmin(){
   });
   h += '<div class="ud-msg" id="udMsg" role="status"></div>';
   w.innerHTML = h;
+}
+function segmenCek(){
+  const fp = document.getElementById('filterDrawerPanel'); if(fp) fp.classList.remove('show');
+  let host = document.getElementById('segmenModal');
+  if(!host){ host = document.createElement('div'); host.id = 'segmenModal'; host.className = 'cms-drill'; document.body.appendChild(host); }
+  const tutup = () => { host.classList.remove('show'); document.body.style.overflow = ''; };
+  const kotak = (isi) => { host.innerHTML = '<div class="cms-drill-bg" data-close="1"></div><div class="cms-drill-box" role="dialog" aria-modal="true" aria-label="Segmen pekerjaan"><div class="cms-drill-head"><div><div class="cms-drill-t">Segmen pekerjaan konsumen</div></div><button class="btn" data-close="1">Tutup</button></div><div style="padding:14px 18px;overflow:auto;">' + isi + '</div></div>'; host.querySelectorAll('[data-close]').forEach(el => el.onclick = tutup); };
+  host.classList.add('show'); document.body.style.overflow = 'hidden';
+  kotak('<div class="skel tall"></div>');
+  fetch('/api/cms?segmen=cek', { headers: { Authorization: 'Bearer ' + ID_TOKEN } }).then(r => r.json().then(b => ({ ok: r.ok, b }))).then(({ok, b}) => {
+    if(!ok){ kotak('<div class="state-box error">' + esc(b.error || 'Gagal memuat.') + '</div>'); return; }
+    const p = b.perSegmen, baris = (arr) => arr.map(x => '<tr><td>' + esc(x.pekerjaan) + '</td><td class="num">' + x.n + '</td></tr>').join('');
+    let h = '<p style="margin:0 0 10px;font-size:13px;">' + b.total + ' kontrak, ' + b.jenisPekerjaan + ' isian pekerjaan berbeda. Kolom <b>SEGMEN PEKERJAAN</b> di MASTER ' + (b.kolomAda ? 'sudah ada (' + b.sudahIsi + ' baris terisi)' : 'belum ada') + '.</p>';
+    h += '<div class="ud-top"><span class="ud-chip ok">Karyawan ' + p.KARYAWAN + '</span><span class="ud-chip ok">Wiraswasta ' + p.WIRASWASTA + '</span><span class="ud-chip ok">Serabutan ' + p.SERABUTAN + '</span><span class="ud-chip ' + (p.BELUM ? 'warn' : 'ok') + '">Belum terklasifikasi ' + p.BELUM + '</span></div>';
+    if(b.belum.length) h += '<p style="margin:12px 0 6px;font-size:13px;"><b>Pekerjaan yang belum masuk segmen</b> (isi manual di kolom Sheet):</p><table style="width:100%;font-size:13px;"><tbody>' + baris(b.belum) + '</tbody></table>';
+    h += '<div class="ud-actions" style="margin-top:14px;"><button class="btn primary" id="segmenIsiBtn">' + (b.kolomAda ? 'Isi baris kosong di kolom' : 'Buat kolom &amp; isi') + ' SEGMEN PEKERJAAN</button></div><div class="ud-msg" id="segmenMsg" role="status">Hanya sel kosong yang diisi; isian manual tidak ditimpa.</div>';
+    kotak(h);
+    document.getElementById('segmenIsiBtn').onclick = function(){
+      const btn = this, m = document.getElementById('segmenMsg'); btn.disabled = true; m.className = 'ud-msg'; m.textContent = 'Menulis ke Sheet…';
+      fetch('/api/cms?segmen=isi', { method: 'POST', headers: { Authorization: 'Bearer ' + ID_TOKEN, 'Content-Type': 'application/json' }, body: '{}' }).then(r => r.json().then(x => ({ ok: r.ok, x }))).then(({ok, x}) => {
+        btn.disabled = false;
+        if(!ok){ m.className = 'ud-msg bad'; m.textContent = x.error || 'Gagal menulis.'; return; }
+        m.textContent = x.diisi + ' baris diisi. ' + x.belumTerklasifikasi + ' baris masih kosong untuk diisi manual. Muat ulang data untuk melihat hasilnya.';
+      }).catch(err => { btn.disabled = false; m.className = 'ud-msg bad'; m.textContent = pesanErr(err); });
+    };
+  }).catch(err => kotak('<div class="state-box error">' + esc(pesanErr(err)) + '</div>'));
 }
 function udKali(x){
   if(x.kali === null || x.kali === undefined) return '';
@@ -4567,6 +4606,7 @@ function getFiltered(skipJanji){
   if(state.tipe!=='ALL') rows = rows.filter(r => r['TYPE BARANG']===state.tipe);
   if(state.kecamatan!=='ALL') rows = rows.filter(r => r['KECAMATAN']===state.kecamatan);
   if(state.ever!=='ALL') rows = rows.filter(r => r['STATUS EVER']===state.ever);
+  if(state.segmen!=='ALL') rows = rows.filter(r => (r['SEGMEN PEKERJAAN']||'') === (state.segmen==='NONE' ? '' : state.segmen));
   if(!skipJanji && state.janjiList.length > 0) rows = rows.filter(r => state.janjiList.includes(janjiKey(r)));
   if(state.quick) rows = rows.filter(r => quickMatch(r, state.quick));
   if(state.proy) rows = rows.filter(r => proyOf(r) === (state.proy === 'NONE' ? '' : state.proy));
@@ -4594,6 +4634,7 @@ function renderActiveChips(){
   if(state.kriteria !== 'ALL') chips.push({label:'Kriteria', value:state.kriteria, clear:() => { state.kriteria='ALL'; const s=document.getElementById('kriteriaSelect'); if(s)s.value='ALL'; updateFilterBadge(); renderTable(); }});
   if(state.tipe !== 'ALL') chips.push({label:'Kendaraan', value:state.tipe, clear:() => { state.tipe='ALL'; const s=document.getElementById('tipeSelect'); if(s)s.value='ALL'; updateFilterBadge(); renderTable(); }});
   if(state.kecamatan !== 'ALL') chips.push({label:'Kecamatan', value:state.kecamatan, clear:() => { state.kecamatan='ALL'; const s=document.getElementById('kecamatanSelect'); if(s)s.value='ALL'; updateFilterBadge(); renderTable(); }});
+  if(state.segmen !== 'ALL') chips.push({label:'Segmen', value:({KARYAWAN:'Karyawan',WIRASWASTA:'Wiraswasta',SERABUTAN:'Serabutan',NONE:'Belum terklasifikasi'})[state.segmen], clear:() => { state.segmen='ALL'; const s=document.getElementById('segmenSelect'); if(s)s.value='ALL'; updateFilterBadge(); renderTable(); }});
   if(state.ever !== 'ALL') chips.push({label:'Status Ever', value:state.ever, clear:() => { state.ever='ALL'; const s=document.getElementById('everSelect'); if(s)s.value='ALL'; updateFilterBadge(); renderTable(); }});
   if(state.janjiList.length > 0) chips.push({label:'Janji Bayar', value:state.janjiList.map(v => v === JANJI_KOSONG ? 'Belum ada janji' : v).join(', '), clear:() => { state.janjiList=[]; buildLayout(); render(); }});
   if(state.proy) chips.push({label:'Proyeksi', value: state.proy === 'NONE' ? 'Belum diproyeksi' : PROY_LABEL[state.proy], clear:() => { state.proy=''; renderProyStrip(); renderTable(); }});
