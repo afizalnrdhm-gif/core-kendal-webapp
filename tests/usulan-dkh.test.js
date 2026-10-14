@@ -64,3 +64,11 @@ test('sudah bayar 1x / stay: JATUH TEMPO bergeser ke depan tapi DPD > 0 -> tetap
   const r = m('9', 'P001_030', 'A', { 'BUCKET AWAL': 'P001_030', 'FLOW EVER': 'P001_030', DPD: 12, 'JATUH TEMPO': '2999-01-01' });
   assert.deepStrictEqual(kandidat({ role: 'FE', kontrak: [r] }).map(x => x.noKontrak), ['9']);
 });
+
+test('kaliDKH: jumlah terbentuk dari Map PRODUCTIVITY; null kalau tab tidak terbaca; Set lama tetap jalan', () => {
+  const { kaliDKH } = require('../api/_dkh');
+  assert.strictEqual(kaliDKH(new Map([['1', 3]]), '1'), 3);
+  assert.strictEqual(kaliDKH(new Map([['1', 3]]), '2'), 0);
+  assert.strictEqual(kaliDKH(null, '1'), null);
+  assert.strictEqual(kaliDKH(new Set(['1']), '1'), 1);
+});

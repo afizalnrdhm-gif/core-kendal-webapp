@@ -50,18 +50,28 @@ function toMs(v) {
 const BLN = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 function labelTgl(ms) { const d = new Date(ms); return d.getUTCDate() + ' ' + BLN[d.getUTCMonth()]; }
 
-// Kontrak yang pernah terbentuk DKH = muncul di tab PRODUCTIVITY (tarikan sistem, header "Agreement No"). null kalau tab belum ada/kosong.
+// Berapa kali tiap kontrak terbentuk DKH = jumlah baris di tab PRODUCTIVITY (tarikan sistem, header "Agreement No"; kalau ada kolom
+// TANGGAL TAGIHAN dihitung per tanggal berbeda). Mengembalikan Map noKontrak -> jumlah; null kalau tab belum ada/kosong.
 async function bacaPernahTerbentuk(token, sheetId) {
   const r = await sf(BASE(sheetId) + '/values/' + encodeURIComponent('PRODUCTIVITY') + '?valueRenderOption=UNFORMATTED_VALUE', token);
   const v = r.ok && r.json.values ? r.json.values : [];
   let h = -1;
   for (let i = 0; i < Math.min(8, v.length); i++) if ((v[i] || []).some(c => String(c == null ? '' : c).trim().toUpperCase() === 'AGREEMENT NO')) { h = i; break; }
   if (h === -1) return null;
-  const idx = v[h].findIndex(c => String(c == null ? '' : c).trim().toUpperCase() === 'AGREEMENT NO');
-  const set = new Set();
-  for (let i = h + 1; i < v.length; i++) { let k = String((v[i] || [])[idx] == null ? '' : v[i][idx]).trim(); const m = k.match(/^="(.*)"$/); if (m) k = m[1]; if (k) set.add(k); }
-  return set;
+  const hdr = v[h].map(c => String(c == null ? '' : c).trim().toUpperCase());
+  const idx = hdr.indexOf('AGREEMENT NO'), iTgl = hdr.indexOf('TANGGAL TAGIHAN');
+  const uniq = {};
+  for (let i = h + 1; i < v.length; i++) {
+    let k = String((v[i] || [])[idx] == null ? '' : v[i][idx]).trim(); const m = k.match(/^="(.*)"$/); if (m) k = m[1];
+    if (!k) continue;
+    const t = iTgl > -1 ? String((v[i] || [])[iTgl] == null ? '' : v[i][iTgl]).trim() : String(i);
+    (uniq[k] = uniq[k] || new Set()).add(t);
+  }
+  const peta = new Map();
+  Object.keys(uniq).forEach(k => peta.set(k, uniq[k].size));
+  return peta;
 }
+const kaliDKH = (pernah, no) => (pernah ? (pernah.get ? (pernah.get(String(no)) || 0) : (pernah.has(String(no)) ? 1 : 0)) : null);
 
 function parse(values) {
   const header = (values[0] || []).map(h => String(h == null ? '' : h).trim());
@@ -216,11 +226,46 @@ async function tangani(req, res, ctx) {
     // Kalau admin sudah meng-assign sebagian, usulan tidak boleh diubah lagi
     const lama = usulanTerbaru(usul, untuk)[co.nama];
     const asgS = statusAssign(asg, untuk);
-    if (lama && lama.kontrak.some(x => asgS[x.noKontrak] && asgS[x.noKontrak].status === 'ASSIGN')) { res.status(409).json({ error: 'Usulan ini sudah mulai di-assign admin, jadi tidak bisa diubah lagi.' }); return; }
+    if (lama && lama.kontrak.some(x => asgS[x.noKontrak] && (asgS[x.noKontrak].status === 'ASSIGN' || asgS[x.noKontrak].status === 'DIBUAT'))) { res.status(409).json({ error: 'Usulan ini sudah mulai di-assign head, jadi tidak bisa diubah lagi.' }); return; }
     const batch = new Date().toISOString(); const waktu = waktuWIB().toISOString().replace('T', ' ').slice(0, 19);
     const rows = pilih.map(n => [untuk, safe(co.nama), email, co.role, safe(n), safe(peta[n].nama), Math.round(peta[n].sipok), BUCKET_ROLE[co.role], batch, waktu]);
     await tambahBaris(token, sheetId, TAB_USUL, H_USUL, rows);
     res.status(200).json({ ok: true, untuk, jumlah: pilih.length });
+    return;
+  }
+
+  // Silvi (DESKCALL) atau admin/head: melihat daftar yang sudah di-assign head dan menandai yang sudah dibuat di DKH.
+  if (mode === 'silvi' || mode === 'selesai') {
+    const cfgAkses = await bacaTab(token, sheetId, 'CONFIG_ROLE');
+    const deskcall = cfgAkses.some(r => String(r['EMAIL'] || '').trim().toLowerCase() === email && String(r['ROLE'] || '').trim().toUpperCase() === 'DESKCALL');
+    if (!isAdmin && !deskcall) { res.status(403).json({ error: 'Menu ini khusus admin DKH.' }); return; }
+    if (mode === 'silvi') {
+      const untuk = tglValid(req.query && req.query.tanggal) ? req.query.tanggal : untukDefault;
+      const [asg, pernah] = await Promise.all([bacaTab(token, sheetId, TAB_ASSIGN), bacaPernahTerbentuk(token, sheetId)]);
+      const asgS = statusAssign(asg, untuk);
+      const per = {};
+      Object.keys(asgS).forEach(no => {
+        const a = asgS[no]; if (a.status !== 'ASSIGN' && a.status !== 'DIBUAT') return;
+        const c = per[a.co] = per[a.co] || { nama: a.co, role: a.role, kontrak: [] };
+        c.kontrak.push({ noKontrak: no, nama: a.nama, sipok: a.sipok, dibuat: a.status === 'DIBUAT', kali: kaliDKH(pernah, no) });
+      });
+      const co = Object.keys(per).sort().map(k => per[k]);
+      const tanggalTersedia = Array.from(new Set(asg.map(r => String(r['UNTUK_TANGGAL'])).filter(tglValid))).sort().reverse().slice(0, 14);
+      if (tanggalTersedia.indexOf(untuk) === -1) tanggalTersedia.unshift(untuk);
+      res.status(200).json({ untuk, tanggalTersedia, produktivitasAda: !!pernah, co });
+      return;
+    }
+    if (req.method !== 'POST') { res.status(405).json({ error: 'Metode tidak didukung.' }); return; }
+    const untuk = body.untuk, status = body.aksi === 'kembali' ? 'ASSIGN' : 'DIBUAT';
+    const daftar = Array.isArray(body.kontrak) ? Array.from(new Set(body.kontrak.map(x => String(x)))).slice(0, 300) : [];
+    if (!tglValid(untuk) || !daftar.length) { res.status(400).json({ error: 'Data tidak lengkap.' }); return; }
+    const asgS = statusAssign(await bacaTab(token, sheetId, TAB_ASSIGN), untuk);
+    const waktu = waktuWIB().toISOString().replace('T', ' ').slice(0, 19);
+    const rows = [];
+    daftar.forEach(n => { const a = asgS[n]; if (a && (a.status === 'ASSIGN' || a.status === 'DIBUAT')) rows.push([untuk, safe(a.co), a.role, safe(n), safe(a.nama), Math.round(a.sipok), status, email, waktu]); });
+    if (!rows.length) { res.status(400).json({ error: 'Kontrak itu belum di-assign head atau sudah dibatalkan.' }); return; }
+    await tambahBaris(token, sheetId, TAB_ASSIGN, H_ASSIGN, rows);
+    res.status(200).json({ ok: true, jumlah: rows.length, status });
     return;
   }
 
@@ -236,14 +281,14 @@ async function tangani(req, res, ctx) {
     const picList = cfg.filter(r => BUCKET_ROLE[String(r['ROLE'] || '').trim().toUpperCase()] && r['NAMA_CO']).map(r => ({ nama: String(r['NAMA_CO']), role: String(r['ROLE']).trim().toUpperCase() }));
     const dataCO = picList.map(p => {
       const u = per[p.nama];
-      const kontrak = u ? u.kontrak.map(x => ({ noKontrak: x.noKontrak, nama: x.nama, sipok: x.sipok, bucketSekarang: bucketNow[x.noKontrak] || '', assign: !!(asgS[x.noKontrak] && asgS[x.noKontrak].status === 'ASSIGN'), tambahan: false })) : [];
+      const kontrak = u ? u.kontrak.map(x => ({ noKontrak: x.noKontrak, nama: x.nama, sipok: x.sipok, bucketSekarang: bucketNow[x.noKontrak] || '', assign: !!(asgS[x.noKontrak] && (asgS[x.noKontrak].status === 'ASSIGN' || asgS[x.noKontrak].status === 'DIBUAT')), dibuat: !!(asgS[x.noKontrak] && asgS[x.noKontrak].status === 'DIBUAT'), kali: kaliDKH(pernah, x.noKontrak), tambahan: false })) : [];
       const ada = new Set(kontrak.map(x => x.noKontrak));
       // Kontrak tambahan dari admin/head (di-assign tapi tidak ada di usulan CO)
-      Object.keys(asgS).forEach(no => { const a = asgS[no]; if (a.co === p.nama && a.status === 'ASSIGN' && !ada.has(no)) { kontrak.push({ noKontrak: no, nama: a.nama, sipok: a.sipok, bucketSekarang: bucketNow[no] || '', assign: true, tambahan: true }); ada.add(no); } });
+      Object.keys(asgS).forEach(no => { const a = asgS[no]; if (a.co === p.nama && (a.status === 'ASSIGN' || a.status === 'DIBUAT') && !ada.has(no)) { kontrak.push({ noKontrak: no, nama: a.nama, sipok: a.sipok, bucketSekarang: bucketNow[no] || '', assign: true, dibuat: a.status === 'DIBUAT', kali: kaliDKH(pernah, no), tambahan: true }); ada.add(no); } });
       const total = kontrak.length;
       const kurang = Math.max(0, TARGET_DKH - total);
       const co = cariCOByNama(master, cfg, p.nama);
-      const rek = kurang > 0 && co ? rekomendasi(kandidat(co), ada, untuk, pernah).slice(0, Math.max(kurang + 5, 8)) : [];
+      const rek = kurang > 0 && co ? rekomendasi(kandidat(co), ada, untuk, pernah).slice(0, Math.max(kurang + 5, 8)).map(x => Object.assign(x, { kali: kaliDKH(pernah, x.noKontrak) })) : [];
       return { nama: p.nama, role: p.role, sudahKirim: !!u, waktu: u ? u.waktu : '', kontrak, kurang, rekomendasi: rek };
     });
     const tanggalTersedia = Array.from(new Set(usul.map(r => String(r['UNTUK_TANGGAL'])).filter(tglValid))).sort().reverse().slice(0, 14);
@@ -293,4 +338,4 @@ async function tangani(req, res, ctx) {
   res.status(400).json({ error: 'Mode tidak dikenal.' });
 }
 
-module.exports = { rekomendasi, cariCOByNama, hariDariCell, TARGET_DKH, tangani, MIN, MAX, BUCKET_ROLE, kandidat, cariCO, usulanTerbaru, statusAssign, besok };
+module.exports = { kaliDKH, rekomendasi, cariCOByNama, hariDariCell, TARGET_DKH, tangani, MIN, MAX, BUCKET_ROLE, kandidat, cariCO, usulanTerbaru, statusAssign, besok };
