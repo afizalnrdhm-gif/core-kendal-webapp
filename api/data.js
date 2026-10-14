@@ -1,5 +1,6 @@
 const { getAccessToken, verifyIdToken, SCOPE_DRIVE_META } = require('./_auth');
 const { cleanCell } = require('./_sheet');
+const { segmenDari } = require('./_segmen');
 
 const BUCKET_ORDER = ['NOOD','P001_030','P031_060','P061_090','P091_120','P121_150','P151_180','P181_210','P211_240'];
 function bucketIdx(b) { return BUCKET_ORDER.indexOf(b); }
@@ -113,6 +114,8 @@ module.exports = async (req, res) => {
     }
 
     const allRecords = parseSheetValues(masterJson.values).filter(r => r['NO KONTRAK']);
+    // Segmen pekerjaan: pakai isian kolom SEGMEN PEKERJAAN di MASTER; kalau kosong, tebak dari PEKERJAAN KONSUMEN.
+    allRecords.forEach(r => { const m = String(r['SEGMEN PEKERJAAN'] || '').trim().toUpperCase(); r['SEGMEN PEKERJAAN'] = m || segmenDari(r['PEKERJAAN KONSUMEN']); });
     const roleRows = parseSheetValues(roleJson.values || []);
     const roleMap = {};
     const roleByEmail = {};

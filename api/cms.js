@@ -151,6 +151,11 @@ module.exports = async (req, res) => {
       await require('./_dkh').tangani(req, res, { email, token: accessToken, sheetId: process.env.GOOGLE_SHEET_ID, isAdmin: adminEmails.indexOf(email) > -1, mode });
       return;
     }
+    const segmen = String((req.query && req.query.segmen) || '');
+    if (segmen) { // Segmen pekerjaan konsumen (cek / isi kolom MASTER): khusus admin
+      await require('./_segmen').tangani(req, res, { token: accessToken, sheetId: process.env.GOOGLE_SHEET_ID, isAdmin: adminEmails.indexOf(email) > -1, mode: segmen });
+      return;
+    }
     if (adminEmails.indexOf(email) === -1) { res.status(403).json({ error: 'Menu ini khusus admin/head.' }); return; }
 
     const sheetId = process.env.GOOGLE_SHEET_ID;
