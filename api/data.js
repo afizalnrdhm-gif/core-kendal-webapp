@@ -1,6 +1,6 @@
 const { getAccessToken, verifyIdToken, SCOPE_DRIVE_META } = require('./_auth');
 const { cleanCell } = require('./_sheet');
-const { segmenDari } = require('./_segmen');
+const { segmenGabung, petaKA: petaKASegmen } = require('./_segmen');
 
 const BUCKET_ORDER = ['NOOD','P001_030','P031_060','P061_090','P091_120','P121_150','P151_180','P181_210','P211_240'];
 function bucketIdx(b) { return BUCKET_ORDER.indexOf(b); }
@@ -115,7 +115,6 @@ module.exports = async (req, res) => {
 
     const allRecords = parseSheetValues(masterJson.values).filter(r => r['NO KONTRAK']);
     // Segmen pekerjaan: pakai isian kolom SEGMEN PEKERJAAN di MASTER; kalau kosong, tebak dari PEKERJAAN KONSUMEN.
-    allRecords.forEach(r => { const m = String(r['SEGMEN PEKERJAAN'] || '').trim().toUpperCase(); r['SEGMEN PEKERJAAN'] = m || segmenDari(r['PEKERJAAN KONSUMEN']); });
     const roleRows = parseSheetValues(roleJson.values || []);
     const roleMap = {};
     const roleByEmail = {};
@@ -138,6 +137,9 @@ module.exports = async (req, res) => {
     const kaRows = kaJson.values ? parseSheetValues(kaJson.values, 15) : [];
     const petaKA = {};
     kaRows.forEach(r => { if (r['NO KONTRAK']) petaKA[r['NO KONTRAK']] = r; });
+    // Segmen pekerjaan: isian manual di MASTER menang; kalau kosong dihitung dari KA HARIAN (kategori/nama pekerjaan) lalu MASTER.
+    const kaSegmen = petaKASegmen(kaJson.values || []);
+    allRecords.forEach(r => { const m = String(r['SEGMEN PEKERJAAN'] || '').trim().toUpperCase(); r['SEGMEN PEKERJAAN'] = m || segmenGabung(kaSegmen[String(r['NO KONTRAK']).trim()], r['PEKERJAAN KONSUMEN']); });
 
     // Tempelkan STATUS EVER ke tiap kontrak yang berada di bucket "penyelesaian" milik role-nya sendiri
     allRecords.forEach(m => {

@@ -17,3 +17,18 @@ test('segmenDari: karyawan, wiraswasta, serabutan, dan yang belum terklasifikasi
   assert.strictEqual(segmenDari(''), '');
   assert.strictEqual(segmenDari('-'), '');
 });
+
+test('segmenGabung: pakai KATEGORI PEKERJAAN & NAMA PEKERJAAN dari KA HARIAN', () => {
+  const { segmenGabung, petaKA } = require('../api/_segmen');
+  assert.strictEqual(segmenGabung({ np: 'PEDAGANG SEMBAKO/BUAH/SAYUR', kat: 'PEMILIK', tk: 'JUAL SEMBAKO DAN GAS' }, ''), 'WIRASWASTA');
+  assert.strictEqual(segmenGabung({ np: 'PEMOTONGAN AYAM', kat: 'PEMILIK', tk: '' }, ''), 'WIRASWASTA');
+  assert.strictEqual(segmenGabung({ np: 'CLEANING SERVICE / OFFICE BOY', kat: 'STAFF', tk: 'PT BORINE' }, ''), 'KARYAWAN');
+  assert.strictEqual(segmenGabung({ np: 'BURUH PABRIK', kat: 'STAFF', tk: 'PABRIK KAYULAPIS' }, ''), 'KARYAWAN');
+  assert.strictEqual(segmenGabung({ np: 'LAINNYA', kat: 'STAFF', tk: 'TUKANG BANGUNAN' }, ''), 'SERABUTAN');
+  assert.strictEqual(segmenGabung({ np: 'PETANI', kat: 'PEMILIK', tk: '' }, ''), 'SERABUTAN');
+  assert.strictEqual(segmenGabung({ np: 'PENJAGA WARUNG / KIOS', kat: 'STAFF', tk: '' }, ''), 'KARYAWAN');
+  assert.strictEqual(segmenGabung(undefined, 'SDN 1 SUMBEREJO'), 'KARYAWAN');
+  assert.strictEqual(segmenGabung(undefined, ''), '');
+  const v = Array.from({ length: 15 }, () => []).concat([['NO KONTRAK', 'NAMA TEMPAT KERJA KONSUMEN', 'KATEGORI PEKERJAAN', 'SEGMEN USAHA', 'NAMA PEKERJAAN KONSUMEN'], ['111', 'TOKO A', 'PEMILIK', 'PERDAGANGAN', 'PEDAGANG']]);
+  assert.deepStrictEqual(petaKA(v)['111'], { np: 'PEDAGANG', kat: 'PEMILIK', tk: 'TOKO A' });
+});

@@ -5,7 +5,7 @@ const SEGMEN = ['KARYAWAN', 'WIRASWASTA', 'SERABUTAN'];
 
 // Urutan penting: SERABUTAN (lepas/harian) dicek dulu supaya "BURUH HARIAN" tidak jatuh ke KARYAWAN, lalu WIRASWASTA, lalu KARYAWAN.
 const POLA = [
-  ['SERABUTAN', /\b(SERABUTAN|BURUH (HARIAN|LEPAS|TANI|BANGUNAN|KASAR|ANGKUT|BORONG)|KULI|TUKANG|OJEK|OJOL|OJEG|DRIVER|SOPIR|SUPIR|KERNET|PEKERJA (LEPAS|HARIAN|BEBAS)|FREELANCE|FREE LANCE|LEPAS|HARIAN LEPAS|PENGEMUDI|PARKIR|JUKIR|PEMULUNG|PENGAMEN|PETANI|PENAMBANG|PENYADAP|NELAYAN|PEKERJA SERABUTAN|GOJEK|GRAB|MAXIM|INDRIVER|JAS ANGKUT|ANGKUT|PROYEK|PENGGARAP|PENGGARAP PLAFON|SAWAH|LAHAN|KEBUN|TAMBAK|PEKERJA BANGUNAN|CLEANING SERVICE|PENGEPUL|PEMULUNG|DAUR ULANG)\b/],
+  ['SERABUTAN', /\b(SERABUTAN|BURUH (HARIAN|LEPAS|TANI|BANGUNAN|KASAR|ANGKUT|BORONG)|KULI|TUKANG|OJEK|OJOL|OJEG|DRIVER|SOPIR|SUPIR|KERNET|PEKERJA (LEPAS|HARIAN|BEBAS)|FREELANCE|FREE LANCE|LEPAS|HARIAN LEPAS|PENGEMUDI|PARKIR|JUKIR|PEMULUNG|PENGAMEN|PETANI|PENAMBANG|PENYADAP|NELAYAN|PEKERJA SERABUTAN|GOJEK|GRAB|MAXIM|INDRIVER|JAS ANGKUT|ANGKUT|PROYEK|PENGGARAP|PENGGARAP PLAFON|SAWAH|LAHAN|KEBUN|TAMBAK|PEKERJA BANGUNAN|PENGEPUL|PEMULUNG|DAUR ULANG)\b/],
   ['WIRASWASTA', /\b(WIRASWASTA|WIRAUSAHA|WIRASWAST|PEDAGANG|DAGANG|BERDAGANG|USAHA|TOKO|WARUNG|WARTEG|BENGKEL|KONVEKSI|PEMILIK|OWNER|KONTRAKTOR|KATERING|CATERING|SALON|LAUNDRY|PETERNAK|PENGUSAHA|PENJUAL|JUALAN|JUAL|KIOS|AGEN|SUPPLIER|DISTRIBUTOR|PRODUSEN|PERAJIN|PENGRAJIN|KERAJINAN|MEBEL|MEUBEL|PERCETAKAN|FOTOCOPY|FOTO COPY|APOTEK|KLINIK|BIDAN PRAKTEK|DOKTER PRAKTEK|CV|UD|PERDAGANGAN|JASA|NOTARIS|PENGACARA|ADVOKAT|KONSULTAN|PENGEPUL|BISNIS|TERNAK|PERTANIAN|PERKEBUNAN|PERIKANAN|PERTUKANGAN|PROPERTI|BORONGAN)\b/],
   ['KARYAWAN', /\b(KARYAWAN|KARYAWATI|PEGAWAI|PNS|ASN|CPNS|PPPK|HONORER|GURU|DOSEN|TNI|POLRI|POLISI|BUMN|BUMD|PERAWAT|BIDAN|DOKTER|SATPAM|SECURITY|STAFF|STAF|OPERATOR|BURUH PABRIK|PEKERJA PABRIK|PABRIK|PT|PERUSAHAAN|BANK|RUMAH SAKIT|RS|DINAS|PEMKAB|PEMDA|PEMERINTAH|KANTOR|SEKOLAH|KEPALA|MANAGER|MANAJER|SUPERVISOR|ADMIN|KASIR|SALES|TEKNISI|MONTIR|PERANGKAT DESA|KADES|LURAH|CAMAT|PENSIUNAN|PENSIUN|SD|SDN|SMP|SMPN|SMA|SMAN|SMK|SMKN|MI|MTS|MA|MIN|MTSN|MAN|TK|PAUD|UNIVERSITAS|PTE|LTD|SERVICES|SERVICE|EXPRESS|LOGISTIK|LOGISTICS|EKSPEDISI|KURIR|KOPERASI|KSP|KONSTRUKSI|KONTRUKSI|SATUAN PELAYANAN|PUSKESMAS|PUSKESMAS|UPT|BPR|BPD|ASURANSI|PEGADAIAN|LEASING|FINANCE|INDUSTRI|GARMENT|KONVEKSI PABRIK|TEXTILE|TEKSTIL|ELEKTRONIK|MANUFAKTUR|TRANSPORTASI|PELAYARAN|PERKEBUNAN PT)\b/]
 ];
@@ -19,6 +19,30 @@ function segmenDari(pekerjaan) {
   return '';
 }
 
+// Klasifikasi memakai data KA HARIAN (lebih rapi dari isi MASTER): NAMA PEKERJAAN KONSUMEN, KATEGORI PEKERJAAN (PEMILIK/STAFF),
+// NAMA TEMPAT KERJA. Urutan: pekerjaan lepas/harian dulu, lalu PEMILIK = WIRASWASTA, STAFF = KARYAWAN, terakhir tebakan kata kunci.
+function segmenGabung(ka, pekerjaanMaster) {
+  ka = ka || {};
+  const np = ka.np || '', kat = String(ka.kat || '').toUpperCase().trim(), tk = ka.tk || '';
+  if (segmenDari(np) === 'SERABUTAN') return 'SERABUTAN';
+  if (kat === 'PEMILIK') return 'WIRASWASTA';
+  if (kat === 'STAFF') {
+    if (segmenDari(tk) === 'SERABUTAN' || segmenDari(pekerjaanMaster) === 'SERABUTAN') return 'SERABUTAN';
+    return 'KARYAWAN';
+  }
+  return segmenDari(np) || segmenDari(tk) || segmenDari(pekerjaanMaster);
+}
+// values = isi sheet KA HARIAN (header di baris ke-16). Hasil: { noKontrak: {np, kat, tk} }
+function petaKA(values) {
+  const v = values || [], hdr = (v[15] || []).map(h => String(h == null ? '' : h).trim().toUpperCase());
+  const iNo = hdr.indexOf('NO KONTRAK'), iNp = hdr.indexOf('NAMA PEKERJAAN KONSUMEN'), iKat = hdr.indexOf('KATEGORI PEKERJAAN'), iTk = hdr.indexOf('NAMA TEMPAT KERJA KONSUMEN');
+  const out = {};
+  if (iNo === -1) return out;
+  const g = (r, i) => i > -1 && r[i] != null ? String(r[i]).trim() : '';
+  v.slice(16).forEach(r => { r = r || []; const no = g(r, iNo); if (no) out[no] = { np: g(r, iNp), kat: g(r, iKat), tk: g(r, iTk) }; });
+  return out;
+}
+
 const BASE = id => 'https://sheets.googleapis.com/v4/spreadsheets/' + id;
 async function sf(url, token, opts) {
   const r = await fetch(url, Object.assign({ headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' } }, opts || {}));
@@ -28,10 +52,14 @@ async function sf(url, token, opts) {
 function colLetter(index) { let s = ''; index += 1; while (index > 0) { const rem = (index - 1) % 26; s = String.fromCharCode(65 + rem) + s; index = Math.floor((index - 1) / 26); } return s; }
 
 async function bacaMaster(token, sheetId) {
-  const r = await sf(BASE(sheetId) + '/values/MASTER?valueRenderOption=UNFORMATTED_VALUE', token);
+  const [r, rk] = await Promise.all([
+    sf(BASE(sheetId) + '/values/MASTER?valueRenderOption=UNFORMATTED_VALUE', token),
+    sf(BASE(sheetId) + '/values/' + encodeURIComponent('KA HARIAN') + '?valueRenderOption=UNFORMATTED_VALUE', token)
+  ]);
   const v = r.ok && r.json.values ? r.json.values : [];
+  const ka = petaKA(rk.ok && rk.json.values ? rk.json.values : []);
   const header = (v[0] || []).map(h => String(h == null ? '' : h).trim());
-  return { v, header, iPek: header.indexOf('PEKERJAAN KONSUMEN'), iSeg: header.indexOf(KOLOM), iNo: header.indexOf('NO KONTRAK') };
+  return { v, header, ka, iPek: header.indexOf('PEKERJAAN KONSUMEN'), iSeg: header.indexOf(KOLOM), iNo: header.indexOf('NO KONTRAK') };
 }
 
 async function tangani(req, res, ctx) {
@@ -48,7 +76,7 @@ async function tangani(req, res, ctx) {
       const p = String(r[m.iPek] == null ? '' : r[m.iPek]).trim();
       const manual = m.iSeg > -1 ? String(r[m.iSeg] == null ? '' : r[m.iSeg]).trim().toUpperCase() : '';
       if (manual) sudahIsi++;
-      const seg = SEGMEN.indexOf(manual) > -1 ? manual : segmenDari(p);
+      const seg = SEGMEN.indexOf(manual) > -1 ? manual : segmenGabung(m.ka[String(r[m.iNo > -1 ? m.iNo : 0]).trim()], p);
       per[seg || 'BELUM']++;
       const k = p || '(kosong)';
       const h = hitung[k] = hitung[k] || { pekerjaan: k, n: 0, segmen: seg };
@@ -84,7 +112,7 @@ async function tangani(req, res, ctx) {
       r = r || [];
       const lama = r[iSeg] == null ? '' : String(r[iSeg]).trim();
       if (lama) return [lama];
-      const seg = segmenDari(r[m.iPek]);
+      const seg = segmenGabung(m.ka[String(r[m.iNo > -1 ? m.iNo : 0] == null ? '' : r[m.iNo > -1 ? m.iNo : 0]).trim()], r[m.iPek]);
       if (seg) { diisi++; return [seg]; }
       if (r[m.iNo > -1 ? m.iNo : 0]) belum++;
       return [''];
@@ -100,4 +128,4 @@ async function tangani(req, res, ctx) {
   res.status(400).json({ error: 'Mode tidak dikenal.' });
 }
 
-module.exports = { segmenDari, tangani, KOLOM, SEGMEN };
+module.exports = { segmenDari, segmenGabung, petaKA, tangani, KOLOM, SEGMEN };
