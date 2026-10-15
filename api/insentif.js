@@ -66,8 +66,12 @@ function tanggalEfektif(){
   const t = new Date(Date.now() + 7*3600*1000 - 24*3600*1000);
   return { tahun: t.getUTCFullYear(), bulan: t.getUTCMonth() + 1, hari: t.getUTCDate() };
 }
+// Minggu yang DITAMPILKAN (target/batas insentif penyelesaian) mengikuti tanggal HARI INI (WIB): tgl 8 sudah W2, tgl 15 sudah W3,
+// tgl 22 sudah W4, supaya target minggu baru dan kekurangannya langsung kelihatan untuk dikejar. Angkanya tetap data H-1.
+// Khusus tgl 1: data masih penutup W4 bulan lalu, jadi tetap pakai tanggal efektif (W4). Log mingguan (log-snapshot.js) tetap pakai tanggal efektif.
 function getMingguSekarang(){
-  const hari = tanggalEfektif().hari;
+  const hariIni = new Date(Date.now() + 7*3600*1000).getUTCDate();
+  const hari = hariIni === 1 ? tanggalEfektif().hari : hariIni;
   if(hari<=7) return 1; if(hari<=14) return 2; if(hari<=21) return 3; return 4;
 }
 function insentifPenyelesaianFE(p,mg){ const t={1:[[40,750000],[35,500000]],2:[[60,750000],[55,500000]],3:[[75,500000],[70,250000]],4:[[95,500000],[90,250000]]}[mg]; for(const [b,n] of t){ if(p>b) return n; } return 0; }
