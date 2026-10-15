@@ -1502,7 +1502,7 @@ let IS_ADMIN = false;
 let IS_DESKCALL = false;
 let USER_EMAIL = '';
 let ID_TOKEN = null;
-let state = { quick:'', proy:'', search:'', co:'ALL', bucket:'ALL', kriteria:'ALL', tipe:'ALL', kecamatan:'ALL', ever:'ALL', segmen:'ALL', janjiList:[], sortKey:'JATUH TEMPO', sortDir:1, tab:'own' };
+let state = { quick:'', proy:'', search:'', co:'ALL', bucket:'ALL', kriteria:'ALL', tipe:'ALL', kecamatan:'ALL', ever:'ALL', segmen:'ALL', bigcust:'ALL', janjiList:[], sortKey:'JATUH TEMPO', sortDir:1, tab:'own' };
 
 function fmtBucket(b){ if(!b) return '-'; const m = String(b).match(/^P0*(\d+)[_-]0*(\d+)$/); return m ? m[1] + '-' + m[2] : String(b); }
 function fmtRupiah(n){ if(typeof n !== 'number') return '-'; return 'Rp' + Math.round(n).toLocaleString('id-ID'); }
@@ -1932,6 +1932,14 @@ function buildLayout(){
             ${IS_ADMIN ? '<button type="button" class="ms-link-btn" style="margin-top:6px;" onclick="segmenCek()">Cek &amp; isi kolom segmen di Sheet</button>' : ''}
           </div>
           <div class="fd-field">
+            <label class="edit-label">Bigcust (SIPOK di atas Rp100 juta)</label>
+            <select class="filter-select" id="bigcustSelect" style="width:100%;">
+              <option value="ALL">Semua kontrak</option>
+              <option value="YA">Bigcust saja (di atas Rp100 juta)</option>
+              <option value="TIDAK">Bukan bigcust</option>
+            </select>
+          </div>
+          <div class="fd-field">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
               <label class="edit-label" style="margin:0;">Janji Bayar</label>
               <div style="display:flex;gap:10px;">
@@ -1984,7 +1992,7 @@ function buildLayout(){
   document.getElementById('searchInput').addEventListener('input', e => { state.search = e.target.value; renderTable(); });
   document.getElementById('resetBtn').addEventListener('click', () => {
     const keepTab = state.tab;
-    state = { quick:'', proy:'', search:'', co:'ALL', bucket:'ALL', kriteria:'ALL', tipe:'ALL', kecamatan:'ALL', ever:'ALL', segmen:'ALL', janjiList:[], sortKey:'JATUH TEMPO', sortDir:1, tab:keepTab };
+    state = { quick:'', proy:'', search:'', co:'ALL', bucket:'ALL', kriteria:'ALL', tipe:'ALL', kecamatan:'ALL', ever:'ALL', segmen:'ALL', bigcust:'ALL', janjiList:[], sortKey:'JATUH TEMPO', sortDir:1, tab:keepTab };
     buildLayout();
     render();
   });
@@ -1995,6 +2003,7 @@ function buildLayout(){
   document.getElementById('kecamatanSelect').addEventListener('change', e => { state.kecamatan = e.target.value; renderTable(); });
   document.getElementById('everSelect').addEventListener('change', e => { state.ever = e.target.value; renderTable(); });
   document.getElementById('segmenSelect').addEventListener('change', e => { state.segmen = e.target.value; updateFilterBadge(); renderTable(); });
+  document.getElementById('bigcustSelect').addEventListener('change', e => { state.bigcust = e.target.value; updateFilterBadge(); renderTable(); });
 
   // Pilihan Janji Bayar mengikuti data yang sedang tampil (filter lain ikut diterapkan): hanya yang ada isinya, plus "Belum ada janji" bila ada yang kosong.
   document.getElementById('janjiGrid').addEventListener('change', e => {
@@ -2095,6 +2104,7 @@ function updateFilterBadge(){
   if(state.kecamatan!=='ALL') n++;
   if(state.ever!=='ALL') n++;
   if(state.segmen!=='ALL') n++;
+  if(state.bigcust!=='ALL') n++;
   if(state.janjiList.length>0) n++;
   if(n>0){ badge.style.display='inline-flex'; badge.textContent=n; } else { badge.style.display='none'; }
 }
@@ -4729,6 +4739,8 @@ function syncJanjiOptions(){
   grid.innerHTML = JANJI_OPTS.map(o => `<label class="ms-option"><input type="checkbox" value="${esc(o.v)}"${state.janjiList.includes(o.v) ? ' checked' : ''}> ${esc(o.label)} <span style="opacity:.6">(${o.n})</span></label>`).join('') || '<div style="font-size:12px;color:var(--ink-soft);padding:4px;">Tidak ada janji bayar pada data ini</div>';
   updateFilterBadge();
 }
+const BIGCUST_MIN = 100000000;
+function isBigcust(r){ return typeof r['SIPOK'] === 'number' && r['SIPOK'] > BIGCUST_MIN; }
 function getFiltered(skipJanji){
   let rows = currentSourceRecords();
   if(state.co!=='ALL') rows = rows.filter(r => r['CO ALL']===state.co);
@@ -4738,6 +4750,7 @@ function getFiltered(skipJanji){
   if(state.kecamatan!=='ALL') rows = rows.filter(r => r['KECAMATAN']===state.kecamatan);
   if(state.ever!=='ALL') rows = rows.filter(r => r['STATUS EVER']===state.ever);
   if(state.segmen!=='ALL') rows = rows.filter(r => (r['SEGMEN PEKERJAAN']||'') === (state.segmen==='NONE' ? '' : state.segmen));
+  if(state.bigcust!=='ALL') rows = rows.filter(r => isBigcust(r) === (state.bigcust==='YA'));
   if(!skipJanji && state.janjiList.length > 0) rows = rows.filter(r => state.janjiList.includes(janjiKey(r)));
   if(state.quick) rows = rows.filter(r => quickMatch(r, state.quick));
   if(state.proy) rows = rows.filter(r => proyOf(r) === (state.proy === 'NONE' ? '' : state.proy));
@@ -4766,6 +4779,7 @@ function renderActiveChips(){
   if(state.tipe !== 'ALL') chips.push({label:'Kendaraan', value:state.tipe, clear:() => { state.tipe='ALL'; const s=document.getElementById('tipeSelect'); if(s)s.value='ALL'; updateFilterBadge(); renderTable(); }});
   if(state.kecamatan !== 'ALL') chips.push({label:'Kecamatan', value:state.kecamatan, clear:() => { state.kecamatan='ALL'; const s=document.getElementById('kecamatanSelect'); if(s)s.value='ALL'; updateFilterBadge(); renderTable(); }});
   if(state.segmen !== 'ALL') chips.push({label:'Segmen', value:({KARYAWAN:'Karyawan',WIRASWASTA:'Wiraswasta',SERABUTAN:'Serabutan',NONE:'Belum terklasifikasi'})[state.segmen], clear:() => { state.segmen='ALL'; const s=document.getElementById('segmenSelect'); if(s)s.value='ALL'; updateFilterBadge(); renderTable(); }});
+  if(state.bigcust !== 'ALL') chips.push({label:'Bigcust', value:state.bigcust==='YA'?'di atas Rp100 juta':'bukan bigcust', clear:() => { state.bigcust='ALL'; const s=document.getElementById('bigcustSelect'); if(s)s.value='ALL'; updateFilterBadge(); renderTable(); }});
   if(state.ever !== 'ALL') chips.push({label:'Status Ever', value:state.ever, clear:() => { state.ever='ALL'; const s=document.getElementById('everSelect'); if(s)s.value='ALL'; updateFilterBadge(); renderTable(); }});
   if(state.janjiList.length > 0) chips.push({label:'Janji Bayar', value:state.janjiList.map(v => v === JANJI_KOSONG ? 'Belum ada janji' : v).join(', '), clear:() => { state.janjiList=[]; buildLayout(); render(); }});
   if(state.proy) chips.push({label:'Proyeksi', value: state.proy === 'NONE' ? 'Belum diproyeksi' : PROY_LABEL[state.proy], clear:() => { state.proy=''; renderProyStrip(); renderTable(); }});
