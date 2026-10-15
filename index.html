@@ -2403,12 +2403,12 @@ function renderUsulanAdmin(){
     if(c.sudahKirim || c.kontrak.length){
       h += '<div class="ud-list">' + c.kontrak.map(x => {
         const berubah = x.bucketSekarang && x.bucketSekarang !== exp;
-        return '<label class="ud-row' + (x.assign ? ' done' : '') + '"><input type="checkbox" data-co="' + ci + '" data-no="' + esc(x.noKontrak) + '"' + (x.assign ? ' disabled' : ' onchange="this.closest(\'.ud-row\').classList.toggle(\'on\',this.checked)"') + '>' +
+        return '<label class="ud-row' + (x.assign ? ' done' : '') + '"><input type="checkbox" data-co="' + ci + '" data-no="' + esc(x.noKontrak) + '"' + (x.assign ? ' disabled' : ' onchange="this.closest(\'.ud-row\').classList.toggle(\'on\',this.checked);udHitungPilih(' + ci + ')"') + '>' +
           '<div class="ud-main"><b>' + esc(x.nama) + '</b><span class="mono">' + esc(x.noKontrak) + '</span>' +
           '<span class="ud-tags">' + udKali(x) + (x.dibuat ? '<span class="ud-chip ok">Sudah dibuat Silvi</span>' : (x.assign ? '<span class="ud-chip ok">Dikirim ke Silvi</span>' : '')) + (x.tambahan ? '<span class="ud-chip">Tambahan head</span>' : '') + (berubah ? '<span class="ud-chip warn">bucket ' + esc(x.bucketSekarang) + '</span>' : '') + (x.assign && !x.dibuat ? '<button type="button" class="ud-link" onclick="event.preventDefault();udAssign([\'' + esc(x.noKontrak) + '\'],\'batal\')">batalkan</button>' : '') + '</span></div>' +
           '<div class="ud-side"><span class="mono">' + fmtRupiah(x.sipok) + '</span>' + (x.assign ? '' : '<span class="ud-pick"></span>') + '</div></label>';
       }).join('') + '</div>' +
-      '<div class="ud-actions"><button class="btn primary" onclick="udAssignPilih(' + ci + ')">Kirim yang dipilih ke Silvi</button> <button class="btn" onclick="udAssignSemua(' + ci + ')">Kirim semua ke Silvi</button> <button class="btn" onclick="udSalin(' + ci + ')">Salin daftar DKH</button></div>';
+      '<div class="ud-actions"><button class="btn primary" id="udBtnPilih' + ci + '" onclick="udAssignPilih(' + ci + ')">Kirim yang dipilih ke Silvi</button> <button class="btn" onclick="udAssignSemua(' + ci + ')">Kirim semua ke Silvi</button> <button class="btn" onclick="udSalin(' + ci + ')">Salin daftar DKH</button></div><div class="ud-msg" id="udMsgCo' + ci + '" role="status"></div>';
     }
     if(c.rekomendasi && c.rekomendasi.length){
       h += '<div class="ud-rek"><div class="ud-rek-t">Rekomendasi tambahan <span class="ud-sub">(utamakan yang sudah jatuh tempo dan belum pernah terbentuk DKH, lalu janji bayar dekat tanggal DKH, biasa bayar, SIPOK terbesar)'+(d.produktivitasAda?'':' <br><span class="ud-sub">Tab PRODUCTIVITY belum terbaca, jadi status "belum pernah terbentuk" belum bisa dipakai.</span>')+'</span></div><div class="ud-list">' + c.rekomendasi.map((x, i) =>
@@ -2484,19 +2484,30 @@ function udSelesaiPilih(ci){
   udSelesai(list, 'dibuat');
 }
 function udSelesaiSemua(ci){ udSelesai(UD_ADM.co[ci].kontrak.filter(x => !x.dibuat).map(x => x.noKontrak), 'dibuat'); }
-function udAssign(list, aksi){
-  const msg = document.getElementById('udMsg'); if(msg){ msg.className = 'ud-msg'; msg.textContent = 'Menyimpan…'; }
+function udPesan(txt, bad, ci){
+  ['udMsg', ci != null ? 'udMsgCo' + ci : null].forEach(id => { if(!id) return; const m = document.getElementById(id); if(m){ m.className = 'ud-msg' + (bad ? ' bad' : ''); m.textContent = txt; } });
+}
+function udHitungPilih(ci){
+  const n = document.querySelectorAll('.ud-co input[data-co="' + ci + '"]:checked').length, b = document.getElementById('udBtnPilih' + ci);
+  if(b) b.textContent = n ? 'Kirim ' + n + ' yang dipilih ke Silvi' : 'Kirim yang dipilih ke Silvi';
+}
+function udAssign(list, aksi, ci){
+  udPesan('Menyimpan…', false, ci);
   udApi('assign', { method: 'POST', body: JSON.stringify({ untuk: UD_ADM.untuk, aksi, kontrak: list }) }).then(({ok, b}) => {
-    if(!ok){ const m = document.getElementById('udMsg'); if(m){ m.className = 'ud-msg bad'; m.textContent = b.error || 'Gagal menyimpan.'; } return; }
+    if(!ok){ udPesan(b.error || 'Gagal menyimpan.', true, ci); return; }
     loadUsulan();
-  }).catch(err => { const m = document.getElementById('udMsg'); if(m){ m.className = 'ud-msg bad'; m.textContent = pesanErr(err); } });
+  }).catch(err => udPesan(pesanErr(err), true, ci));
 }
 function udAssignPilih(ci){
   const list = Array.from(document.querySelectorAll('.ud-co input[data-co="' + ci + '"]:checked')).map(i => i.dataset.no);
-  if(!list.length){ const m = document.getElementById('udMsg'); if(m){ m.className = 'ud-msg bad'; m.textContent = 'Pilih dulu kontrak yang mau di-assign.'; } return; }
-  udAssign(list, 'assign');
+  if(!list.length){ udPesan('Belum ada kontrak yang dipilih. Ketuk "Pilih" pada kontrak dulu, atau pakai "Kirim semua ke Silvi".', true, ci); return; }
+  udAssign(list, 'assign', ci);
 }
-function udAssignSemua(ci){ udAssign(UD_ADM.co[ci].kontrak.filter(x => !x.assign).map(x => x.noKontrak), 'assign'); }
+function udAssignSemua(ci){
+  const list = UD_ADM.co[ci].kontrak.filter(x => !x.assign).map(x => x.noKontrak);
+  if(!list.length){ udPesan('Semua kontrak CO ini sudah dikirim ke Silvi.', true, ci); return; }
+  udAssign(list, 'assign', ci);
+}
 function udSalin(ci){
   const c = UD_ADM.co[ci]; const t = udTeksCO(c); const m = document.getElementById('udMsg');
   if(!t){ if(m){ m.className = 'ud-msg bad'; m.textContent = 'Belum ada kontrak yang di-assign untuk ' + c.nama + '.'; } return; }
