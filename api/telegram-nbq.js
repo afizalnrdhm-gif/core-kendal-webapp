@@ -74,7 +74,10 @@ function parseCommand(text) {
 
   if (cmd === '/fpd') return { type: 'mob', mobList: [1], title: 'FPD (First Payment Default)' };
   if (cmd === '/spd') return { type: 'mob', mobList: [2], title: 'SPD (Second Payment Default)' };
-  if (cmd === '/realisasi') return { type: 'realisasi', title: 'Realisasi Hari Ini' };
+  if (cmd === '/realisasi') {
+    if (arg === 'nbq') return { type: 'realisasi', nbqOnly: true, title: 'Realisasi NBQ Hari Ini' };
+    return { type: 'realisasi', title: 'Realisasi Hari Ini' };
+  }
 
   if (cmd === '/dashboard') {
     const rest = parts.slice(1).join(' ').toLowerCase();
@@ -141,7 +144,17 @@ const REALISASI_COLS = [
   { key: 'NO KONTRAK', label: 'No Kontrak', width: 190 },
   { key: 'NAMA KONSUMEN', label: 'Nama Konsumen', width: 260, bold: true },
   { key: 'NAMA CO', label: 'Nama CO', width: 260 },
-  { key: 'BUCKET AWAL', label: 'Bucket Awal', width: 140 }
+  { key: 'BUCKET AWAL', label: 'Bucket Awal', width: 140 },
+  { key: 'SIPOK_FMT', label: 'SIPOK', width: 150, bold: true }
+];
+// /realisasi nbq: tambah MOB (umur kontrak NBQ)
+const REALISASI_NBQ_COLS = [
+  { key: 'NO KONTRAK', label: 'No Kontrak', width: 190 },
+  { key: 'NAMA KONSUMEN', label: 'Nama Konsumen', width: 240, bold: true },
+  { key: 'NAMA CO', label: 'Nama CO', width: 240 },
+  { key: 'BUCKET AWAL', label: 'Bucket Awal', width: 120 },
+  { key: 'NBQ', label: 'MOB', width: 80 },
+  { key: 'SIPOK_FMT', label: 'SIPOK', width: 150, bold: true }
 ];
 
 // Kolom khusus /nbq 1-30. Dasarnya sesuai request Kepala Cabang (No Kontrak, Nama Konsumen,
@@ -241,8 +254,8 @@ async function renderTableImage(title, subtitle, rows, cols, footerText) {
   };
   const bodyRows = rows.map((r, idx) => ({
     type: 'div', props: {
-      style: { display: 'flex', background: idx % 2 === 0 ? '#ffffff' : '#F5F8FA', borderBottom: '1px solid #E2E9EE' },
-      children: cols.map(c => cellDiv(r[c.key], c.width, { weight: c.bold ? 600 : 400, color: c.danger ? '#B23B2E' : undefined }))
+      style: { display: 'flex', background: r._total ? '#E3EDF4' : (idx % 2 === 0 ? '#ffffff' : '#F5F8FA'), borderBottom: '1px solid #E2E9EE' },
+      children: cols.map(c => cellDiv(r[c.key], c.width, { weight: (c.bold || r._total) ? (r._total ? 700 : 600) : 400, color: c.danger ? '#B23B2E' : (r._total ? '#0B3D62' : undefined) }))
     }
   }));
 
@@ -736,7 +749,7 @@ module.exports = async (req, res) => {
     if (!parsed) { res.status(200).json({ ok: true }); return; }
 
     if (parsed.type === 'invalid') {
-      await sendTelegramMessage(chatId, 'Command tidak dikenali. Coba: /nbq rahul, /nbq ulil, /nbq mobilku, /nbq motorku, /nbq nb, /nbq 1-3, /nbq 1-6, /nbq 1-9, /nbq 1-30, /fpd, /spd, /realisasi, /dashboard all, /dashboard nonfleet, /perform all, /perform co');
+      await sendTelegramMessage(chatId, 'Command tidak dikenali. Coba: /nbq rahul, /nbq ulil, /nbq mobilku, /nbq motorku, /nbq nb, /nbq 1-3, /nbq 1-6, /nbq 1-9, /nbq 1-30, /fpd, /spd, /realisasi, /realisasi nbq, /dashboard all, /dashboard nonfleet, /perform all, /perform co');
       res.status(200).json({ ok: true });
       return;
     }
@@ -767,6 +780,8 @@ module.exports = async (req, res) => {
           bucketAwal: r['BUCKET AWAL'],
           coAll: r['CO ALL'],
           namaKonsumen: r['NAMA KONSUMEN'],
+          nbq: r['NBQ'],
+          sipok: typeof r['SIPOK'] === 'number' ? r['SIPOK'] : 0,
           isFleet: r['FLEET/NON FLEET'] === 'FLEET'
         };
       });
@@ -783,20 +798,29 @@ module.exports = async (req, res) => {
             'NAMA KONSUMEN': master.namaKonsumen || r['NAMA KONSUMEN'] || '-',
             'NAMA CO': master.coAll || r['NAMA COLLECTOR'] || '-',
             'BUCKET AWAL': fmtBucketLabel(master.bucketAwal),
-            _isFleet: !!master.isFleet
+            'NBQ': master.nbq || '-',
+            _sipok: master.sipok || 0,
+            SIPOK_FMT: fmtRupiah(master.sipok || 0),
+            _isFleet: !!master.isFleet,
+            _nbqNum: nbqNum({ NBQ: master.nbq })
           };
         })
-        .filter(r => !r._isFleet);
+        .filter(r => !r._isFleet)
+        .filter(r => !parsed.nbqOnly || (r._nbqNum !== null && r._nbqNum <= 12));
 
       if (realisasiRows.length === 0) {
-        await sendTelegramMessage(chatId, 'Belum ada realisasi hari ini.');
+        await sendTelegramMessage(chatId, parsed.nbqOnly ? 'Belum ada realisasi NBQ hari ini.' : 'Belum ada realisasi hari ini.');
         res.status(200).json({ ok: true });
         return;
       }
 
+      // Baris total SIPOK di akhir tabel
+      const totalSipok = realisasiRows.reduce((t, r) => t + r._sipok, 0);
+      realisasiRows.push({ _total: true, 'NO KONTRAK': 'TOTAL', 'NAMA KONSUMEN': realisasiRows.length + ' kontrak', 'NAMA CO': '\u00a0', 'BUCKET AWAL': '\u00a0', 'NBQ': '\u00a0', SIPOK_FMT: fmtRupiah(totalSipok) });
+
       const { year, month, day } = getWibDateParts();
       const subtitle = `Update per: ${fmtTanggalIndo(toIsoDate(year, month, day))}`;
-      const png = await renderTableImage(parsed.title, subtitle, realisasiRows, REALISASI_COLS);
+      const png = await renderTableImage(parsed.title, subtitle, realisasiRows, parsed.nbqOnly ? REALISASI_NBQ_COLS : REALISASI_COLS, `Total: ${realisasiRows.length - 1} kontrak · Total SIPOK ${fmtRupiah(totalSipok)}`);
       await sendTelegramPhoto(chatId, png);
       res.status(200).json({ ok: true });
       return;
@@ -1002,3 +1026,8 @@ module.exports = async (req, res) => {
     try { res.status(200).json({ ok: true }); } catch (e) {}
   }
 };
+
+module.exports.parseCommand = parseCommand;
+module.exports.renderTableImage = renderTableImage;
+module.exports.REALISASI_COLS = REALISASI_COLS;
+module.exports.REALISASI_NBQ_COLS = REALISASI_NBQ_COLS;
