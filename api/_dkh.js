@@ -73,6 +73,47 @@ async function bacaPernahTerbentuk(token, sheetId) {
 }
 const kaliDKH = (pernah, no) => (pernah ? (pernah.get ? (pernah.get(String(no)) || 0) : (pernah.has(String(no)) ? 1 : 0)) : null);
 
+// Info DKH satu kontrak untuk panel detail: (a) status assign di app (DKH_ASSIGN) dan (b) hasil inputan di PRODUCTIVITY
+// (tarikan sistem): tanggal DKH terbentuk, action code, tanggal janji bayar, total bayar. Tiap tanggal ditampilkan sekali.
+const iso = ms => (ms === null || ms === undefined) ? '' : new Date(ms).toISOString().slice(0, 10);
+const teks = v => { let t = v == null ? '' : String(v).trim(); const m = t.match(/^="(.*)"$/); return m ? m[1] : t; };
+async function infoKontrak(token, sheetId, noKontrak) {
+  const no = String(noKontrak).trim();
+  const [asg, pr] = await Promise.all([
+    bacaTab(token, sheetId, TAB_ASSIGN),
+    sf(BASE(sheetId) + '/values/' + encodeURIComponent('PRODUCTIVITY') + '?valueRenderOption=UNFORMATTED_VALUE', token)
+  ]);
+  const perTgl = {};
+  asg.filter(r => String(r['NO_KONTRAK']).trim() === no).forEach(r => { perTgl[String(r['UNTUK_TANGGAL'])] = { untuk: String(r['UNTUK_TANGGAL']), status: String(r['STATUS']), co: String(r['CO'] || ''), oleh: String(r['OLEH'] || ''), waktu: String(r['WAKTU'] || '') }; });
+  const assign = Object.keys(perTgl).sort().map(k => perTgl[k]);
+
+  const v = pr.ok && pr.json.values ? pr.json.values : [];
+  let h = -1;
+  for (let i = 0; i < Math.min(8, v.length); i++) if ((v[i] || []).some(c => teks(c).toUpperCase() === 'AGREEMENT NO')) { h = i; break; }
+  const hasil = { tersedia: h > -1, baris: [] };
+  if (h > -1) {
+    const hdr = v[h].map(c => teks(c).toUpperCase());
+    const ix = n => hdr.indexOf(n);
+    const iA = ix('AGREEMENT NO'), iTagih = ix('TANGGAL TAGIHAN'), iKirim = ix('SEND DATE'), iSub = ix('SUBMITTED DATE'), iAct = ix('ACTION CODE'), iRisk = ix('RISK CODE'), iJanji = ix('TANGGAL JANJI BAYAR'), iBayar = ix('TOTAL BAYAR'), iMemo = ix('MEMO');
+    for (let i = h + 1; i < v.length; i++) {
+      const r = v[i] || []; if (teks(r[iA]) !== no) continue;
+      const num = c => { const n = Number(r[c]); return c > -1 && r[c] !== '' && r[c] != null && isFinite(n) ? n : null; };
+      hasil.baris.push({
+        tagihan: iso(toMs(iTagih > -1 ? r[iTagih] : null)),
+        kirim: iKirim > -1 ? teks(r[iKirim]).slice(0, 16) : '',
+        submit: iSub > -1 ? teks(r[iSub]).slice(0, 16) : '',
+        action: iAct > -1 ? teks(r[iAct]) : '',
+        risk: iRisk > -1 ? teks(r[iRisk]).split('|')[0].trim() : '',
+        janji: iso(toMs(iJanji > -1 ? r[iJanji] : null)),
+        bayar: num(iBayar),
+        memo: iMemo > -1 ? teks(r[iMemo]).slice(0, 120) : ''
+      });
+    }
+    hasil.baris.sort((a, b) => (b.tagihan || '').localeCompare(a.tagihan || ''));
+  }
+  return { assign, prod: hasil };
+}
+
 function parse(values) {
   const header = (values[0] || []).map(h => String(h == null ? '' : h).trim());
   return values.slice(1).map(r => { const o = {}; header.forEach((h, i) => { if (h) o[h] = cleanCell(h, r[i] === undefined ? '' : r[i]); }); return o; });
@@ -338,4 +379,4 @@ async function tangani(req, res, ctx) {
   res.status(400).json({ error: 'Mode tidak dikenal.' });
 }
 
-module.exports = { kaliDKH, rekomendasi, cariCOByNama, hariDariCell, TARGET_DKH, tangani, MIN, MAX, BUCKET_ROLE, kandidat, cariCO, usulanTerbaru, statusAssign, besok };
+module.exports = { kaliDKH, rekomendasi, cariCOByNama, hariDariCell, TARGET_DKH, tangani, MIN, MAX, BUCKET_ROLE, kandidat, cariCO, usulanTerbaru, statusAssign, besok, infoKontrak };
