@@ -4876,6 +4876,33 @@ function renderHistory(){
       <div class="hist-text">${it.kronologis ? esc(it.kronologis) : '<span class="muted">(tanpa catatan)</span>'}</div>
     </div>`).join('') + '</div>' : '<div class="hist-empty">Belum ada riwayat. Setiap kali kamu menyimpan janji bayar atau kronologis, catatannya tersimpan di sini.</div>');
 }
+function renderDkhInfo(d){
+  const box = document.getElementById('dkhBox'); if(!box || !d) return;
+  const tgl = t => t ? fmtDate(t) : '-';
+  const asg = d.assign || [], prod = (d.prod && d.prod.baris) || [];
+  const dibuat = asg.filter(a => a.status === 'DIBUAT'), diassign = asg.filter(a => a.status === 'ASSIGN');
+  let status, kelas;
+  if(prod.length || dibuat.length){ status = 'Sudah terbentuk DKH'; kelas = 'ok'; }
+  else if(diassign.length){ status = 'Di-assign head, belum dibuat di sistem'; kelas = 'warn'; }
+  else { status = 'Belum terbentuk DKH'; kelas = 'no'; }
+  const warna = { ok:'#1baf7a', warn:'#d99a1a', no:'#888' }[kelas];
+  const rows = [];
+  if(asg.length) rows.push('<div class="field-row"><span class="k">Riwayat assign</span><span class="v">' + asg.map(a => esc(tgl(a.untuk)) + ' · ' + esc(a.status === 'DIBUAT' ? 'dibuat' : a.status === 'BATAL' ? 'batal' : 'di-assign')).join('<br>') + '</span></div>');
+  if(prod.length){
+    prod.slice(0, 5).forEach((p, i) => {
+      rows.push('<div class="field-row"><span class="k">DKH terbentuk' + (prod.length > 1 ? ' #' + (i + 1) : '') + '</span><span class="v">' + esc(tgl(p.tagihan)) + (p.kirim ? ' <span style="color:var(--ink-soft)">(' + esc(p.kirim) + ')</span>' : '') + '</span></div>');
+      rows.push('<div class="field-row"><span class="k">Hasil inputan</span><span class="v">' + (p.action ? esc(p.action) : (p.submit ? 'Terinput, belum ada action code' : 'Belum diinput')) + (p.risk ? ' · risk ' + esc(p.risk) : '') + '</span></div>');
+      rows.push('<div class="field-row"><span class="k">Janji bayar</span><span class="v">' + (p.janji ? '<b>' + esc(tgl(p.janji)) + '</b>' : '-') + (p.bayar ? ' · bayar ' + fmtRupiah(p.bayar) : '') + '</span></div>');
+      if(p.memo) rows.push('<div class="field-row"><span class="k">Memo</span><span class="v">' + esc(p.memo) + '</span></div>');
+    });
+    if(prod.length > 5) rows.push('<div class="field-row"><span class="k"></span><span class="v">+' + (prod.length - 5) + ' DKH lainnya</span></div>');
+  } else if(d.prod && d.prod.tersedia === false){
+    rows.push('<div class="field-row"><span class="k">PRODUCTIVITY</span><span class="v">Tab belum ada/kosong</span></div>');
+  }
+  box.style.display = '';
+  box.innerHTML = '<h3>Status DKH</h3><div class="field-row"><span class="k">Status</span><span class="v"><b style="color:' + warna + '">' + status + '</b></span></div>' + rows.join('');
+}
+
 function loadHistory(noKontrak){
   fetch('/api/riwayat?noKontrak=' + encodeURIComponent(noKontrak), { headers: { Authorization: 'Bearer ' + ID_TOKEN } })
     .then(res => res.json().then(b => ({ ok: res.ok, b })))
@@ -4884,6 +4911,7 @@ function loadHistory(noKontrak){
       if(!ok) return; // bukan pemilik/admin: bagian riwayat tidak ditampilkan
       HIST_ITEMS = b.items || [];
       renderHistory();
+      renderDkhInfo(b.dkh);
     }).catch(() => {});
 }
 
@@ -5025,6 +5053,7 @@ function openPanel(noKontrak){
         <div class="field-row"><span class="k">Kronologis</span><span class="v">${esc(r['KRONOLOGIS']||'-')}</span></div>
       `}
     </div>
+    <div class="field-group" id="dkhBox" style="display:none;"></div>
     <div class="field-group" id="histBox" style="display:none;"></div>`;
   PANEL_KONTRAK = r['NO KONTRAK']; HIST_ITEMS = [];
   loadHistory(r['NO KONTRAK']);

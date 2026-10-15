@@ -1,4 +1,5 @@
 const { readLog } = require('./_tl');
+const { infoKontrak } = require('./_dkh');
 const { getAccessToken, sendError, verifyIdToken } = require('./_auth');
 
 module.exports = async (req, res) => {
@@ -29,7 +30,9 @@ module.exports = async (req, res) => {
     }
 
     const items = await readLog(accessToken, sheetId, noKontrak, 30);
-    res.status(200).json({ items });
+    let dkh = null;
+    try { dkh = await infoKontrak(accessToken, sheetId, noKontrak); } catch (e) { console.error('Info DKH gagal:', e && e.message); }
+    res.status(200).json({ items, dkh });
   } catch (err) {
     console.error('Error riwayat:', err && err.message);
     const m = (err && err.message) || '';
