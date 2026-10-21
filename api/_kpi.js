@@ -52,4 +52,23 @@ function hitungKpi(masterRows, kaRows, includeFleet) {
   return { enr, enrCount, perBucket, cumulative, flowBtc };
 }
 
-module.exports = { BUCKET_ORDER, BUCKET_LABEL, bucketIndex, sipokOf, sisaOf, hitungKpi };
+// Flow "lebar": kontrak bucket awal `awal` yang BUCKET UPDATE-nya lebih buruk (bucket mana pun). Dasar penyelesaian = 100 - pct.
+function flowLebar(masterRows, awal, includeFleet) {
+  return rasio_(masterRows, awal, includeFleet, m => bucketIndex(m['BUCKET UPDATE']) > bucketIndex(awal));
+}
+// BTC: kontrak bucket awal `awal` yang sudah kembali ke NOOD.
+function btcKe(masterRows, awal, includeFleet) {
+  return rasio_(masterRows, awal, includeFleet, m => String(m['BUCKET UPDATE'] || '').trim() === 'NOOD');
+}
+function rasio_(masterRows, awal, includeFleet, kena) {
+  let beban = 0, amount = 0, count = 0;
+  (masterRows || []).forEach(m => {
+    if (!includeFleet && m['FLEET/NON FLEET'] === 'FLEET') return;
+    if (String(m['BUCKET AWAL'] || '').trim() !== awal) return;
+    const s = sipokOf(m); beban += s;
+    if (kena(m)) { amount += s; count += 1; }
+  });
+  return { amount, count, pct: beban > 0 ? amount / beban * 100 : 0, beban };
+}
+
+module.exports = { BUCKET_ORDER, BUCKET_LABEL, bucketIndex, sipokOf, sisaOf, hitungKpi, flowLebar, btcKe };

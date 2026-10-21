@@ -11,6 +11,7 @@
 // ============================================================
 const { getAccessToken } = require('./_auth');
 const { cleanCell } = require('./_sheet');
+const { barisLogHarian, tulisLogHarian } = require('./_logharian');
 
 // Scope full (bukan readonly) karena endpoint ini perlu MENULIS ke sheet.
 
@@ -110,7 +111,7 @@ module.exports = async (req, res) => {
     const accessToken = await getAccessToken();
     const sheetId = process.env.GOOGLE_SHEET_ID;
 
-    const [masterRes, roleRes, logRes] = await Promise.all([
+    const [masterRes, roleRes, logRes, kaRes] = await Promise.all([
       fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/MASTER?valueRenderOption=UNFORMATTED_VALUE`, {
         headers: { Authorization: 'Bearer ' + accessToken }
       }),
@@ -118,6 +119,9 @@ module.exports = async (req, res) => {
         headers: { Authorization: 'Bearer ' + accessToken }
       }),
       fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(LOG_SHEET)}?valueRenderOption=UNFORMATTED_VALUE`, {
+        headers: { Authorization: 'Bearer ' + accessToken }
+      }),
+      fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent('KA HARIAN')}?valueRenderOption=UNFORMATTED_VALUE`, {
         headers: { Authorization: 'Bearer ' + accessToken }
       })
     ]);
@@ -189,6 +193,16 @@ module.exports = async (req, res) => {
       if (!appendRes.ok) throw new Error('Gagal tambah baris LOG_MINGGUAN: ' + JSON.stringify(appendJson));
     }
 
+    // Snapshot harian KPI cabang dan per CO ke LOG_HARIAN. Gagal di sini tidak menggagalkan snapshot mingguan.
+    let logHarian = { ok: true };
+    try {
+      const kaJson = await kaRes.json();
+      const kaRows = parseSheetValues(kaJson.values || [], 15).filter(r => r['NO KONTRAK']);
+      const tglWIB = new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 10);
+      const r = await tulisLogHarian(accessToken, sheetId, barisLogHarian(tglWIB, masterList, kaRows));
+      logHarian = { ok: true, tanggal: tglWIB, ditulis: r.ditulis };
+    } catch (e) { console.log('Gagal tulis LOG_HARIAN:', e.message); logHarian = { ok: false, error: e.message }; }
+
     // Bekukan target daily hari ini (baseline pagi). Gagal di sini tidak boleh menggagalkan snapshot mingguan.
     let targetDaily = null;
     try { targetDaily = await require('./insentif').bekukanTargetHariIni(accessToken, sheetId); }
@@ -197,6 +211,7 @@ module.exports = async (req, res) => {
     res.status(200).json({
       ok: true,
       targetDaily,
+      logHarian,
       tahun, bulan, minggu,
       updated: toUpdate.length,
       appended: toAppend.length,
