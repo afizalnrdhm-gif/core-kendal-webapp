@@ -141,3 +141,8 @@ test('tindakan: gabungan kekurangan target daily dan penyebab diagnosa, urut dam
   assert.strictEqual(D.tindakan([], banyak, {}).length, 5);
   assert.deepStrictEqual(D.tindakan([], { adaBaseline: false, pic: [] }, {}), []);
 });
+
+test('tindakan: rupiah nyaris nol tidak tampil "-0 jt"', () => {
+  const td = { adaBaseline: true, pic: [{ co: 'X', poin: [{ judul: 'P', target: 5e8, realisasi: -4e5, kurangRp: 5e8, status: 'AMAN', belumKontrak: [] }] }] };
+  assert.ok(!D.tindakan([], td, {})[0].temuan.includes('-0 jt'));
+});

@@ -293,7 +293,7 @@
   .hd-cause-t{font-weight:800;font-size:12px;color:var(--bad);} .hd-cause-go{font-size:12px;font-weight:700;color:var(--link);}
   .hd-tim{min-width:0 !important;} .hd-tim td:first-child{white-space:normal !important;} .hd-bad{color:var(--bad);font-weight:700;} .hd-good{color:var(--good);font-weight:700;}
   .hd-kerja{display:grid;grid-template-columns:1fr 1fr;gap:10px;} .hd-kerja div{background:var(--surface-alt);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:2px;} .hd-kerja b{font-size:22px;color:var(--ink);} .hd-kerja span{font-size:12px;color:var(--ink-soft);}
-  .hd-ax{font-size:11px;fill:var(--ink-soft);} .hd-ok{font-size:11.5px;font-weight:700;color:var(--good);} .hd-urai-s{min-width:0 !important;} .hd-jawab p{margin:0 0 8px;font-size:13.5px;line-height:1.5;color:var(--ink);} .hd-dims{margin-bottom:10px;} .hd-urai{min-width:640px;} .hd-pemberat td{background:var(--bad-bg);} .hd-tag{display:inline-block;font-size:10px;font-weight:800;color:var(--bad);border:1px solid var(--bad);border-radius:99px;padding:0 6px;margin-left:4px;} .hd-link{background:none;border:none;padding:0;font:inherit;font-weight:700;color:var(--link);cursor:pointer;text-align:left;} #hdSegToggle{margin-bottom:8px;} .hd-legs{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--ink-soft);margin-top:4px;} .hd-leg i{display:inline-block;width:12px;height:3px;border-radius:2px;margin-right:5px;vertical-align:middle;} .dash-xl{min-width:0;} .dash-prod{min-width:1300px;} .dash-tbl thead th{text-align:center;} .dash-tbl th[rowspan]{text-align:left;} .dash-total td{font-weight:700;background:var(--surface-sunken);} .dash-up{color:var(--ok,#157a3c);} .dash-down{color:var(--bad,#b3261e);} .dash-tbl td:first-child,.dash-tbl th:first-child{position:sticky;left:0;background:var(--surface,#fff);z-index:1;} .dash-total td:first-child{background:var(--surface-sunken);}
+  .hd-ax{font-size:11px;fill:var(--ink-soft);} .hd-ok{font-size:11.5px;font-weight:700;color:var(--good);} .hd-act{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:10px;background:var(--surface-alt);} .hd-act p{margin:6px 0 0;font-size:13px;} .hd-act-h{display:flex;align-items:flex-start;gap:8px;} .hd-act-h b{flex:1;font-size:13.5px;} .hd-act-n{flex:0 0 22px;height:22px;border-radius:99px;background:var(--navy);color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;} .hd-act-rp{font-size:12px;font-weight:800;color:var(--bad);white-space:nowrap;} .hd-act-k{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:6px;font-size:12px;} .hd-btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;} .hd-urai-s{min-width:0 !important;} .hd-jawab p{margin:0 0 8px;font-size:13.5px;line-height:1.5;color:var(--ink);} .hd-dims{margin-bottom:10px;} .hd-urai{min-width:640px;} .hd-pemberat td{background:var(--bad-bg);} .hd-tag{display:inline-block;font-size:10px;font-weight:800;color:var(--bad);border:1px solid var(--bad);border-radius:99px;padding:0 6px;margin-left:4px;} .hd-link{background:none;border:none;padding:0;font:inherit;font-weight:700;color:var(--link);cursor:pointer;text-align:left;} #hdSegToggle{margin-bottom:8px;} .hd-legs{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--ink-soft);margin-top:4px;} .hd-leg i{display:inline-block;width:12px;height:3px;border-radius:2px;margin-right:5px;vertical-align:middle;} .dash-xl{min-width:0;} .dash-prod{min-width:1300px;} .dash-tbl thead th{text-align:center;} .dash-tbl th[rowspan]{text-align:left;} .dash-total td{font-weight:700;background:var(--surface-sunken);} .dash-up{color:var(--ok,#157a3c);} .dash-down{color:var(--bad,#b3261e);} .dash-tbl td:first-child,.dash-tbl th:first-child{position:sticky;left:0;background:var(--surface,#fff);z-index:1;} .dash-total td:first-child{background:var(--surface-sunken);}
   .pill-toggle{display:inline-flex;background:var(--surface-sunken);border-radius:99px;padding:3px;border:1px solid var(--line);}
   .pill-toggle button{border:none;background:none;padding:8px 18px;min-height:36px;border-radius:99px;font-size:13px;font-weight:600;color:var(--ink-soft);cursor:pointer;transition:background .15s ease,color .15s ease;}
   .pill-toggle button.active{background:var(--primary);color:var(--on-primary);box-shadow:var(--shadow-1);}
@@ -1323,6 +1323,10 @@
           <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3M8 11h6M11 8v6"/></svg>
           <span>Diagnosa</span>
         </button>
+        <button class="nav-item nav-hidden" data-view="tindak" id="navTindak">
+          <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          <span>Tindak lanjut</span>
+        </button>
         <button class="nav-item nav-hidden" data-view="ringkasan" id="navRingkasan">
           <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
           <span>Dashboard</span>
@@ -1627,6 +1631,7 @@ function showUpdateBanner(){
     if(VIEW_MODE === 'ringkasan') loadRingkasan();
     else if(VIEW_MODE === 'hariini'){ HEAD_DATA = null; loadHead(renderHariIni); }
     else if(VIEW_MODE === 'diagnosa'){ HEAD_DATA = null; loadHead(renderDiagnosa); }
+    else if(VIEW_MODE === 'tindak' || VIEW_MODE === 'laporan'){ HEAD_DATA = null; loadHead(); }
     else if(VIEW_MODE === 'dashboard') loadData();
     else if(VIEW_MODE === 'nbq' || VIEW_MODE === 'feever' || VIEW_MODE === 'tglbayar') loadData();
     else if(VIEW_MODE === 'insentif') loadInsentif();
@@ -1670,6 +1675,7 @@ function doLogout() {
 document.getElementById('logoutBtn').addEventListener('click', doLogout);
 document.getElementById('navHariIni').addEventListener('click', () => switchView('hariini'));
 document.getElementById('navDiagnosa').addEventListener('click', () => switchView('diagnosa'));
+document.getElementById('navTindak').addEventListener('click', () => switchView('tindak'));
 document.getElementById('navRingkasan').addEventListener('click', () => switchView('ringkasan'));
 document.getElementById('navCMS').addEventListener('click', () => switchView('cms'));
 document.getElementById('navUsulan').addEventListener('click', () => switchView('usulan'));
@@ -1759,6 +1765,7 @@ function onDataLoaded(res){
   navRingkasan.classList.toggle('nav-hidden', !IS_ADMIN);
   document.getElementById('navHariIni').classList.toggle('nav-hidden', !IS_ADMIN);
   document.getElementById('navDiagnosa').classList.toggle('nav-hidden', !IS_ADMIN);
+  document.getElementById('navTindak').classList.toggle('nav-hidden', !IS_ADMIN);
   document.getElementById('navCMS').classList.toggle('nav-hidden', !IS_ADMIN);
   document.getElementById('navUsulan').classList.toggle('nav-hidden', !(IS_ADMIN || IS_DESKCALL || (ROLE_INFO && (ROLE_INFO.role === 'FE' || ROLE_INFO.role === 'MR'))));
   const navNBQ = document.getElementById('navNBQ');
@@ -2156,7 +2163,7 @@ function updateFilterBadge(){
 let VIEW_MODE = 'dashboard';
 let INSENTIF_DATA = null;
 
-const VIEW_TITLES = { hariini: 'Hari ini', diagnosa: 'Diagnosa', ringkasan: 'Dashboard', cms: 'CMS Produktivitas', usulan: 'Usulan DKH', dashboard: 'Beban Awal', targetdaily: 'Target Daily', nbq: 'NBQ', feever: 'FE Ever', tglbayar: 'Tgl Bayar Bulan Lalu', insentif: 'Insentif', dekscall: 'Deskcall', simulasi: 'Simulasi Penawaran', simulasirapor: 'Simulasi Rapor', panduan: 'Panduan KPI' };
+const VIEW_TITLES = { hariini: 'Hari ini', diagnosa: 'Diagnosa', tindak: 'Tindak lanjut', laporan: 'Laporan', ringkasan: 'Dashboard', cms: 'CMS Produktivitas', usulan: 'Usulan DKH', dashboard: 'Beban Awal', targetdaily: 'Target Daily', nbq: 'NBQ', feever: 'FE Ever', tglbayar: 'Tgl Bayar Bulan Lalu', insentif: 'Insentif', dekscall: 'Deskcall', simulasi: 'Simulasi Penawaran', simulasirapor: 'Simulasi Rapor', panduan: 'Panduan KPI' };
 
 function triggerFadeIn(){
   const el = document.getElementById('wrap');
@@ -2171,6 +2178,7 @@ function switchView(view){
   VIEW_MODE = view;
   document.getElementById('navHariIni').classList.toggle('active', view === 'hariini');
   document.getElementById('navDiagnosa').classList.toggle('active', view === 'diagnosa');
+  document.getElementById('navTindak').classList.toggle('active', view === 'tindak');
   document.getElementById('navRingkasan').classList.toggle('active', view === 'ringkasan');
   document.getElementById('navCMS').classList.toggle('active', view === 'cms');
   document.getElementById('navUsulan').classList.toggle('active', view === 'usulan');
@@ -2198,6 +2206,8 @@ function switchView(view){
     if(HEAD_DATA){ renderHariIni(); triggerFadeIn(); } else { loadHead(renderHariIni); }
   } else if(view === 'diagnosa'){
     if(HEAD_DATA){ renderDiagnosa(); triggerFadeIn(); } else { loadHead(renderDiagnosa); }
+  } else if(view === 'tindak'){
+    if(HEAD_DATA){ renderTindak(); triggerFadeIn(); } else { loadHead(); }
   } else if(view === 'ringkasan'){
     if(RINGKASAN_DATA){ renderRingkasanView(); triggerFadeIn(); } else { loadRingkasan(); }
   } else if(view === 'targetdaily'){
@@ -4164,8 +4174,8 @@ const hdJt_ = v => 'Rp ' + (Math.round((Number(v) || 0) / 1e6) || 0).toLocaleStr
 function loadHead(lalu){
   if(HEAD_LOADING) return; HEAD_LOADING = true;
   // Respons bisa datang setelah head pindah menu: render hanya kalau layar head masih dibuka, sesuai menu yang aktif saat itu.
-  const masihHead = () => VIEW_MODE === 'hariini' || VIEW_MODE === 'diagnosa';
-  const gambar = () => { if(VIEW_MODE === 'diagnosa') renderDiagnosa(); else if(VIEW_MODE === 'hariini') renderHariIni(); };
+  const masihHead = () => ['hariini', 'diagnosa', 'tindak', 'laporan'].includes(VIEW_MODE);
+  const gambar = () => { if(VIEW_MODE === 'diagnosa') renderDiagnosa(); else if(VIEW_MODE === 'hariini') renderHariIni(); else if(VIEW_MODE === 'tindak') renderTindak(); else if(VIEW_MODE === 'laporan' && typeof renderLaporan === 'function') renderLaporan(); };
   const salah = (pesan) => { if(!masihHead()) return; document.getElementById('wrap').innerHTML = '<div class="state-box error"><div class="err-icon">' + ic('alert') + '</div>' + esc(pesan) + '<br><br><button class="btn" id="hdCoba">Coba lagi</button></div>'; document.getElementById('hdCoba').onclick = () => { HEAD_DATA = null; loadHead(); }; };
   if(!HEAD_DATA) document.getElementById('wrap').innerHTML = '<div class="skeleton-row"><div class="skel"></div><div class="skel"></div></div><div class="skel tall"></div>';
   fetch('/api/dashboard?mode=head', { headers: { Authorization: 'Bearer ' + ID_TOKEN } })
@@ -4279,6 +4289,30 @@ function salinTeks_(teks, tombol){
   const ok = () => { if(tombol) tombol.textContent = 'Tersalin'; };
   const cadangan = () => { try { const ta = document.createElement('textarea'); ta.value = teks; ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select(); const b = document.execCommand('copy'); document.body.removeChild(ta); if(b) ok(); else if(tombol) tombol.textContent = 'Gagal menyalin'; } catch(e){ if(tombol) tombol.textContent = 'Gagal menyalin'; } };
   if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(teks).then(ok).catch(cadangan); else cadangan();
+}
+
+function renderTindak(){
+  const d = HEAD_DATA, wrap = document.getElementById('wrap'); if(!d || !wrap) return;
+  const t = d.targetDaily;
+  const tindakan = (d.tindakan || []).length ? d.tindakan.map((x, i) => `<article class="hd-act"><div class="hd-act-h"><span class="hd-act-n">${i + 1}</span><b>${esc(x.judul)}</b><span class="hd-act-rp">${hdJt_(x.dampakRp)}</span></div>
+      <p>${esc(x.temuan)}</p><p class="hd-note">${esc(x.alasan)}${x.pic && x.pic !== '-' ? ' · PIC: ' + esc(hdNama_(x.pic)) : ''}</p>
+      ${x.kontrak.length ? `<div class="hd-act-k">${x.kontrak.map(no => `<button type="button" class="hd-link" data-no="${esc(no)}">${esc(no)}</button>`).join('')}</div>` : ''}</article>`).join('')
+    : '<p class="hd-note">Belum ada tindakan: target daily belum dibekukan atau tidak ada kelompok yang menyimpang.</p>';
+  const urutStatus = { MERAH: 2, WASPADA: 1, AMAN: 0 };
+  const tdPic = t && t.adaBaseline ? `<div class="dash-tbl-wrap"><table class="dash-tbl hd-urai-s"><thead><tr><th>PIC</th><th>Poin tuntas</th><th>Kurang</th><th>Status</th></tr></thead><tbody>${t.pic.map(p => {
+      const tuntas = p.poin.filter(q => q.tuntas).length, kurang = p.poin.reduce((s, q) => s + (q.kurangRp || 0), 0);
+      const st = p.poin.reduce((a, q) => urutStatus[q.status] > urutStatus[a] ? q.status : a, 'AMAN');
+      return `<tr><td>${esc(hdNama_(p.co))} <small>${esc(p.role || '')}</small></td><td>${tuntas}/${p.poin.length}</td><td>${hdJt_(kurang)}</td><td>${hdStatus_(st)}</td></tr>`; }).join('')}</tbody></table></div>`
+    : '<p class="hd-note">Target hari ini belum dibekukan.</p>';
+  const kemarin = t ? Object.keys(t.tren).map(co => { const k = t.tren[co].filter(x => x.tanggal < d.tanggal).pop(); return k ? `<li>${esc(hdNama_(co))}: capaian rata-rata <b class="${k.persen >= 100 ? 'hd-good' : 'hd-bad'}">${hdPct_(k.persen)}</b> (${esc(k.tanggal)})</li>` : ''; }).join('') : '';
+  wrap.innerHTML = `<div class="hd">
+    <section class="hd-sec"><h3>Tindakan hari ini</h3>${tindakan}</section>
+    <section class="hd-sec"><h3>Target Daily per PIC</h3>${tdPic}<div class="hd-btns"><button class="btn" data-ke="targetdaily">Buka Target Daily</button><button class="btn" data-ke="diagnosa" data-td="1">Kenapa tidak achieve?</button></div></section>
+    <section class="hd-sec"><h3>DKH dan NBQ</h3><div class="hd-btns"><button class="btn" data-ke="usulan">Buka Usulan DKH</button><button class="btn" data-ke="nbq">Buka NBQ</button></div></section>
+    <section class="hd-sec"><h3>Hasil kemarin</h3>${kemarin ? `<ul class="hd-list">${kemarin}</ul>` : '<p class="hd-note">Riwayat hasil harian belum ada.</p>'}</section>
+  </div>`;
+  wrap.querySelectorAll('.hd-link').forEach(b => b.onclick = () => openPanel(b.dataset.no));
+  wrap.querySelectorAll('[data-ke]').forEach(b => b.onclick = () => { if(b.dataset.td) DIAG_ANGKA = 'td'; switchView(b.dataset.ke); });
 }
 
 const DIAG_DIMS = [['statusNbq','Status approval'],['groupProduct','Group product'],['typeBarang','Type barang'],['co','CO'],['segmen','Segmen'],['mob','MOB'],['statusDkh','Status DKH'],['kontrakBesar','Nominal'],['jatuhTempo','Jatuh tempo'],['janjiBayar','Janji bayar'],['fleet','Fleet']];
@@ -5483,10 +5517,10 @@ document.getElementById('overlay').onclick = document.getElementById('panelClose
   sidebar.querySelectorAll('.nav-item[data-view]').forEach(b => { if(HINT[b.dataset.view]) b.title = HINT[b.dataset.view]; });
   function orderFor(){
     if(IS_DESKCALL) return ['dashboard','usulan','dekscall','tglbayar','simulasi','panduan'];
-    if(IS_ADMIN) return ['hariini','diagnosa','ringkasan','targetdaily','dashboard','usulan','cms','nbq','insentif','feever','tglbayar','simulasirapor','simulasi','panduan'];
+    if(IS_ADMIN) return ['hariini','diagnosa','tindak','ringkasan','targetdaily','dashboard','usulan','cms','nbq','insentif','feever','tglbayar','simulasirapor','simulasi','panduan'];
     return ['dashboard','targetdaily','usulan','nbq','insentif','feever','tglbayar','simulasirapor','simulasi','panduan'];
   }
-  const SHORT = { hariini:'Hari ini', diagnosa:'Diagnosa', usulan:'Usulan', cms:'CMS', ringkasan:'Ringkasan', dashboard:'Beban', targetdaily:'Target', nbq:'NBQ', feever:'FE Ever', tglbayar:'Tgl Bayar', insentif:'Insentif', dekscall:'Deskcall', simulasirapor:'Rapor', simulasi:'Simulasi', panduan:'Panduan' };
+  const SHORT = { hariini:'Hari ini', diagnosa:'Diagnosa', tindak:'Tindak', laporan:'Laporan', usulan:'Usulan', cms:'CMS', ringkasan:'Ringkasan', dashboard:'Beban', targetdaily:'Target', nbq:'NBQ', feever:'FE Ever', tglbayar:'Tgl Bayar', insentif:'Insentif', dekscall:'Deskcall', simulasirapor:'Rapor', simulasi:'Simulasi', panduan:'Panduan' };
   const MORE_ICON = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/></svg>';
 
   function items(){

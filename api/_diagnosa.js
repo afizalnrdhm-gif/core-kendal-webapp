@@ -135,7 +135,7 @@ function mingguanPerSegmen(rows, hariBayarFn) {
 }
 
 const fmt2 = v => (Math.round(v * 100) / 100).toFixed(2).replace('.', ',');
-const juta = v => 'Rp ' + Math.round(v / 1e6).toLocaleString('id-ID') + ' jt';
+const juta = v => 'Rp ' + (Math.round((Number(v) || 0) / 1e6) || 0).toLocaleString('id-ID') + ' jt';
 
 // 2-4 kalimat jawaban dari ringkasan dan tabel penguraian per dimensi.
 function kalimat(judul, rk, uraiPerDimensi) {
