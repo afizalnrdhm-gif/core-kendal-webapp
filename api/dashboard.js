@@ -63,7 +63,10 @@ function susunHead(o) {
   const konteks = { dkh };
 
   // Riwayat: snapshot terakhir sebelum hari ini
-  const tglLalu = Object.keys(logHarian || {}).filter(t => t < tanggal).sort().pop();
+  // Snapshot tanggal T berisi data H-1 (T-1). Pembanding hanya snapshot yang bulan datanya sama dengan data sekarang,
+  // supaya awal bulan tidak dibandingkan dengan penutupan bulan lalu (flow sudah di-reset).
+  const bulanData = t => { const d = new Date(t + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() - 1); return d.toISOString().slice(0, 7); };
+  const tglLalu = Object.keys(logHarian || {}).filter(t => t < tanggal && bulanData(t) === bulanData(tanggal)).sort().pop();
   const kemarin = tglLalu ? ((logHarian[tglLalu] || {}).CABANG || {}) : null;
   const riwayatCukup = !!(kemarin && Object.keys(kemarin).length);
 
@@ -92,6 +95,9 @@ function susunHead(o) {
   const bayarIni = tanggalBayarLPC(lpc, hariIni.bulan);
   const hariIniFn = r => bayarIni.has(String(r['NO KONTRAK']).trim()) ? bayarIni.get(String(r['NO KONTRAK']).trim()) : null;
   const hariLaluFn = r => { const k = kaPorNo.get(String(r['NO KONTRAK']).trim()); return k ? D.hariDari(k['TGL BYR M1']) : null; };
+  // Minggu yang belum terjadi di bulan berjalan = null (garis berhenti di minggu berjalan).
+  const potong = arr => arr.map((v, i) => i + 1 > minggu ? null : v);
+  const potongSeg = o => { const x = {}; Object.keys(o).forEach(k => { x[k] = potong(o[k]); }); return x; };
   const diagnosa = {}, kandidatPenyebab = [];
   Object.keys(D.ANGKA).forEach(angka => {
     const p = D.populasi(master, angka, { fleet: false });
@@ -104,8 +110,8 @@ function susunHead(o) {
     const kal = D.kalimat(D.ANGKA[angka].judul, rk, urai);
     diagnosa[angka] = {
       judul: D.ANGKA[angka].judul, ringkas: rk, kalimat: kal,
-      mingguan: { ini: D.mingguan(p.rows, hariIniFn), lalu: D.mingguan(p.rows, hariLaluFn) },
-      segmen: { ini: D.mingguanPerSegmen(p.rows, hariIniFn), lalu: D.mingguanPerSegmen(p.rows, hariLaluFn) },
+      mingguan: { ini: potong(D.mingguan(p.rows, hariIniFn)), lalu: D.mingguan(p.rows, hariLaluFn) },
+      segmen: { ini: potongSeg(D.mingguanPerSegmen(p.rows, hariIniFn)), lalu: D.mingguanPerSegmen(p.rows, hariLaluFn) },
       urai, irisan: ir.slice(0, 10), teratas: D.kontrakTeratas(p.rows, p.masalah, 20)
     };
     let terbesar = 0;

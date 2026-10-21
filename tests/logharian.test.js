@@ -69,3 +69,32 @@ test('bacaLogHarian menyusun peta tanggal > lingkup > kpi', async () => {
     assert.deepStrictEqual(p['2026-10-20'].CABANG['FLOW NOOD'], { amt: 100, pct: 46 });
   } finally { global.fetch = lama; }
 });
+
+test('tulisLogHarian: tulis isi baru dulu; bila gagal, tab tidak dikosongkan', async () => {
+  const lama = global.fetch, panggil = [];
+  global.fetch = async (url, init) => {
+    panggil.push({ url: decodeURIComponent(url), method: init && init.method });
+    if (!init || !init.method) return { ok: true, json: async () => ({ values: [HEADER_LOG_HARIAN, ['2026-10-20', 'CABANG', 'ENR', 9, 9]] }) };
+    if (init.method === 'PUT') return { ok: false, json: async () => ({ error: { code: 429 } }) };
+    return { ok: true, json: async () => ({}) };
+  };
+  try {
+    await assert.rejects(tulisLogHarian('t', 's', [['2026-10-21', 'CABANG', 'ENR', 5, 5]]));
+    assert.ok(!panggil.some(p => p.url.includes(':clear')), 'tidak boleh clear sebelum PUT berhasil');
+  } finally { global.fetch = lama; }
+});
+
+test('tulisLogHarian: sisa baris lama di bawah isi baru dibersihkan setelah PUT', async () => {
+  const lama = global.fetch, panggil = [];
+  global.fetch = async (url, init) => {
+    panggil.push({ url: decodeURIComponent(url), method: init && init.method });
+    if (!init || !init.method) return { ok: true, json: async () => ({ values: [HEADER_LOG_HARIAN, ['2026-10-21', 'CABANG', 'ENR', 1, 1], ['2026-10-21', 'CABANG', '30+', 1, 1], ['2026-10-20', 'CABANG', 'ENR', 9, 9]] }) };
+    return { ok: true, json: async () => ({}) };
+  };
+  try {
+    await tulisLogHarian('t', 's', [['2026-10-21', 'CABANG', 'ENR', 5, 5]]);
+    const iPut = panggil.findIndex(p => p.method === 'PUT'), iClr = panggil.findIndex(p => p.url.includes(':clear'));
+    assert.ok(iPut > -1 && iClr > iPut, 'clear setelah PUT');
+    assert.ok(panggil[iClr].url.includes('LOG_HARIAN!A4:E'), panggil[iClr].url);
+  } finally { global.fetch = lama; }
+});

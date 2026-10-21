@@ -48,10 +48,13 @@ async function tulisLogHarian(token, sheetId, baris) {
   const tanggalBaru = new Set(baris.map(b => String(b[0])));
   const sisa = isi.slice(1).filter(r => r && r.length && !tanggalBaru.has(String(r[0])));
   const nilai = [HEADER_LOG_HARIAN, ...sisa, ...baris];
-  const clr = await req_(API + sheetId + '/values/' + encodeURIComponent(TAB) + ':clear', token, { method: 'POST', body: '{}' });
-  if (!clr.ok) throw new Error('Gagal mengosongkan ' + TAB + ': ' + JSON.stringify(clr.json));
+  // Tulis isi baru dulu (menimpa dari A1), baru bersihkan sisa baris lama di bawahnya. Bila PUT gagal, data lama tetap utuh.
   const upd = await req_(API + sheetId + '/values/' + encodeURIComponent(TAB + '!A1') + '?valueInputOption=RAW', token, { method: 'PUT', body: JSON.stringify({ values: nilai }) });
   if (!upd.ok) throw new Error('Gagal menulis ' + TAB + ': ' + JSON.stringify(upd.json));
+  if (isi.length > nilai.length) {
+    const clr = await req_(API + sheetId + '/values/' + encodeURIComponent(TAB + '!A' + (nilai.length + 1) + ':E') + ':clear', token, { method: 'POST', body: '{}' });
+    if (!clr.ok) throw new Error('Gagal membersihkan sisa ' + TAB + ': ' + JSON.stringify(clr.json));
+  }
   return { ditulis: baris.length };
 }
 

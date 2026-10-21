@@ -15,7 +15,7 @@ test('susunHead: diagnosa NOOD menguraikan status approval', () => {
   const h = susunHead(Object.assign({ logHarian: {} }, dasar));
   assert.strictEqual(h.tanggal, '2026-10-21');
   assert.strictEqual(h.diagnosa.nood.urai.statusNbq[0].nilai, 'APPEAL');
-  assert.deepStrictEqual(h.diagnosa.nood.mingguan.ini, [16.67, 16.67, 33.33, 33.33]);
+  assert.deepStrictEqual(h.diagnosa.nood.mingguan.ini, [16.67, 16.67, 33.33, null]);
   assert.deepStrictEqual(h.diagnosa.nood.mingguan.lalu, [16.67, 33.33, 50, 50]);
   assert.ok(h.diagnosa.nood.kalimat.length >= 2);
   assert.strictEqual(h.kartu.length, 6);
@@ -46,4 +46,17 @@ test('susunHead: kerja dan tim', () => {
   assert.strictEqual(h.tim[0].penyelesaianPct, 50);
   assert.strictEqual(h.tim[0].targetPct, 75);
   assert.strictEqual(h.tim[0].janjiHariIni, 1);
+});
+
+test('susunHead: snapshot bulan lalu tidak dipakai sebagai pembanding "kemarin"', () => {
+  const h = susunHead(Object.assign({}, dasar, { logHarian: { '2026-09-30': { CABANG: { 'FLOW NOOD': { amt: 1, pct: 5 } } } } }));
+  assert.strictEqual(h.riwayatCukup, false);
+  assert.deepStrictEqual(h.berubah, []);
+});
+
+test('susunHead: minggu yang belum terjadi bernilai null di garis bulan ini', () => {
+  const h = susunHead(Object.assign({ logHarian: {} }, dasar, { minggu: 2 }));
+  assert.deepStrictEqual(h.diagnosa.nood.mingguan.ini, [16.67, 16.67, null, null]);
+  assert.strictEqual(h.diagnosa.nood.segmen.ini.KARYAWAN[2], null);
+  assert.strictEqual(h.diagnosa.nood.mingguan.lalu[3], 50, 'bulan lalu tetap lengkap');
 });

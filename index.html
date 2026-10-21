@@ -4162,15 +4162,19 @@ const hdPct_ = v => (v == null || isNaN(v)) ? '-' : fmtDec(v, 2) + '%';
 const hdJt_ = v => 'Rp ' + Math.round((Number(v) || 0) / 1e6).toLocaleString('id-ID') + ' jt';
 function loadHead(lalu){
   if(HEAD_LOADING) return; HEAD_LOADING = true;
+  // Respons bisa datang setelah head pindah menu: render hanya kalau layar head masih dibuka, sesuai menu yang aktif saat itu.
+  const masihHead = () => VIEW_MODE === 'hariini' || VIEW_MODE === 'diagnosa';
+  const gambar = () => { if(VIEW_MODE === 'diagnosa') renderDiagnosa(); else if(VIEW_MODE === 'hariini') renderHariIni(); };
+  const salah = (pesan) => { if(!masihHead()) return; document.getElementById('wrap').innerHTML = '<div class="state-box error"><div class="err-icon">' + ic('alert') + '</div>' + esc(pesan) + '<br><br><button class="btn" id="hdCoba">Coba lagi</button></div>'; document.getElementById('hdCoba').onclick = () => { HEAD_DATA = null; loadHead(); }; };
   if(!HEAD_DATA) document.getElementById('wrap').innerHTML = '<div class="skeleton-row"><div class="skel"></div><div class="skel"></div></div><div class="skel tall"></div>';
   fetch('/api/dashboard?mode=head', { headers: { Authorization: 'Bearer ' + ID_TOKEN } })
     .then(r => r.json().then(b => ({ ok: r.ok, b })))
     .then(({ ok, b }) => {
       HEAD_LOADING = false;
-      if(!ok){ document.getElementById('wrap').innerHTML = '<div class="state-box error"><div class="err-icon">' + ic('alert') + '</div>' + esc(b.error || 'Gagal memuat data head.') + '<br><br><button class="btn" onclick="HEAD_DATA=null;loadHead(' + (lalu ? lalu.name : 'renderHariIni') + ')">Coba lagi</button></div>'; return; }
-      HEAD_DATA = b; if(lalu) lalu(); triggerFadeIn();
+      if(!ok){ salah(b.error || 'Gagal memuat data head.'); return; }
+      HEAD_DATA = b; if(masihHead()){ gambar(); triggerFadeIn(); }
     })
-    .catch(err => { HEAD_LOADING = false; document.getElementById('wrap').innerHTML = '<div class="state-box error"><div class="err-icon">' + ic('alert') + '</div>' + esc(pesanErr(err)) + '</div>'; });
+    .catch(err => { HEAD_LOADING = false; salah(pesanErr(err)); });
 }
 
 // Grafik garis W1-W4. seri: [{label, warna, nilai:[4], putus}]
@@ -4184,9 +4188,10 @@ function garisMingguan_(el, seri, opsi){
   for(let v = 0; v <= top; v += top / 4){ g += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/><text x="${L - 6}" y="${y(v) + 4}" text-anchor="end" class="hd-ax">${Math.round(v)}%</text>`; }
   ['W1','W2','W3','W4'].forEach((w, i) => { g += `<text x="${x(i)}" y="${H - 8}" text-anchor="middle" class="hd-ax">${w}</text>`; });
   seri.forEach(s => {
-    const pts = s.nilai.map((v, i) => [x(i), y(v || 0)]);
-    g += `<polyline fill="none" style="stroke:${s.warna}" stroke-width="2.5" ${s.putus ? 'stroke-dasharray="6 5"' : ''} points="${pts.map(p => p.join(',')).join(' ')}"/>`;
-    g += pts.map((p, i) => `<circle cx="${p[0]}" cy="${p[1]}" r="3.5" style="fill:${s.warna}"><title>${esc(s.label)} W${i + 1}: ${hdPct_(s.nilai[i])}</title></circle>`).join('');
+    // Nilai null (minggu yang belum terjadi) tidak digambar.
+    const pts = s.nilai.map((v, i) => v == null ? null : [x(i), y(v), i]).filter(Boolean);
+    g += `<polyline fill="none" style="stroke:${s.warna}" stroke-width="2.5" ${s.putus ? 'stroke-dasharray="6 5"' : ''} points="${pts.map(p => p[0] + ',' + p[1]).join(' ')}"/>`;
+    g += pts.map(p => `<circle cx="${p[0]}" cy="${p[1]}" r="3.5" style="fill:${s.warna}"><title>${esc(s.label)} W${p[2] + 1}: ${hdPct_(s.nilai[p[2]])}</title></circle>`).join('');
   });
   const leg = seri.map(s => `<span class="hd-leg"><i style="background:${s.warna}"></i>${esc(s.label)}</span>`).join('');
   el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opsi.aria || 'Grafik penyelesaian mingguan')}">${g}</svg><div class="hd-legs">${leg}</div>`;
