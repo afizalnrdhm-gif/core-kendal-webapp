@@ -293,7 +293,7 @@
   .hd-cause-t{font-weight:800;font-size:12px;color:var(--bad);} .hd-cause-go{font-size:12px;font-weight:700;color:var(--link);}
   .hd-tim{min-width:0 !important;} .hd-tim td:first-child{white-space:normal !important;} .hd-bad{color:var(--bad);font-weight:700;} .hd-good{color:var(--good);font-weight:700;}
   .hd-kerja{display:grid;grid-template-columns:1fr 1fr;gap:10px;} .hd-kerja div{background:var(--surface-alt);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:2px;} .hd-kerja b{font-size:22px;color:var(--ink);} .hd-kerja span{font-size:12px;color:var(--ink-soft);}
-  .hd-ax{font-size:11px;fill:var(--ink-soft);} .hd-legs{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--ink-soft);margin-top:4px;} .hd-leg i{display:inline-block;width:12px;height:3px;border-radius:2px;margin-right:5px;vertical-align:middle;} .dash-xl{min-width:0;} .dash-prod{min-width:1300px;} .dash-tbl thead th{text-align:center;} .dash-tbl th[rowspan]{text-align:left;} .dash-total td{font-weight:700;background:var(--surface-sunken);} .dash-up{color:var(--ok,#157a3c);} .dash-down{color:var(--bad,#b3261e);} .dash-tbl td:first-child,.dash-tbl th:first-child{position:sticky;left:0;background:var(--surface,#fff);z-index:1;} .dash-total td:first-child{background:var(--surface-sunken);}
+  .hd-ax{font-size:11px;fill:var(--ink-soft);} .hd-jawab p{margin:0 0 8px;font-size:13.5px;line-height:1.5;color:var(--ink);} .hd-dims{margin-bottom:10px;} .hd-urai{min-width:640px;} .hd-pemberat td{background:var(--bad-bg);} .hd-tag{display:inline-block;font-size:10px;font-weight:800;color:var(--bad);border:1px solid var(--bad);border-radius:99px;padding:0 6px;margin-left:4px;} .hd-link{background:none;border:none;padding:0;font:inherit;font-weight:700;color:var(--link);cursor:pointer;text-align:left;} #hdSegToggle{margin-bottom:8px;} .hd-legs{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--ink-soft);margin-top:4px;} .hd-leg i{display:inline-block;width:12px;height:3px;border-radius:2px;margin-right:5px;vertical-align:middle;} .dash-xl{min-width:0;} .dash-prod{min-width:1300px;} .dash-tbl thead th{text-align:center;} .dash-tbl th[rowspan]{text-align:left;} .dash-total td{font-weight:700;background:var(--surface-sunken);} .dash-up{color:var(--ok,#157a3c);} .dash-down{color:var(--bad,#b3261e);} .dash-tbl td:first-child,.dash-tbl th:first-child{position:sticky;left:0;background:var(--surface,#fff);z-index:1;} .dash-total td:first-child{background:var(--surface-sunken);}
   .pill-toggle{display:inline-flex;background:var(--surface-sunken);border-radius:99px;padding:3px;border:1px solid var(--line);}
   .pill-toggle button{border:none;background:none;padding:8px 18px;min-height:36px;border-radius:99px;font-size:13px;font-weight:600;color:var(--ink-soft);cursor:pointer;transition:background .15s ease,color .15s ease;}
   .pill-toggle button.active{background:var(--primary);color:var(--on-primary);box-shadow:var(--shadow-1);}
@@ -1318,6 +1318,10 @@
           <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
           <span>Hari ini</span>
         </button>
+        <button class="nav-item nav-hidden" data-view="diagnosa" id="navDiagnosa">
+          <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3M8 11h6M11 8v6"/></svg>
+          <span>Diagnosa</span>
+        </button>
         <button class="nav-item nav-hidden" data-view="ringkasan" id="navRingkasan">
           <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
           <span>Dashboard</span>
@@ -1621,6 +1625,7 @@ function showUpdateBanner(){
     banner.remove();
     if(VIEW_MODE === 'ringkasan') loadRingkasan();
     else if(VIEW_MODE === 'hariini'){ HEAD_DATA = null; loadHead(renderHariIni); }
+    else if(VIEW_MODE === 'diagnosa'){ HEAD_DATA = null; loadHead(renderDiagnosa); }
     else if(VIEW_MODE === 'dashboard') loadData();
     else if(VIEW_MODE === 'nbq' || VIEW_MODE === 'feever' || VIEW_MODE === 'tglbayar') loadData();
     else if(VIEW_MODE === 'insentif') loadInsentif();
@@ -1663,6 +1668,7 @@ function doLogout() {
 }
 document.getElementById('logoutBtn').addEventListener('click', doLogout);
 document.getElementById('navHariIni').addEventListener('click', () => switchView('hariini'));
+document.getElementById('navDiagnosa').addEventListener('click', () => switchView('diagnosa'));
 document.getElementById('navRingkasan').addEventListener('click', () => switchView('ringkasan'));
 document.getElementById('navCMS').addEventListener('click', () => switchView('cms'));
 document.getElementById('navUsulan').addEventListener('click', () => switchView('usulan'));
@@ -1751,6 +1757,7 @@ function onDataLoaded(res){
   const navRingkasan = document.getElementById('navRingkasan');
   navRingkasan.classList.toggle('nav-hidden', !IS_ADMIN);
   document.getElementById('navHariIni').classList.toggle('nav-hidden', !IS_ADMIN);
+  document.getElementById('navDiagnosa').classList.toggle('nav-hidden', !IS_ADMIN);
   document.getElementById('navCMS').classList.toggle('nav-hidden', !IS_ADMIN);
   document.getElementById('navUsulan').classList.toggle('nav-hidden', !(IS_ADMIN || IS_DESKCALL || (ROLE_INFO && (ROLE_INFO.role === 'FE' || ROLE_INFO.role === 'MR'))));
   const navNBQ = document.getElementById('navNBQ');
@@ -2162,6 +2169,7 @@ function switchView(view){
   if(view === VIEW_MODE){ closeSidebarDrawer(); return; }
   VIEW_MODE = view;
   document.getElementById('navHariIni').classList.toggle('active', view === 'hariini');
+  document.getElementById('navDiagnosa').classList.toggle('active', view === 'diagnosa');
   document.getElementById('navRingkasan').classList.toggle('active', view === 'ringkasan');
   document.getElementById('navCMS').classList.toggle('active', view === 'cms');
   document.getElementById('navUsulan').classList.toggle('active', view === 'usulan');
@@ -2187,6 +2195,8 @@ function switchView(view){
     triggerFadeIn();
   } else if(view === 'hariini'){
     if(HEAD_DATA){ renderHariIni(); triggerFadeIn(); } else { loadHead(renderHariIni); }
+  } else if(view === 'diagnosa'){
+    if(HEAD_DATA){ renderDiagnosa(); triggerFadeIn(); } else { loadHead(renderDiagnosa); }
   } else if(view === 'ringkasan'){
     if(RINGKASAN_DATA){ renderRingkasanView(); triggerFadeIn(); } else { loadRingkasan(); }
   } else if(view === 'targetdaily'){
@@ -4166,7 +4176,7 @@ function loadHead(lalu){
 // Grafik garis W1-W4. seri: [{label, warna, nilai:[4], putus}]
 function garisMingguan_(el, seri, opsi){
   if(!el) return; opsi = opsi || {};
-  const W = 640, H = 230, L = 44, R = 16, T = 12, B = 30;
+  const W = 360, H = 200, L = 38, R = 12, T = 10, B = 26;
   const semua = []; seri.forEach(s => s.nilai.forEach(v => { if(v != null) semua.push(v); }));
   const top = Math.max(10, Math.ceil(Math.max.apply(null, semua.concat([0])) / 10) * 10);
   const x = i => L + (W - L - R) * i / 3, y = v => T + (H - T - B) * (1 - v / top);
@@ -4175,8 +4185,8 @@ function garisMingguan_(el, seri, opsi){
   ['W1','W2','W3','W4'].forEach((w, i) => { g += `<text x="${x(i)}" y="${H - 8}" text-anchor="middle" class="hd-ax">${w}</text>`; });
   seri.forEach(s => {
     const pts = s.nilai.map((v, i) => [x(i), y(v || 0)]);
-    g += `<polyline fill="none" stroke="${s.warna}" stroke-width="2.5" ${s.putus ? 'stroke-dasharray="6 5"' : ''} points="${pts.map(p => p.join(',')).join(' ')}"/>`;
-    g += pts.map((p, i) => `<circle cx="${p[0]}" cy="${p[1]}" r="3.5" fill="${s.warna}"><title>${esc(s.label)} W${i + 1}: ${hdPct_(s.nilai[i])}</title></circle>`).join('');
+    g += `<polyline fill="none" style="stroke:${s.warna}" stroke-width="2.5" ${s.putus ? 'stroke-dasharray="6 5"' : ''} points="${pts.map(p => p.join(',')).join(' ')}"/>`;
+    g += pts.map((p, i) => `<circle cx="${p[0]}" cy="${p[1]}" r="3.5" style="fill:${s.warna}"><title>${esc(s.label)} W${i + 1}: ${hdPct_(s.nilai[i])}</title></circle>`).join('');
   });
   const leg = seri.map(s => `<span class="hd-leg"><i style="background:${s.warna}"></i>${esc(s.label)}</span>`).join('');
   el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opsi.aria || 'Grafik penyelesaian mingguan')}">${g}</svg><div class="hd-legs">${leg}</div>`;
@@ -4209,6 +4219,46 @@ function renderHariIni(){
   </div>`;
   document.getElementById('hdRefresh').onclick = () => { HEAD_DATA = null; loadHead(renderHariIni); };
   wrap.querySelectorAll('.hd-cause').forEach(b => b.onclick = () => { DIAG_ANGKA = b.dataset.a; if(document.getElementById('navDiagnosa')) switchView('diagnosa'); });
+}
+
+const DIAG_DIMS = [['statusNbq','Status approval'],['groupProduct','Group product'],['typeBarang','Type barang'],['co','CO'],['segmen','Segmen'],['mob','MOB'],['statusDkh','Status DKH'],['kontrakBesar','Nominal'],['jatuhTempo','Jatuh tempo'],['janjiBayar','Janji bayar'],['fleet','Fleet']];
+const DIAG_MASALAH = { btc130: 'belum kembali ke NOOD', btc3160: 'belum kembali ke NOOD' };
+function diagIrisan_(v){ return String(v).split(' × ').map(x => (CO_META[x] || {}).short || x).join(' × '); }
+function diagNilai_(dim, v){ return dim === 'co' ? ((CO_META[v] || {}).short || v) : v; }
+function diagTabel_(list, dim){
+  if(!list || !list.length) return '<p class="hd-note">Belum ada data.</p>';
+  return `<div class="dash-tbl-wrap"><table class="dash-tbl hd-urai"><thead><tr><th>${dim ? 'Nilai' : 'Irisan'}</th><th>Kontrak</th><th>Beban</th><th>Porsi beban</th><th>Rate</th><th>Porsi masalah</th><th>Indeks</th><th>Pengaruh</th></tr></thead><tbody>${list.map(u => `<tr class="${u.pemberat ? 'hd-pemberat' : ''}"><td>${esc(dim ? diagNilai_(dim, u.nilai) : diagIrisan_(u.nilai))}${u.pemberat ? ' <span class="hd-tag">pemberat</span>' : ''}</td><td>${u.kontrak}</td><td>${hdJt_(u.beban)}</td><td>${hdPct_(u.porsiBeban)}</td><td>${hdPct_(u.rate)}</td><td>${hdPct_(u.porsiMasalah)}</td><td>${fmtDec(u.indeks, 2)}</td><td class="${u.pengaruh > 0 ? 'hd-bad' : 'hd-good'}">${u.pengaruh > 0 ? '+' : ''}${fmtDec(u.pengaruh, 2)} poin</td></tr>`).join('')}</tbody></table></div>`;
+}
+function renderDiagnosa(){
+  const d = HEAD_DATA, wrap = document.getElementById('wrap'); if(!d || !wrap) return;
+  if(!d.diagnosa[DIAG_ANGKA]) DIAG_ANGKA = 'nood';
+  const g = d.diagnosa[DIAG_ANGKA], mas = DIAG_MASALAH[DIAG_ANGKA] || 'flow (BUCKET UPDATE lebih buruk dari bucket awal)';
+  const chips = Object.keys(d.diagnosa).map(a => `<button type="button" role="tab" data-a="${a}" class="${a === DIAG_ANGKA ? 'on' : ''}" aria-selected="${a === DIAG_ANGKA}">${esc(d.diagnosa[a].judul)}</button>`).join('');
+  const dims = DIAG_DIMS.map(([k, l]) => `<button type="button" role="tab" data-d="${k}" class="${k === DIAG_DIM ? 'on' : ''}" aria-selected="${k === DIAG_DIM}">${l}</button>`).join('');
+  const teratas = g.teratas.length ? `<div class="dash-tbl-wrap"><table class="dash-tbl hd-urai"><thead><tr><th>Konsumen</th><th>CO</th><th>SIPOK</th><th>Awal → Update</th><th>Status approval</th><th>Produk</th></tr></thead><tbody>${g.teratas.map(t => `<tr><td><button type="button" class="hd-link" data-no="${esc(t.noKontrak)}">${esc(t.nama || t.noKontrak)}</button><br><small>${esc(t.noKontrak)}</small></td><td>${esc((CO_META[t.co] || {}).short || t.co)}</td><td>${hdJt_(t.sipok)}</td><td>${esc(fmtBucket(t.bucketAwal))} → ${esc(fmtBucket(t.bucketUpdate))}</td><td>${esc(t.statusNbq)}</td><td>${esc(t.groupProduct)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="hd-note">Tidak ada kontrak bermasalah.</p>';
+  wrap.innerHTML = `<div class="hd">
+    <div class="dash-tabs" role="tablist" aria-label="Angka yang ditanyakan">${chips}</div>
+    <section class="hd-sec hd-jawab"><h3>Jawaban singkat</h3>${g.kalimat.map(k => `<p>${esc(k)}</p>`).join('')}<button class="btn" id="hdSalin">Salin jawaban</button></section>
+    <section class="hd-sec"><h3>Penyelesaian mingguan: bulan ini vs bulan lalu</h3><div id="hdGrafik1"></div></section>
+    <section class="hd-sec"><h3>Per segmen pekerjaan</h3><div class="pill-toggle" id="hdSegToggle"><button type="button" data-s="ini" class="${DIAG_SEG === 'ini' ? 'active' : ''}">Bulan ini</button><button type="button" data-s="lalu" class="${DIAG_SEG === 'lalu' ? 'active' : ''}">Bulan lalu</button></div><div id="hdGrafik2"></div>
+      <p class="hd-note">Berbasis tanggal bayar (bulan lalu: TGL BYR M1, bulan ini: LPC), jadi bisa beda tipis dari penyelesaian resmi.</p></section>
+    <section class="hd-sec"><h3>Penguraian penyebab</h3><div class="dash-tabs hd-dims" role="tablist" aria-label="Dimensi">${dims}</div>${diagTabel_(g.urai[DIAG_DIM], DIAG_DIM)}
+      <p class="hd-note">Masalah = ${esc(mas)}. Indeks = porsi masalah ÷ porsi beban (di atas 1 berarti menyumbang lebih dari bagiannya). Pengaruh = berapa poin penyelesaian naik bila kelompok itu setara rata-rata cabang.</p></section>
+    <section class="hd-sec"><h3>Irisan dua dimensi</h3>${diagTabel_(g.irisan, null)}</section>
+    <section class="hd-sec"><h3>Kontrak penyumbang terbesar</h3>${teratas}</section>
+  </div>`;
+  const ini = g.mingguan.ini, lalu = g.mingguan.lalu;
+  garisMingguan_(document.getElementById('hdGrafik1'), [{ label: 'Bulan ini', warna: 'var(--navy-lighter)', nilai: ini }, { label: 'Bulan lalu', warna: 'var(--ink-soft)', nilai: lalu, putus: true }], { aria: 'Penyelesaian mingguan bulan ini dan bulan lalu' });
+  const sg = g.segmen[DIAG_SEG] || {};
+  garisMingguan_(document.getElementById('hdGrafik2'), [['KARYAWAN', 'Karyawan', '#2a78d6'], ['WIRASWASTA', 'Wiraswasta', '#eb6834'], ['SERABUTAN', 'Serabutan', '#1baf7a']].map(([k, l, c]) => ({ label: l, warna: c, nilai: sg[k] || [0, 0, 0, 0] })), { aria: 'Penyelesaian mingguan per segmen pekerjaan' });
+  wrap.querySelectorAll('[data-a]').forEach(b => b.onclick = () => { DIAG_ANGKA = b.dataset.a; renderDiagnosa(); });
+  wrap.querySelectorAll('[data-d]').forEach(b => b.onclick = () => { DIAG_DIM = b.dataset.d; renderDiagnosa(); });
+  wrap.querySelectorAll('#hdSegToggle button').forEach(b => b.onclick = () => { DIAG_SEG = b.dataset.s; renderDiagnosa(); });
+  wrap.querySelectorAll('.hd-link').forEach(b => b.onclick = () => openPanel(b.dataset.no));
+  document.getElementById('hdSalin').onclick = () => {
+    const t = g.kalimat.join('\n');
+    (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => { document.getElementById('hdSalin').textContent = 'Tersalin'; }).catch(() => { document.getElementById('hdSalin').textContent = 'Gagal menyalin'; });
+  };
 }
 
 let DASH_TAB = 'actual', DASH_SET = 'NOOD', DASH_FLEET = false;
@@ -5374,7 +5424,7 @@ document.getElementById('overlay').onclick = document.getElementById('panelClose
   sidebar.querySelectorAll('.nav-item[data-view]').forEach(b => { if(HINT[b.dataset.view]) b.title = HINT[b.dataset.view]; });
   function orderFor(){
     if(IS_DESKCALL) return ['dashboard','usulan','dekscall','tglbayar','simulasi','panduan'];
-    if(IS_ADMIN) return ['hariini','ringkasan','targetdaily','dashboard','usulan','cms','nbq','insentif','feever','tglbayar','simulasirapor','simulasi','panduan'];
+    if(IS_ADMIN) return ['hariini','diagnosa','ringkasan','targetdaily','dashboard','usulan','cms','nbq','insentif','feever','tglbayar','simulasirapor','simulasi','panduan'];
     return ['dashboard','targetdaily','usulan','nbq','insentif','feever','tglbayar','simulasirapor','simulasi','panduan'];
   }
   const SHORT = { hariini:'Hari ini', diagnosa:'Diagnosa', usulan:'Usulan', cms:'CMS', ringkasan:'Ringkasan', dashboard:'Beban', targetdaily:'Target', nbq:'NBQ', feever:'FE Ever', tglbayar:'Tgl Bayar', insentif:'Insentif', dekscall:'Deskcall', simulasirapor:'Rapor', simulasi:'Simulasi', panduan:'Panduan' };
