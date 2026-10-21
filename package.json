@@ -7,6 +7,6 @@
     "sharp": "^0.35.4"
   },
   "scripts": {
-    "test": "node --test tests/cms.test.js tests/target-daily.test.js tests/usulan-dkh.test.js tests/segmen.test.js tests/info-kontrak.test.js"
+    "test": "node --test tests/cms.test.js tests/target-daily.test.js tests/usulan-dkh.test.js tests/segmen.test.js tests/info-kontrak.test.js tests/kpi.test.js tests/logharian.test.js tests/diagnosa.test.js tests/head.test.js"
   }
 }
