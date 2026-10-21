@@ -26,6 +26,130 @@ function isSudahBayar(m){
 const BIGCUST_THRESHOLD = 100000000;
 const BIGCUST_BUCKETS = ['NOOD', 'P001_030', 'P031_060'];
 
+// ============================================================
+// MODE HEAD (?mode=head): data layar "Hari ini" dan "Diagnosa" untuk head. Spec: docs/superpowers/specs/2026-10-21-tampilan-head-design.md
+// ============================================================
+const { flowLebar, btcKe } = require('./_kpi');
+const D = require('./_diagnosa');
+const { tanggalBayarLPC } = require('./_sheet');
+const { bacaSheet } = require('./_cachesheet');
+const { bacaLogHarian } = require('./_logharian');
+const { segmenGabung, petaKA: petaKASegmen } = require('./_segmen');
+const INS = require('./insentif');
+
+const AMBANG_BERUBAH = 2;
+const PASANGAN_IRISAN = [['groupProduct', 'statusNbq'], ['co', 'statusNbq'], ['co', 'groupProduct'], ['segmen', 'statusNbq'], ['typeBarang', 'statusNbq'], ['co', 'segmen']];
+const r2h = v => Math.round((Number(v) || 0) * 100) / 100;
+const pad2 = n => String(n).padStart(2, '0');
+
+function batasCabang_(kunci, awalan) {
+  const p = (INS.TD_PARAMETER.BCH || []).find(x => x.kunci === kunci);
+  return p ? `batas akhir bulan ${p.arah === 'naik' ? '≥' : '≤'}${String(p.persen).replace('.', ',')}%` : '';
+}
+
+function susunHead(o) {
+  const { master, ka, lpc, dkhAssign, logHarian, config, hariIni, minggu } = o;
+  const tanggal = `${hariIni.tahun}-${pad2(hariIni.bulan)}-${pad2(hariIni.hari)}`;
+  const bulanIni = `${hariIni.tahun}-${pad2(hariIni.bulan)}`;
+
+  // DKH bulan ini (ASSIGN/DIBUAT)
+  const dkh = new Set();
+  const dh = (dkhAssign && dkhAssign[0] || []).map(x => String(x || '').trim().toUpperCase());
+  const iT = dh.indexOf('UNTUK_TANGGAL'), iN = dh.indexOf('NO_KONTRAK'), iS = dh.indexOf('STATUS');
+  (dkhAssign || []).slice(1).forEach(r => {
+    const st = String(r[iS] || '').trim().toUpperCase();
+    if ((st === 'ASSIGN' || st === 'DIBUAT') && String(r[iT] || '').startsWith(bulanIni)) dkh.add(String(r[iN] || '').trim());
+  });
+  const konteks = { dkh };
+
+  // Riwayat: snapshot terakhir sebelum hari ini
+  const tglLalu = Object.keys(logHarian || {}).filter(t => t < tanggal).sort().pop();
+  const kemarin = tglLalu ? ((logHarian[tglLalu] || {}).CABANG || {}) : null;
+  const riwayatCukup = !!(kemarin && Object.keys(kemarin).length);
+
+  const kpi = hitungKpi(master, ka, false);
+  const kum = l => kpi.cumulative.find(c => c.label === l) || { amount: 0, pct: 0 };
+  const defKartu = [
+    { kunci: 'balNood', judul: 'Balance NOOD', log: 'BAL NOOD', naikBaik: true, v: { amount: kpi.perBucket[0].amount, pct: kpi.perBucket[0].pct }, batasTeks: batasCabang_('balance_nood') },
+    { kunci: 'flowNood', judul: 'Flow NOOD', log: 'FLOW NOOD', naikBaik: false, v: flowLebar(master, 'NOOD', false), batasTeks: batasCabang_('flow_nood') },
+    { kunci: 'flow130', judul: 'Flow 1-30', log: 'FLOW 1-30', naikBaik: false, v: flowLebar(master, 'P001_030', false), batasTeks: batasCabang_('flow_1_30') },
+    { kunci: 'flow3160', judul: 'Flow 31-60', log: 'FLOW 31-60', naikBaik: false, v: flowLebar(master, 'P031_060', false), batasTeks: batasCabang_('flow_31_60') },
+    { kunci: 'btc130', judul: 'BTC 1-30', log: 'BTC 1-30', naikBaik: true, v: btcKe(master, 'P001_030', false), batasTeks: '' },
+    { kunci: 'delq', judul: '30+ (Delq)', log: '30+', naikBaik: false, v: kum('30+ (Delq)'), batasTeks: batasCabang_('balance_30plus') }
+  ];
+  const kartu = defKartu.map(d => {
+    const pct = r2h(d.v.pct), kmr = riwayatCukup && kemarin[d.log] ? r2h(kemarin[d.log].pct) : null;
+    let arah = null;
+    if (kmr !== null) { const s = pct - kmr; arah = Math.abs(s) < 0.005 ? 'tetap' : ((s > 0) === d.naikBaik ? 'membaik' : 'memburuk'); }
+    return { kunci: d.kunci, judul: d.judul, pct, amt: Math.round(d.v.amount || 0), batasTeks: d.batasTeks, kemarin: kmr, arah };
+  });
+  const berubah = kartu.filter(c => c.kemarin !== null && Math.abs(c.pct - c.kemarin) >= AMBANG_BERUBAH)
+    .map(c => ({ kunci: c.kunci, judul: c.judul, dari: c.kemarin, ke: c.pct, selisih: r2h(c.pct - c.kemarin), arah: c.arah }))
+    .sort((a, b) => Math.abs(b.selisih) - Math.abs(a.selisih)).slice(0, 3);
+
+  // Diagnosa per angka
+  const kaPorNo = new Map((ka || []).map(r => [String(r['NO KONTRAK'] || '').trim(), r]));
+  const bayarIni = tanggalBayarLPC(lpc, hariIni.bulan);
+  const hariIniFn = r => bayarIni.has(String(r['NO KONTRAK']).trim()) ? bayarIni.get(String(r['NO KONTRAK']).trim()) : null;
+  const hariLaluFn = r => { const k = kaPorNo.get(String(r['NO KONTRAK']).trim()); return k ? D.hariDari(k['TGL BYR M1']) : null; };
+  const diagnosa = {}, kandidatPenyebab = [];
+  Object.keys(D.ANGKA).forEach(angka => {
+    const p = D.populasi(master, angka, { fleet: false });
+    const rk = D.ringkas(p.rows, p.masalah);
+    const urai = {};
+    Object.keys(D.DIMENSI).forEach(dim => { urai[dim] = D.urai(p.rows, p.masalah, D.DIMENSI[dim].nilai, konteks); });
+    const ir = [];
+    PASANGAN_IRISAN.forEach(([a, b]) => D.irisan(p.rows, p.masalah, D.DIMENSI[a].nilai, D.DIMENSI[b].nilai, 3, konteks).forEach(x => ir.push(x)));
+    ir.sort((a, b) => (b.pengaruh - a.pengaruh) || (b.masalah - a.masalah));
+    const kal = D.kalimat(D.ANGKA[angka].judul, rk, urai);
+    diagnosa[angka] = {
+      judul: D.ANGKA[angka].judul, ringkas: rk, kalimat: kal,
+      mingguan: { ini: D.mingguan(p.rows, hariIniFn), lalu: D.mingguan(p.rows, hariLaluFn) },
+      segmen: { ini: D.mingguanPerSegmen(p.rows, hariIniFn), lalu: D.mingguanPerSegmen(p.rows, hariLaluFn) },
+      urai, irisan: ir.slice(0, 10), teratas: D.kontrakTeratas(p.rows, p.masalah, 20)
+    };
+    let terbesar = 0;
+    Object.values(urai).forEach(list => list.forEach(u => { if (u.pemberat && u.pengaruh > terbesar) terbesar = u.pengaruh; }));
+    if (terbesar > 0 && kal[1]) kandidatPenyebab.push({ angka, judul: D.ANGKA[angka].judul, kalimat: kal[1], pengaruh: r2h(terbesar) });
+  });
+  const penyebab = kandidatPenyebab.sort((a, b) => b.pengaruh - a.pengaruh).slice(0, 3);
+
+  // Tim dan kerja hari ini
+  const janjiHariIni = r => D.hariDari(r['JANJI BAYAR']) === hariIni.hari;
+  const cfg = (config || []).filter(c => ['FE', 'MR', 'BCH'].includes(String(c['ROLE'] || '').trim()));
+  const pny = INS.hitungPenyelesaianSemua(master, cfg);
+  const tim = pny.map(p => ({
+    co: p.namaCO, role: p.role, penyelesaianPct: r2h(p.pct),
+    targetPct: ((INS.TABEL_BATAS[p.role] || {})[minggu] || [null])[0],
+    janjiHariIni: master.filter(m => janjiHariIni(m) && (p.role !== 'FE' || m['CO ALL'] === p.namaCO)).length
+  }));
+  const sudahBayar = m => /SUDAH|LUNAS/.test(String(m['STATUS BAYAR'] || '').toUpperCase());
+  const kerja = {
+    jatuhTempoBelumDkh: master.filter(m => m['FLEET/NON FLEET'] !== 'FLEET' && ['NOOD', 'P001_030', 'P031_060'].includes(String(m['BUCKET AWAL']).trim())
+      && !sudahBayar(m) && (h => h !== null && h <= hariIni.hari)(D.hariDari(m['JATUH TEMPO'])) && !dkh.has(String(m['NO KONTRAK']).trim())).length,
+    janjiHariIni: master.filter(janjiHariIni).length
+  };
+
+  return { tanggal, minggu: { ke: minggu, sisaHari: (minggu === 4 ? new Date(Date.UTC(hariIni.tahun, hariIni.bulan, 0)).getUTCDate() : minggu * 7) - hariIni.hari + 1 },
+    riwayatCukup, kartu, berubah, penyebab, tim, kerja, diagnosa };
+}
+
+async function handleHead(res, accessToken, sheetId) {
+  const opsional = p => p.catch(() => null);
+  const [mRaw, kRaw, lpc, dkhAssign, roleRaw, logHarian] = await Promise.all([
+    bacaSheet(sheetId, 'MASTER', accessToken), bacaSheet(sheetId, 'KA HARIAN', accessToken),
+    opsional(bacaSheet(sheetId, 'LPC', accessToken)), opsional(bacaSheet(sheetId, 'DKH_ASSIGN', accessToken)),
+    bacaSheet(sheetId, 'CONFIG_ROLE', accessToken), bacaLogHarian(accessToken, sheetId).catch(() => ({}))
+  ]);
+  const master = parseSheetValues(mRaw).filter(r => r['NO KONTRAK']);
+  const ka = parseSheetValues(kRaw, 15).filter(r => r['NO KONTRAK']);
+  const seg = petaKASegmen(kRaw || []);
+  master.forEach(r => { const s = String(r['SEGMEN PEKERJAAN'] || '').trim().toUpperCase(); r['SEGMEN PEKERJAAN'] = s || segmenGabung(seg[String(r['NO KONTRAK']).trim()], r['PEKERJAAN KONSUMEN']); });
+  const w = new Date(Date.now() + 7 * 3600 * 1000);
+  const hariIni = { tahun: w.getUTCFullYear(), bulan: w.getUTCMonth() + 1, hari: w.getUTCDate() };
+  res.status(200).json(susunHead({ master, ka, lpc: lpc || [], dkhAssign: dkhAssign || [], logHarian: logHarian || {}, config: parseSheetValues(roleRaw), hariIni, minggu: INS.getMingguSekarang() }));
+}
+
 module.exports = async (req, res) => {
   try {
     const authHeader = req.headers['authorization'] || '';
@@ -41,6 +165,7 @@ module.exports = async (req, res) => {
     }
 
     const sheetId = process.env.GOOGLE_SHEET_ID;
+    if (req.query && req.query.mode === 'head') { await handleHead(res, accessToken, sheetId); return; }
 
     const [masterRes, kaRes] = await Promise.all([
       fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/MASTER?valueRenderOption=UNFORMATTED_VALUE`, { headers: { Authorization: 'Bearer ' + accessToken } }),
@@ -96,3 +221,4 @@ module.exports = async (req, res) => {
     sendError(res, err);
   }
 };
+module.exports.__test = { susunHead };

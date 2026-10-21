@@ -6,28 +6,7 @@ const { cleanCell, bayarLPC } = require('./_sheet');
 // AUTH HELPERS (sama seperti di api/data.js)
 // ============================================================
 
-// Cache singkat di memori instance: tab besar (MASTER) tidak dibaca ulang dari Google di setiap buka halaman.
-// Permintaan yang datang bersamaan memakai satu bacaan yang sama. Cache dilewati saat admin membekukan ulang target.
-const CACHE_SHEET_MS = 45 * 1000;
-const cacheSheet = new Map();
-async function bacaSheetLangsung(sheetId, range, accessToken) {
-  const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(range)}?valueRenderOption=UNFORMATTED_VALUE`, {
-    headers: { Authorization: 'Bearer ' + accessToken }
-  });
-  const json = await res.json();
-  if (!json.values) throw new Error('Gagal baca range ' + range + ': ' + JSON.stringify(json));
-  return json.values;
-}
-async function fetchSheetRange(sheetId, range, accessToken, tanpaCache) {
-  if (tanpaCache) return bacaSheetLangsung(sheetId, range, accessToken);
-  const key = sheetId + '|' + range;
-  const hit = cacheSheet.get(key);
-  if (hit && Date.now() - hit.t < CACHE_SHEET_MS) return hit.p;
-  const p = bacaSheetLangsung(sheetId, range, accessToken);
-  cacheSheet.set(key, { t: Date.now(), p });
-  p.catch(() => { if (cacheSheet.get(key) && cacheSheet.get(key).p === p) cacheSheet.delete(key); });
-  return p;
-}
+const { bacaSheet: fetchSheetRange } = require('./_cachesheet');
 
 function parseSheetGeneric(values, headerRowIndex) {
   headerRowIndex = headerRowIndex || 0;
@@ -541,6 +520,7 @@ module.exports = async (req, res) => {
 };
 
 module.exports.__test = { hitungTargetDaily, tdHariDariCell, tdSusunKontrak };
+Object.assign(module.exports, { getMingguSekarang, TD_PARAMETER, TABEL_BATAS, hitungPenyelesaianSemua });
 
 // Dipanggil cron harian (api/log-snapshot.js): bekukan target hari ini dari data pagi, sebelum admin mulai update bayar.
 module.exports.bekukanTargetHariIni = async (accessToken, sheetId) => {
