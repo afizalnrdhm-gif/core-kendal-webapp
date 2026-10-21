@@ -4554,20 +4554,20 @@ function tdPoinHtml(p, q, idx){
   return `
   <section class="td-poin ${aman ? 'aman' : ''}" data-key="${p.namaCO}|${q.kunci}">
     <header>
-      <div><span class="td-tag">${q.kunci === 'balance' ? 'Poin 1' : 'Poin 2'}</span><h3>${esc(q.judul)}</h3></div>
+      <div><span class="td-tag">Poin ${idx + 1}</span><h3>${esc(q.judul)}</h3></div>
       <div class="td-big">${tdTarget(q) <= 0 ? '<b>Aman</b>' : `<b>${tdRp(tdTarget(q))}</b><em>${q.progres ? 'target hari ini' : '/ hari'}</em>`}</div>
     </header>
     <p class="td-ket">${esc(q.keterangan)}</p>
     ${tdProgHtml(q)}
     <div class="td-meter" role="img" aria-label="Sekarang ${fmtDec(q.nilaiPct,1)} persen, batas ${fmtDec(q.batasPct,1)} persen"><i style="width:${pct}%"></i><s style="left:${bt}%"></s></div>
     <div class="td-stats">
-      ${naik ? `<div><small>Cabang sekarang</small><b>${fmtDec(q.nilaiPct,1)}%</b><span>${tdRp(q.nilaiAmt)}</span></div>
-      <div><small>Target cabang</small><b>${fmtDec(q.batasPct,1)}%</b><span>${tdRp(q.bolehAmt)}</span></div>
-      <div><small>Bagian ${esc(tdShort(p.namaCO, p.role))} (${fmtDec(q.porsiPct,1)}%)</small><b>${aman ? '-' : tdRp(q.perluAmt)}</b><span>${aman ? 'target tercapai' : 'dalam ' + TD_DATA.tanggal.sisaHari + ' hari'}</span></div>` : `<div><small>Sekarang</small><b>${fmtDec(q.nilaiPct,1)}%</b><span>${tdRp(q.nilaiAmt)}</span></div>
+      ${naik ? `<div><small>Sekarang</small><b>${fmtDec(q.nilaiPct,1)}%</b><span>${tdRp(q.nilaiAmt)}</span></div>
+      <div><small>Target minimal</small><b>${fmtDec(q.batasPct,1)}%</b><span>${tdRp(q.bolehAmt)}</span></div>
+      <div><small>Perlu naik</small><b>${aman ? '-' : tdRp(q.perluAmt)}</b><span>${aman ? 'target tercapai' : 'dalam ' + TD_DATA.tanggal.sisaHari + ' hari'}</span></div>` : `<div><small>Sekarang</small><b>${fmtDec(q.nilaiPct,1)}%</b><span>${tdRp(q.nilaiAmt)}</span></div>
       <div><small>Batas aman</small><b>${fmtDec(q.batasPct,1)}%</b><span>${q.bolehAmt != null ? tdRp(q.bolehAmt) : ''}</span></div>
       <div><small>Perlu turun</small><b>${aman ? '-' : tdRp(q.perluAmt)}</b><span>${aman ? 'sudah di bawah batas' : 'dalam ' + TD_DATA.tanggal.sisaHari + ' hari'}</span></div>`}
     </div>
-    ${aman ? '<p class="td-ok">' + (naik ? 'Target porsi NOOD sudah tercapai, pertahankan.' : 'Sudah di bawah batas, pertahankan.') + ' Kontrak di bawah tetap bisa dikejar sebagai cadangan.</p>' : ''}
+    ${aman ? '<p class="td-ok">' + (naik ? 'Target NOOD sudah tercapai, pertahankan.' : 'Sudah di bawah batas, pertahankan.') + ' Kontrak di bawah tetap bisa dikejar sebagai cadangan.</p>' : ''}
     <div class="td-sub"><b>Kontrak potensial</b><small>${q.jumlahPotensial} kontrak · ${tdRp(q.totalPotensial)} · urut: tgl bayar bulan lalu, lalu janji bayar</small></div>
     ${q.potensial.length ? `<ul class="td-list">${pot}</ul>${q.potensial.length > LIM ? `<button type="button" class="btn td-toggle" data-n="${q.potensial.length - LIM}">Tampilkan ${q.potensial.length - LIM} lainnya</button>` : ''}${q.jumlahPotensial > q.potensial.length ? `<p class="td-more">+ ${q.jumlahPotensial - q.potensial.length} kontrak potensial lainnya</p>` : ''}` : '<p class="td-empty">Belum ada kontrak yang cocok dengan pola tgl bayar atau janji bayar.</p>'}
     ${!aman && !q.tercukupi ? `<div class="td-warn">Potensial baru ${tdRp(q.totalPotensial)}, masih kurang <b>${tdRp(q.kurang)}</b> dari target harian ${tdRp(q.perHari)}.</div>` : (!aman && q.tercukupi ? `<div class="td-good">Target harian ${tdRp(q.perHari)} tertutup oleh ${untuk} kontrak teratas.</div>` : '')}

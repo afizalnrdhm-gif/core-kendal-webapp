@@ -30,36 +30,54 @@ test('kontrak potensial urut tgl bayar lalu JB, rekomendasi saat kurang', () => 
   assert.strictEqual(ok.jumlahUntukTarget, 2);
 });
 
-test('flow: target harian = (belum bayar - batas) / sisa hari', () => {
-  const master = [
-    { 'NO KONTRAK': '1', 'CO ALL': 'X', 'BUCKET AWAL': 'NOOD', 'BUCKET UPDATE': 'P001_030', SIPOK: 600, 'FLEET/NON FLEET': 'NON FLEET' },
-    { 'NO KONTRAK': '2', 'CO ALL': 'X', 'BUCKET AWAL': 'NOOD', 'BUCKET UPDATE': 'NOOD', SIPOK: 400, 'FLEET/NON FLEET': 'NON FLEET' }
-  ];
-  const cfg = [{ NAMA_CO: 'X', ROLE: 'FE', BUCKET_PENYELESAIAN: 'P001_030', BUCKET_ASAL_FLOW: 'NOOD', BUCKET_BALANCE: 'P001_030' }];
-  const t = hitungTargetDaily(master, {}, cfg);
-  const flow = t.pic[0].poin.find(p => p.kunci === 'flow');
-  assert.strictEqual(flow.bebanAmt, 1000);
-  assert.strictEqual(flow.nilaiAmt, 600);
-  assert.strictEqual(flow.bolehAmt, 20); // 2% FE
-  assert.ok(Math.abs(flow.perHari - 580 / t.tanggal.sisaHari) < 1e-9);
+const mk = (no, co, awal, upd, sipok, fleet) => ({ 'NO KONTRAK': no, 'NAMA KONSUMEN': no, 'CO ALL': co, 'CO FE': co, 'BUCKET AWAL': awal, 'BUCKET UPDATE': upd, SIPOK: sipok, 'FLEET/NON FLEET': fleet || 'NON FLEET' });
+const cfgFE = [{ NAMA_CO: 'X', ROLE: 'FE' }];
+
+test('FE punya 4 poin sesuai konfigurasi project 3', () => {
+  const t = hitungTargetDaily([mk('1', 'X', 'NOOD', 'NOOD', 100)], {}, cfgFE);
+  assert.deepStrictEqual(t.pic[0].poin.map(p => p.kunci), ['balance_nood', 'balance_1_30', 'flow_nood', 'flow_1_30']);
+  const mr = hitungTargetDaily([], {}, [{ NAMA_CO: 'M', ROLE: 'MR' }]);
+  assert.deepStrictEqual(mr.pic[0].poin.map(p => p.kunci), ['balance_31_60', 'balance_30plus', 'flow_31_60']);
+  const bch = hitungTargetDaily([], {}, [{ NAMA_CO: 'B', ROLE: 'BCH' }]);
+  assert.deepStrictEqual(bch.pic[0].poin.map(p => p.kunci), ['balance_nood', 'balance_1_30', 'flow_nood', 'flow_1_30', 'flow_31_60']);
 });
 
-test('FE balance NOOD: target 88% cabang dibagi sesuai beban awal FE', () => {
-  const master = [
-    { 'NO KONTRAK': '1', 'CO ALL': 'A', 'BUCKET AWAL': 'NOOD', 'BUCKET UPDATE': 'P001_030', SIPOK: 600, 'FLEET/NON FLEET': 'NON FLEET' },
-    { 'NO KONTRAK': '2', 'CO ALL': 'B', 'BUCKET AWAL': 'NOOD', 'BUCKET UPDATE': 'P001_030', SIPOK: 200, 'FLEET/NON FLEET': 'NON FLEET' }
-  ];
-  const ka = { '1': { 'BUCKET UPDATE': 'P001_030', 'SISA PIUTANG': 600, 'NAMA COLLECTOR': 'A', 'FLEET/NON FLEET': 'NON FLEET' },
-               '2': { 'BUCKET UPDATE': 'P001_030', 'SISA PIUTANG': 200, 'NAMA COLLECTOR': 'B', 'FLEET/NON FLEET': 'NON FLEET' },
-               '3': { 'BUCKET UPDATE': 'NOOD', 'SISA PIUTANG': 200, 'NAMA COLLECTOR': 'A', 'FLEET/NON FLEET': 'NON FLEET' } };
-  const cfg = [{ NAMA_CO: 'A', ROLE: 'FE', BUCKET_PENYELESAIAN: 'P001_030', BUCKET_ASAL_FLOW: 'NOOD', BUCKET_BALANCE: 'P001_030' },
-               { NAMA_CO: 'B', ROLE: 'FE', BUCKET_PENYELESAIAN: 'P001_030', BUCKET_ASAL_FLOW: 'NOOD', BUCKET_BALANCE: 'P001_030' }];
+test('flow NOOD FE: target harian = (belum bayar - 2,7% beban) / sisa hari', () => {
+  const master = [mk('1', 'X', 'NOOD', 'P001_030', 600), mk('2', 'X', 'NOOD', 'NOOD', 400)];
+  const t = hitungTargetDaily(master, {}, cfgFE);
+  const flow = t.pic[0].poin.find(p => p.kunci === 'flow_nood');
+  assert.strictEqual(flow.bebanAmt, 1000);
+  assert.strictEqual(flow.nilaiAmt, 600);
+  assert.ok(Math.abs(flow.bolehAmt - 27) < 1e-9);
+  assert.ok(Math.abs(flow.perHari - 573 / t.tanggal.sisaHari) < 1e-9);
+});
+
+test('Balance NOOD FE: batas 95% dari beban awal FE sendiri (bukan porsi cabang)', () => {
+  const master = [mk('1', 'A', 'NOOD', 'P001_030', 600), mk('2', 'B', 'NOOD', 'P001_030', 200)];
+  const ka = { '1': { 'BUCKET UPDATE': 'P001_030', 'SISA PIUTANG': 600, 'NAMA COLLECTOR': 'A' },
+               '2': { 'BUCKET UPDATE': 'P001_030', 'SISA PIUTANG': 200, 'NAMA COLLECTOR': 'B' },
+               '3': { 'BUCKET UPDATE': 'NOOD', 'SISA PIUTANG': 200, 'NAMA COLLECTOR': 'A' } };
+  const cfg = [{ NAMA_CO: 'A', ROLE: 'FE' }, { NAMA_CO: 'B', ROLE: 'FE' }];
   const t = hitungTargetDaily(master, ka, cfg);
-  const a = t.pic[0].poin[0], b = t.pic[1].poin[0];
+  const a = t.pic[0].poin[0];
   assert.strictEqual(a.judul, 'Balance NOOD');
-  // total AR 1000, NOOD 200 -> perlu 880-200 = 680; A beban 600 (75%), B 200 (25%)
-  assert.ok(Math.abs(a.perluAmt - 510) < 1e-9);
-  assert.ok(Math.abs(b.perluAmt - 170) < 1e-9);
+  assert.strictEqual(a.arah, 'naik');
+  assert.strictEqual(a.bebanAmt, 600);           // beban awal total milik A
+  assert.strictEqual(a.nilaiAmt, 200);           // NOOD milik A (NAMA COLLECTOR)
+  assert.ok(Math.abs(a.bolehAmt - 570) < 1e-9);  // 95% x 600
+  assert.ok(Math.abs(a.perluAmt - 370) < 1e-9);  // 570 - 200
+});
+
+test('Balance 1-30 FE turun ke 8,5% dan Balance cabang NOOD 88% untuk BCH', () => {
+  const master = [mk('1', 'A', 'P001_030', 'P001_030', 1000), mk('2', 'A', 'NOOD', 'NOOD', 9000)];
+  const ka = { '1': { 'BUCKET UPDATE': 'P001_030', 'SISA PIUTANG': 1000, 'NAMA COLLECTOR': 'A' }, '2': { 'BUCKET UPDATE': 'NOOD', 'SISA PIUTANG': 9000, 'NAMA COLLECTOR': 'A' } };
+  const t = hitungTargetDaily(master, ka, [{ NAMA_CO: 'A', ROLE: 'FE' }, { NAMA_CO: 'B', ROLE: 'BCH' }]);
+  const b130 = t.pic[0].poin.find(p => p.kunci === 'balance_1_30');
+  assert.ok(Math.abs(b130.bolehAmt - 850) < 1e-9);      // 8,5% x 10000
+  assert.ok(Math.abs(b130.perluAmt - 150) < 1e-9);      // 1000 - 850
+  const nood = t.pic[1].poin.find(p => p.kunci === 'balance_nood');
+  assert.ok(Math.abs(nood.bolehAmt - 8800) < 1e-9);     // 88% x 10000
+  assert.strictEqual(nood.perluAmt, 0);                 // NOOD 9000 sudah di atas
 });
 
 test('progres target harian: jumlah SIPOK kontrak dengan REALISASI > 0', () => {
@@ -87,19 +105,19 @@ test('streak tidak target: hitung hari berturut-turut dari yang terbaru', () => 
 
 test('Realisasi dari KA HARIAN: Flow = REALISASI>0 pada bucket awal asal flow; Balance FE = bucket awal 1-30; dihitung by SIPOK', () => {
   const { terapkanProgres } = require('../api/_tdsnap');
-  const mk = (no, awal, co) => ({ 'NO KONTRAK': no, 'NAMA KONSUMEN': no, 'CO ALL': co || 'FE1', 'FLEET/NON FLEET': 'NON FLEET', 'BUCKET AWAL': awal, 'BUCKET UPDATE': awal, SIPOK: 100 });
+  const mk2 = (no, awal, co) => ({ 'NO KONTRAK': no, 'NAMA KONSUMEN': no, 'CO ALL': co || 'FE1', 'FLEET/NON FLEET': 'NON FLEET', 'BUCKET AWAL': awal, 'BUCKET UPDATE': awal, SIPOK: 100 });
   const ka = (no, real) => ({ 'NO KONTRAK': no, 'BUCKET UPDATE': 'NOOD', 'SISA PIUTANG': 100, 'NAMA COLLECTOR': 'FE1', REALISASI: real });
-  const cfg = [{ NAMA_CO: 'FE1', ROLE: 'FE', BUCKET_PENYELESAIAN: 'P001_030', BUCKET_ASAL_FLOW: 'NOOD', BUCKET_BALANCE: 'P001_030' }];
-  const master = [mk('A', 'NOOD'), mk('B', 'NOOD'), mk('C', 'NOOD'), mk('D', 'P001_030'), mk('E', 'NOOD', 'FE2')];
+  const cfg = [{ NAMA_CO: 'FE1', ROLE: 'FE' }];
+  const master = [mk2('A', 'NOOD'), mk2('B', 'NOOD'), mk2('C', 'NOOD'), mk2('D', 'P001_030'), mk2('E', 'NOOD', 'FE2')];
   const td = hitungTargetDaily(master, { A: ka('A', 5), B: ka('B', 0), C: ka('C', ''), D: ka('D', 3), E: ka('E', 9) }, cfg);
   // daftar pagi dikunci: semua kontrak FE1 ada di baseline, dan masih ada di daftar sekarang (belum keluar)
   const tetap = q => q.semuaKandidat.map(x => x.slice()).filter(x => !['A', 'B', 'C', 'D'].includes(x[0]));
-  const bf = tetap(td.pic[0].poin[1]).concat([['A', 100, 'A'], ['B', 100, 'B'], ['C', 100, 'C']]);
+  const bf = tetap(td.pic[0].poin[2]).concat([['A', 100, 'A'], ['B', 100, 'B'], ['C', 100, 'C']]);
   const bb = tetap(td.pic[0].poin[0]).concat([['D', 100, 'D']]);
-  td.pic[0].poin[1].semuaKandidat = bf.slice(); td.pic[0].poin[0].semuaKandidat = bb.slice();
-  terapkanProgres(td, { 'FE1|balance': { targetHari: 500, baseNilai: 0, kontrak: bb }, 'FE1|flow': { targetHari: 200, baseNilai: 0, kontrak: bf } });
-  assert.equal(td.pic[0].poin[1].progres.tercapai, 100); // hanya A (E milik FE lain)
-  assert.equal(td.pic[0].poin[1].progres.jumlahBayar, 1);
+  td.pic[0].poin[2].semuaKandidat = bf.slice(); td.pic[0].poin[0].semuaKandidat = bb.slice();
+  terapkanProgres(td, { 'FE1|balance_nood': { targetHari: 500, baseNilai: 0, kontrak: bb }, 'FE1|flow_nood': { targetHari: 200, baseNilai: 0, kontrak: bf } });
+  assert.equal(td.pic[0].poin[2].progres.tercapai, 100); // hanya A (E milik FE lain)
+  assert.equal(td.pic[0].poin[2].progres.jumlahBayar, 1);
   assert.equal(td.pic[0].poin[0].progres.tercapai, 100); // hanya D (awal 1-30)
 });
 
