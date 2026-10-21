@@ -129,6 +129,7 @@ Alur data di sheet:
 | Siang/sore | LPC diperbarui, rumus REALISASI dinyalakan | posisi bergerak; realisasi terbaca |
 | Pagi berikutnya | data baru masuk | hasil kemarin dibekukan ke LOG_TARGET_HASIL |
 
+- Sudah dikonfirmasi Head (21 Okt): setelah rumus REALISASI dinyalakan, BUCKET UPDATE kontrak yang realisasi ikut berubah. Jadi posisi sekarang dibaca dari BUCKET UPDATE.
 - Sebelum LPC diperbarui, realisasi tampil 0.
 - Peringatan: meleset 1–2 hari berturut-turut = Waspada, 3 hari = Merah.
 - Tombol admin "Bekukan ulang" tetap ada untuk hari ketika update pagi lewat jam 9.
@@ -216,7 +217,6 @@ Tidak ada data dikirim ke layanan luar. Laporan ke atasan berisi angka agregat d
 
 ## 13. Hal yang masih terbuka
 
-- Konfirmasi: setelah rumus REALISASI KA HARIAN dinyalakan, BUCKET UPDATE ikut berubah untuk kontrak yang sudah bayar. Bila tidak, realisasi §7.4 harus membaca kolom lain.
 - Resep rekomendasi ("jika penyebab X, saran Y") diisi bersama Head per pertanyaan.
 - Definisi "Anomali Kendal": dibanding apa (bulan lalu, target, atau cabang lain). Data cabang lain belum tersedia.
 - Ambang pemberat (indeks 1,15, pengaruh 1 poin, porsi 30%) dan ambang perubahan harian (2 poin) dicek ulang setelah dipakai dengan data nyata.
