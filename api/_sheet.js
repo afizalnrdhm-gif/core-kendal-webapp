@@ -40,4 +40,22 @@ function bayarLPC(values, hari, bulan) {
   });
   return out;
 }
-module.exports = { normBucket, cleanCell, bayarLPC, tglParts };
+// Hari bayar paling awal bulan `bulan` per kontrak menurut LPC (baris angsuran/pelunasan > 0). Urutan hari/bulan tertukar diterima.
+function tanggalBayarLPC(values, bulan) {
+  const out = new Map();
+  if (!values || !values.length) return out;
+  const h = values[0].map(x => String(x || '').trim().toUpperCase());
+  const iNo = h.indexOf('NO KONTRAK'), iAng = h.indexOf('PEMBIAYAAN ANGSURAN'), iLun = h.indexOf('PELUNASAN'), iTgl = h.indexOf('TGL BYR');
+  if (iNo < 0 || iTgl < 0) return out;
+  const num = v => { const n = typeof v === 'number' ? v : Number(String(v || '').replace(/,/g, '')); return isFinite(n) ? n : 0; };
+  values.slice(1).forEach(r => {
+    const no = String(r[iNo] == null ? '' : r[iNo]).trim(); if (!no) return;
+    if ((iAng > -1 ? num(r[iAng]) : 0) <= 0 && (iLun > -1 ? num(r[iLun]) : 0) <= 0) return;
+    const t = tglParts(r[iTgl]); if (!t) return;
+    const hari = t[1] === bulan ? t[0] : t[0] === bulan ? t[1] : null;
+    if (!hari || hari > 31) return;
+    if (!out.has(no) || out.get(no) > hari) out.set(no, hari);
+  });
+  return out;
+}
+module.exports = { normBucket, cleanCell, bayarLPC, tglParts, tanggalBayarLPC };

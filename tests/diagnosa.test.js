@@ -71,3 +71,42 @@ test('DIMENSI: mob, kontrak besar, janji, status DKH', () => {
   assert.strictEqual(D.DIMENSI.statusDkh.nilai({ 'NO KONTRAK': '5' }, { dkh: new Set(['5']) }), 'ADA DKH');
   assert.strictEqual(D.DIMENSI.statusDkh.nilai({ 'NO KONTRAK': '6' }, { dkh: new Set(['5']) }), 'BELUM DKH');
 });
+
+const { tanggalBayarLPC } = require('../api/_sheet');
+
+test('hariDari: serial Excel, dd/mm/yyyy, yyyy-mm-dd, teks lain null', () => {
+  assert.strictEqual(D.hariDari(46316), new Date((46316 - 25569) * 864e5).getUTCDate());
+  assert.strictEqual(D.hariDari('19/09/2026'), 19);
+  assert.strictEqual(D.hariDari('2026-09-19'), 19);
+  assert.strictEqual(D.hariDari('abc'), null);
+});
+
+test('mingguan: persen SIPOK yang sudah bayar kumulatif W1-W4', () => {
+  const rows = [3, 10, 25, null].map((h, i) => ({ SIPOK: 100, H: h, 'SEGMEN PEKERJAAN': i < 2 ? 'KARYAWAN' : 'SERABUTAN' }));
+  assert.deepStrictEqual(D.mingguan(rows, r => r.H), [25, 50, 50, 75]);
+  const s = D.mingguanPerSegmen(rows, r => r.H);
+  assert.deepStrictEqual(s.KARYAWAN, [50, 100, 100, 100]);
+  assert.deepStrictEqual(s.SERABUTAN, [0, 0, 0, 50]);
+  assert.deepStrictEqual(s.WIRASWASTA, [0, 0, 0, 0]);
+});
+
+test('tanggalBayarLPC: hari bayar paling awal bulan itu, baris denda saja diabaikan', () => {
+  const v = [['NO KONTRAK', 'TGL BYR', 'PEMBIAYAAN ANGSURAN', 'PELUNASAN'],
+    ['A', '12/10/2026', 500, 0], ['A', '05/10/2026', 500, 0], ['B', '03/10/2026', 0, 0], ['C', '10/07/2026', 500, 0]];
+  const m = tanggalBayarLPC(v, 10, 2026);
+  assert.strictEqual(m.get('A'), 5);
+  assert.strictEqual(m.has('B'), false);
+  assert.strictEqual(m.get('C'), 7, 'urutan hari/bulan tertukar tetap diterima');
+});
+
+test('kalimat: memuat pemberat terbesar dan pengaruhnya dalam poin', () => {
+  const p = D.populasi(enam, 'nood', { fleet: false });
+  const k1 = D.kalimat('Balance/Flow NOOD', D.ringkas(p.rows, p.masalah), { statusNbq: D.urai(p.rows, p.masalah, D.DIMENSI.statusNbq.nilai) });
+  assert.ok(k1.length >= 2 && k1.length <= 4);
+  assert.ok(k1[0].includes('penyelesaian 50,00%'));
+  assert.ok(k1[1].includes('APPEAL') && k1[1].includes('naik 8,33 poin'), k1[1]);
+  const rata = [k('1', 'APPEAL', 'NOOD'), k('2', 'NORMAL', 'NOOD')];
+  const p2 = D.populasi(rata, 'nood', { fleet: false });
+  const k2 = D.kalimat('X', D.ringkas(p2.rows, p2.masalah), { statusNbq: D.urai(p2.rows, p2.masalah, D.DIMENSI.statusNbq.nilai) });
+  assert.ok(k2[k2.length - 1].includes('Tidak ada kelompok'));
+});

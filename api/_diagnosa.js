@@ -112,4 +112,47 @@ function kontrakTeratas(rows, masalah, n) {
   }));
 }
 
-module.exports = { ANGKA, DIMENSI, populasi, ringkas, urai, irisan, kontrakTeratas, hariDari };
+const BATAS_MINGGU = [7, 14, 21, 31];
+const SEGMEN = ['KARYAWAN', 'WIRASWASTA', 'SERABUTAN'];
+const r2 = v => Math.round(v * 100) / 100;
+
+// Persen SIPOK populasi yang sudah bayar sampai akhir W1..W4 (kumulatif). hariBayarFn(row) -> 1..31 atau null.
+function mingguan(rows, hariBayarFn) {
+  let beban = 0; const bayar = [0, 0, 0, 0];
+  rows.forEach(r => {
+    const s = sipokOf(r); beban += s;
+    const h = hariBayarFn(r); if (h == null) return;
+    BATAS_MINGGU.forEach((b, i) => { if (h <= b) bayar[i] += s; });
+  });
+  return bayar.map(x => r2(bagi(x, beban) * 100));
+}
+function mingguanPerSegmen(rows, hariBayarFn) {
+  const out = {};
+  SEGMEN.forEach(sg => { out[sg] = mingguan(rows.filter(r => teks(r['SEGMEN PEKERJAAN']).toUpperCase() === sg), hariBayarFn); });
+  return out;
+}
+
+const fmt2 = v => (Math.round(v * 100) / 100).toFixed(2).replace('.', ',');
+const juta = v => 'Rp ' + Math.round(v / 1e6).toLocaleString('id-ID') + ' jt';
+
+// 2-4 kalimat jawaban dari ringkasan dan tabel penguraian per dimensi.
+function kalimat(judul, rk, uraiPerDimensi) {
+  const out = [`${judul}: penyelesaian ${fmt2(rk.penyelesaianPct)}% (${juta(rk.masalah)} bermasalah dari beban ${juta(rk.beban)}).`];
+  const calon = [];
+  Object.keys(uraiPerDimensi || {}).forEach(dim => (uraiPerDimensi[dim] || []).forEach(u => { if (u.pemberat && u.pengaruh > 0) calon.push({ dim, u }); }));
+  calon.sort((a, b) => b.u.pengaruh - a.u.pengaruh);
+  const dipakai = [];
+  for (const c of calon) {
+    if (dipakai.length >= 2) break;
+    if (dipakai.some(d => d.dim === c.dim)) continue;
+    dipakai.push(c);
+  }
+  dipakai.forEach((c, i) => {
+    const dj = (DIMENSI[c.dim] && DIMENSI[c.dim].judul) || c.dim, u = c.u;
+    out.push(`${i === 0 ? 'Pemberat terbesar' : 'Pemberat berikutnya'}: ${dj} ${u.nilai} — ${fmt2(u.porsiBeban)}% beban tapi ${fmt2(u.porsiMasalah)}% masalah (rate ${fmt2(u.rate)}% vs rata-rata ${fmt2(rk.ratePct)}%). Seandainya setara rata-rata, penyelesaian naik ${fmt2(u.pengaruh)} poin.`);
+  });
+  if (!dipakai.length) out.push('Tidak ada kelompok yang menyimpang jauh dari rata-rata.');
+  return out;
+}
+
+module.exports = { ANGKA, DIMENSI, SEGMEN, populasi, ringkas, urai, irisan, kontrakTeratas, hariDari, mingguan, mingguanPerSegmen, kalimat };
