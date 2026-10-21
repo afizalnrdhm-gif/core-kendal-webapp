@@ -30,3 +30,10 @@ test('helper bucketIndex dan sipokOf', () => {
   assert.strictEqual(bucketIndex('X'), -1);
   assert.strictEqual(sipokOf({ SIPOK: '1,5' }), 0);
 });
+
+test('isFleet seragam: " Fleet " dianggap fleet', () => {
+  const { isFleet } = require('../api/_kpi');
+  assert.strictEqual(isFleet({ 'FLEET/NON FLEET': ' Fleet ' }), true);
+  const k = hitungKpi([], [{ 'BUCKET UPDATE': 'NOOD', 'SISA PIUTANG': 500, 'FLEET/NON FLEET': ' Fleet ' }, { 'BUCKET UPDATE': 'NOOD', 'SISA PIUTANG': 100, 'FLEET/NON FLEET': 'NON FLEET' }], false);
+  assert.strictEqual(k.enr, 100);
+});

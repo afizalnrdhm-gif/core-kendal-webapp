@@ -1,6 +1,6 @@
 // Mesin diagnosis untuk tampilan head: menguraikan angka yang ditanyakan atasan menjadi penyumbang per dimensi.
 // Fungsi murni (tanpa akses Sheet). Rumus mengikuti spec docs/superpowers/specs/2026-10-21-tampilan-head-design.md §4.4.
-const { bucketIndex, sipokOf } = require('./_kpi');
+const { bucketIndex, sipokOf, isFleet } = require('./_kpi');
 
 const ANGKA = {
   nood: { judul: 'Balance/Flow NOOD', awal: 'NOOD' },
@@ -12,7 +12,6 @@ const ANGKA = {
 };
 
 const teks = v => String(v == null ? '' : v).trim();
-const isFleet = r => teks(r['FLEET/NON FLEET']).toUpperCase() === 'FLEET';
 const flowRow = r => { const a = bucketIndex(r['BUCKET AWAL']); return a > -1 && bucketIndex(r['BUCKET UPDATE']) > a; };
 const statusNbq = r => { const s = teks(r['STATUS NBQ']).toUpperCase(); return !s || s === '#N/A' ? 'NON NBQ' : s; };
 
@@ -35,6 +34,7 @@ function hariDari(v) {
     return null;
   }
   const s = teks(v);
+  if (/^\d{1,2}$/.test(s)) { const n = Number(s); return n >= 1 && n <= 31 ? n : null; }
   let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/); if (m) return Number(m[3]);
   m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/); if (m) return Number(m[1]);
   return null;

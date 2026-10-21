@@ -60,3 +60,12 @@ test('susunHead: minggu yang belum terjadi bernilai null di garis bulan ini', ()
   assert.strictEqual(h.diagnosa.nood.segmen.ini.KARYAWAN[2], null);
   assert.strictEqual(h.diagnosa.nood.mingguan.lalu[3], 50, 'bulan lalu tetap lengkap');
 });
+
+test('susunHead: tanggal 1 sisa hari 0 dan penyebab membawa dimensi', () => {
+  const h1 = susunHead(Object.assign({ logHarian: {} }, dasar, { hariIni: { tahun: 2026, bulan: 11, hari: 1 }, minggu: 4 }));
+  assert.strictEqual(h1.minggu.sisaHari, 0);
+  const h = susunHead(Object.assign({ logHarian: {} }, dasar));
+  assert.ok(h.penyebab.length > 0);
+  assert.strictEqual(typeof h.penyebab[0].dim, 'string');
+  assert.ok(Object.keys(h.diagnosa[h.penyebab[0].angka].urai).includes(h.penyebab[0].dim));
+});

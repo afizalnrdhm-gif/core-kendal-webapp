@@ -114,9 +114,9 @@ function susunHead(o) {
       segmen: { ini: potongSeg(D.mingguanPerSegmen(p.rows, hariIniFn)), lalu: D.mingguanPerSegmen(p.rows, hariLaluFn) },
       urai, irisan: ir.slice(0, 10), teratas: D.kontrakTeratas(p.rows, p.masalah, 20)
     };
-    let terbesar = 0;
-    Object.keys(urai).filter(dim => !D.DIMENSI_WAKTU.has(dim)).forEach(dim => urai[dim].forEach(u => { if (u.pemberat && u.pengaruh > terbesar) terbesar = u.pengaruh; }));
-    if (terbesar > 0 && kal[1]) kandidatPenyebab.push({ angka, judul: D.ANGKA[angka].judul, kalimat: kal[1], pengaruh: r2h(terbesar) });
+    let terbesar = 0, dimUtama = null;
+    Object.keys(urai).filter(dim => !D.DIMENSI_WAKTU.has(dim)).forEach(dim => urai[dim].forEach(u => { if (u.pemberat && u.pengaruh > terbesar) { terbesar = u.pengaruh; dimUtama = dim; } }));
+    if (terbesar > 0 && kal[1]) kandidatPenyebab.push({ angka, judul: D.ANGKA[angka].judul, kalimat: kal[1], pengaruh: r2h(terbesar), dim: dimUtama });
   });
   const penyebab = kandidatPenyebab.sort((a, b) => b.pengaruh - a.pengaruh).slice(0, 3);
 
@@ -136,7 +136,9 @@ function susunHead(o) {
     janjiHariIni: master.filter(janjiHariIni).length
   };
 
-  return { tanggal, minggu: { ke: minggu, sisaHari: (minggu === 4 ? new Date(Date.UTC(hariIni.tahun, hariIni.bulan, 0)).getUTCDate() : minggu * 7) - hariIni.hari + 1 },
+  // Tanggal 1: data masih penutupan bulan lalu (W4 bulan lalu) — tidak ada sisa hari.
+  const sisaHari = hariIni.hari === 1 && minggu === 4 ? 0 : (minggu === 4 ? new Date(Date.UTC(hariIni.tahun, hariIni.bulan, 0)).getUTCDate() : minggu * 7) - hariIni.hari + 1;
+  return { tanggal, minggu: { ke: minggu, sisaHari },
     riwayatCukup, kartu, berubah, penyebab, tim, kerja, diagnosa };
 }
 
@@ -145,7 +147,7 @@ async function handleHead(res, accessToken, sheetId) {
   const [mRaw, kRaw, lpc, dkhAssign, roleRaw, logHarian] = await Promise.all([
     bacaSheet(sheetId, 'MASTER', accessToken), bacaSheet(sheetId, 'KA HARIAN', accessToken),
     opsional(bacaSheet(sheetId, 'LPC', accessToken)), opsional(bacaSheet(sheetId, 'DKH_ASSIGN', accessToken)),
-    bacaSheet(sheetId, 'CONFIG_ROLE', accessToken), bacaLogHarian(accessToken, sheetId).catch(() => ({}))
+    bacaSheet(sheetId, 'CONFIG_ROLE', accessToken), bacaLogHarian(accessToken, sheetId, bacaSheet).catch(() => ({}))
   ]);
   const master = parseSheetValues(mRaw).filter(r => r['NO KONTRAK']);
   const ka = parseSheetValues(kRaw, 15).filter(r => r['NO KONTRAK']);

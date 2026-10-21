@@ -4208,7 +4208,7 @@ function renderHariIni(){
   const berubah = !d.riwayatCukup ? '<p class="hd-note">Perbandingan dengan kemarin muncul setelah snapshot harian tercatat (cron pagi).</p>'
     : d.berubah.length ? `<ul class="hd-list">${d.berubah.map(b => `<li class="${b.arah === 'memburuk' ? 'bad' : 'good'}">${esc(b.judul)} ${b.selisih > 0 ? 'naik' : 'turun'} <b>${fmtDec(Math.abs(b.selisih), 2)} poin</b> (${hdPct_(b.dari)} → ${hdPct_(b.ke)})</li>`).join('')}</ul>`
     : '<p class="hd-note">Tidak ada perubahan besar (≥2 poin) dari kemarin.</p>';
-  const penyebab = d.penyebab.length ? d.penyebab.map(p => `<button type="button" class="hd-cause" data-a="${esc(p.angka)}"><span class="hd-cause-t">${esc(p.judul)} · ${fmtDec(p.pengaruh, 2)} poin</span><span>${esc(p.kalimat)}</span><span class="hd-cause-go">Lihat diagnosa ›</span></button>`).join('')
+  const penyebab = d.penyebab.length ? d.penyebab.map(p => `<button type="button" class="hd-cause" data-a="${esc(p.angka)}" data-d="${esc(p.dim || '')}"><span class="hd-cause-t">${esc(p.judul)} · ${fmtDec(p.pengaruh, 2)} poin</span><span>${esc(p.kalimat)}</span><span class="hd-cause-go">Lihat diagnosa ›</span></button>`).join('')
     : '<p class="hd-note">Tidak ada kelompok yang menyimpang jauh dari rata-rata.</p>';
   const tim = `<div class="dash-tbl-wrap"><table class="dash-tbl hd-tim"><thead><tr><th>CO</th><th>Selesai</th><th>Target W${d.minggu.ke}</th><th>Janji</th></tr></thead><tbody>${d.tim.map(t => {
     const nm = (CO_META[t.co] || {}).short || String(t.co).split(' ')[0], kurang = t.targetPct != null && t.penyelesaianPct < t.targetPct;
@@ -4223,7 +4223,7 @@ function renderHariIni(){
     <section class="hd-sec"><h3>Yang harus dikerjakan hari ini</h3><div class="hd-kerja"><div><b>${d.kerja.jatuhTempoBelumDkh}</b><span>kontrak sudah jatuh tempo, belum ada DKH bulan ini</span></div><div><b>${d.kerja.janjiHariIni}</b><span>janji bayar jatuh hari ini</span></div></div></section>
   </div>`;
   document.getElementById('hdRefresh').onclick = () => { HEAD_DATA = null; loadHead(renderHariIni); };
-  wrap.querySelectorAll('.hd-cause').forEach(b => b.onclick = () => { DIAG_ANGKA = b.dataset.a; if(document.getElementById('navDiagnosa')) switchView('diagnosa'); });
+  wrap.querySelectorAll('.hd-cause').forEach(b => b.onclick = () => { DIAG_ANGKA = b.dataset.a; if(b.dataset.d) DIAG_DIM = b.dataset.d; if(document.getElementById('navDiagnosa')) switchView('diagnosa'); });
 }
 
 const DIAG_DIMS = [['statusNbq','Status approval'],['groupProduct','Group product'],['typeBarang','Type barang'],['co','CO'],['segmen','Segmen'],['mob','MOB'],['statusDkh','Status DKH'],['kontrakBesar','Nominal'],['jatuhTempo','Jatuh tempo'],['janjiBayar','Janji bayar'],['fleet','Fleet']];

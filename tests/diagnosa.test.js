@@ -119,3 +119,9 @@ test('kalimat: dimensi waktu (jatuh tempo, janji bayar) tidak dijadikan penyebab
   const kal = D.kalimat('X', D.ringkas(p.rows, p.masalah), { jatuhTempo: u });
   assert.ok(kal[kal.length - 1].includes('Tidak ada kelompok'), kal.join(' | '));
 });
+
+test('hariDari: angka hari yang tersimpan sebagai teks', () => {
+  assert.strictEqual(D.hariDari('21'), 21);
+  assert.strictEqual(D.hariDari(' 5 '), 5);
+  assert.strictEqual(D.hariDari('32'), null);
+});
