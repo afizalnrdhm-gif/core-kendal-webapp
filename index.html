@@ -278,7 +278,7 @@
   .pb-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin-top:14px;} .pb-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px;} .pb-card h4{margin:0 0 8px;font-size:14px;color:var(--ink);}
   .pb-row{padding:8px 0;border-bottom:1px solid var(--line);} .pb-row:last-child{border-bottom:none;} .pb-top{display:flex;justify-content:space-between;gap:8px;font-size:13px;} .pb-top b{color:var(--ink);font-weight:600;} .pb-top span{color:var(--ink-soft);white-space:nowrap;}
   .pb-bar{height:6px;border-radius:6px;background:var(--surface-sunken);margin:5px 0 3px;} .pb-bar i{display:block;height:100%;border-radius:6px;background:var(--warn);} .pb-row.berat .pb-bar i{background:var(--bad);} .pb-sub{font-size:11.5px;color:var(--ink-soft);} .pb-flag{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:99px;background:var(--bad-bg);color:var(--bad);font-size:10.5px;font-weight:700;}
-  .dash-tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;} .dash-tbl{border-collapse:collapse;width:100%;font-size:12.5px;min-width:620px;} .dash-tbl th,.dash-tbl td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap;} .dash-tbl th:first-child,.dash-tbl td:first-child{text-align:left;font-weight:600;} .dash-tbl th{color:var(--ink-soft);font-weight:600;background:var(--surface-sunken);} .dash-tbl td small{color:var(--ink-soft);}
+  .dash-tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;} .dash-tbl{border-collapse:collapse;width:100%;font-size:12.5px;min-width:620px;} .dash-tbl th,.dash-tbl td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap;} .dash-tbl th:first-child,.dash-tbl td:first-child{text-align:left;font-weight:600;} .dash-tbl th{color:var(--ink-soft);font-weight:600;background:var(--surface-sunken);} .dash-tbl td small{color:var(--ink-soft);} .dash-xl{min-width:1100px;} .dash-prod{min-width:1300px;} .dash-tbl thead th{text-align:center;} .dash-tbl th[rowspan]{text-align:left;} .dash-total td{font-weight:700;background:var(--surface-sunken);} .dash-up{color:var(--ok,#157a3c);} .dash-down{color:var(--bad,#b3261e);} .dash-tbl td:first-child,.dash-tbl th:first-child{position:sticky;left:0;background:var(--surface,#fff);z-index:1;} .dash-total td:first-child{background:var(--surface-sunken);}
   .pill-toggle{display:inline-flex;background:var(--surface-sunken);border-radius:99px;padding:3px;border:1px solid var(--line);}
   .pill-toggle button{border:none;background:none;padding:8px 18px;min-height:36px;border-radius:99px;font-size:13px;font-weight:600;color:var(--ink-soft);cursor:pointer;transition:background .15s ease,color .15s ease;}
   .pill-toggle button.active{background:var(--primary);color:var(--on-primary);box-shadow:var(--shadow-1);}
@@ -549,6 +549,7 @@
     tbody td[data-label="Nama"]::before, tbody td[data-label="Nama Konsumen"]::before{display:none;}
     tbody tr.empty-row{display:block;}
     tbody td:nth-last-child(1){border-bottom:none;}
+    .dash-tbl{display:table;min-width:1100px;} .dash-prod{min-width:1300px;} .dash-tbl thead{display:table-header-group;} .dash-tbl tbody{display:table-row-group;} .dash-tbl tr,.dash-tbl thead tr{display:table-row;margin:0;border:none;border-radius:0;box-shadow:none;background:transparent;} .dash-tbl th,.dash-tbl td,.dash-tbl tbody td{display:table-cell;padding:8px 10px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line);} .dash-tbl td:first-child,.dash-tbl tbody td:first-child{text-align:left;} .dash-tbl tbody td::before{content:none;}
   }
   @media (min-width: 901px){
     .controls{position:relative;z-index:9;}
@@ -4130,34 +4131,68 @@ function renderRingkasanView(){
   else dashPemberat_(body);
 }
 
-// 1) Actual cabang
+// 1) Actual cabang: tabel Performance & Provision (layout sama dengan Excel).
+// Kolom Target dan Bulan lalu masih kosong ("-"). Isi nanti di konstanta DASH_TARGET dan DASH_LALU di bawah.
+const DASH_PROVISI = { NOOD:0.0188, P001_030:0.0677, P031_060:0.201, P061_090:0.392, P091_120:0.561, P121_150:0.561, P151_180:0.561, P181_210:0.561 };
+const DASH_TARGET = {
+  enr: null,                      // target ENR (Rp), mis. 19110870230
+  bucket: {},                     // persen target per bucket, mis. { NOOD: 4.5, P001_030: 8.2 }
+  baris: {}                       // persen target per baris tabel B, mis. { '30+ (Delq)': 9.5, 'Flow NOOD': 20 }
+};
+const DASH_LALU = {
+  enr: null,                      // ENR bulan lalu di tanggal yang sama (Rp)
+  bucket: {},                     // nominal per bucket, mis. { NOOD: 12000000000 }
+  baris: {}                       // nominal per baris tabel B
+};
+function dashAngka_(n){ return (n === null || n === undefined || isNaN(n)) ? '-' : Math.round(n).toLocaleString('id-ID'); }
+function dashPersen_(n){ return (n === null || n === undefined || isNaN(n)) ? '-' : fmtDec(n, 2) + '%'; }
+function dashBeda_(n){ return (n === null || n === undefined || isNaN(n)) ? '<td>-</td>' : '<td class="' + (n > 0 ? 'dash-up' : n < 0 ? 'dash-down' : '') + '">' + Math.round(n).toLocaleString('id-ID') + '</td>'; }
+function dashBedaPct_(n){ return (n === null || n === undefined || isNaN(n)) ? '<td>-</td>' : '<td class="' + (n > 0 ? 'dash-up' : n < 0 ? 'dash-down' : '') + '">' + fmtDec(n, 2) + '%</td>'; }
 function dashActual_(body){
   const d = RINGKASAN_DATA[RINGKASAN_FLEET_MODE];
+  const enr = d.enr, tEnr = DASH_TARGET.enr, lEnr = DASH_LALU.enr;
+  const pctOf = (amt, base) => (amt === null || amt === undefined || !base) ? null : amt / base * 100;
+  const sel = (a, b) => (a === null || a === undefined || b === null || b === undefined) ? null : a - b;
+  const bagi = (a, b) => (a === null || a === undefined || !b) ? null : a / b * 100;
+  // satu baris: kunci, label, kini {amt,pct}, rate provisi (boleh null), pctTarget, nominal lalu, pct lalu, jenisBase
+  const baris = (o) => {
+    const tPct = (o.tPct === undefined ? null : o.tPct);
+    const tAmt = (tPct !== null && tEnr) ? tEnr * tPct / 100 : null;
+    const lAmt = (o.lAmt === undefined ? null : o.lAmt);
+    const lPct = o.lPct !== undefined && o.lPct !== null ? o.lPct : pctOf(lAmt, lEnr);
+    const prov = (amt) => (o.rate && amt !== null) ? amt * o.rate : null;
+    return '<tr' + (o.total ? ' class="dash-total"' : '') + '><td>' + esc(o.label) + '</td>' +
+      '<td>' + dashAngka_(tAmt) + '</td><td>' + dashPersen_(tPct) + '</td>' + (o.rate !== undefined ? '<td>' + dashAngka_(prov(tAmt)) + '</td>' : '') +
+      '<td>' + dashAngka_(o.amt) + '</td><td>' + dashPersen_(o.pct) + '</td>' + (o.rate !== undefined ? '<td>' + dashAngka_(prov(o.amt)) + '</td>' : '') +
+      '<td>' + dashAngka_(lAmt) + '</td><td>' + dashPersen_(lPct) + '</td>' + (o.rate !== undefined ? '<td>' + dashAngka_(prov(lAmt)) + '</td>' : '') +
+      dashBeda_(sel(o.amt, lAmt)) + dashBedaPct_(sel(o.pct, lPct)) +
+      dashBeda_(sel(o.amt, tAmt)) + dashBedaPct_(sel(o.pct, tPct)) +
+      '<td>' + (tAmt ? dashPersen_(bagi(o.amt, tAmt)) : '-') + '</td></tr>';
+  };
+  const grup = (ada) => '<tr><th rowspan="2">Parameter</th><th colspan="' + (ada ? 3 : 2) + '">Target</th><th colspan="' + (ada ? 3 : 2) + '">Hari ini</th><th colspan="' + (ada ? 3 : 2) + '">Bulan lalu (tgl sama)</th><th colspan="2">Selisih ke bulan lalu</th><th colspan="2">Selisih ke target</th><th rowspan="2">% Achv</th></tr>' +
+    '<tr>' + [0,1,2].map(() => '<th>Amt</th><th>%</th>' + (ada ? '<th>Provisi</th>' : '')).join('') + '<th>Amt</th><th>%</th><th>Amt</th><th>%</th></tr>';
+  const rowsA = d.perBucket.map((b, i) => { const k = BUCKET_ORDER[i]; return baris({ label: b.label, amt: b.amount, pct: b.pct, rate: DASH_PROVISI[k], tPct: DASH_TARGET.bucket[k], lAmt: DASH_LALU.bucket[k] === undefined ? null : DASH_LALU.bucket[k] }); }).join('');
+  const provTotal = d.perBucket.reduce((s, b, i) => s + b.amount * (DASH_PROVISI[BUCKET_ORDER[i]] || 0), 0);
+  const totA = '<tr class="dash-total"><td>ENR</td><td>' + dashAngka_(tEnr) + '</td><td>' + (tEnr ? '100,00%' : '-') + '</td><td>-</td><td>' + dashAngka_(enr) + '</td><td>100,00%</td><td>' + dashAngka_(provTotal) + '</td><td>' + dashAngka_(lEnr) + '</td><td>' + (lEnr ? '100,00%' : '-') + '</td><td>-</td>' + dashBeda_(sel(enr, lEnr)) + '<td>-</td>' + dashBeda_(sel(enr, tEnr)) + '<td>-</td><td>' + (tEnr ? dashPersen_(bagi(enr, tEnr)) : '-') + '</td></tr>';
+  const rowsB = d.cumulative.concat(d.flowBtc).map(r => baris({ label: r.label, amt: r.amount, pct: r.pct, tPct: DASH_TARGET.baris[r.label], lAmt: DASH_LALU.baris[r.label] === undefined ? null : DASH_LALU.baris[r.label] })).join('');
   body.innerHTML = `
-    <section class="achv-card" id="achvCard" aria-label="Pencapaian terhadap target hari ini"></section>
     <div class="rk-header"><div class="pill-toggle" id="rkFleetToggle"><button type="button" data-mode="nonfleet">Non-Fleet</button><button type="button" data-mode="all">Semua (+Fleet)</button></div></div>
     <div class="rk-report-card rk-compact" id="rkReportCard">
-      <div class="rk-report-header"><div class="rk-report-title">${ic('chart')} Actual cabang CORE Kendal</div><div class="rk-report-date">Update per: ${new Date().toLocaleDateString('id-ID', {day:'2-digit', month:'long', year:'numeric'})}</div></div>
-      <div class="rk-hero-row">
-        <div class="rk-hero-card"><div class="lbl">Total Kontrak (ENR)</div><div class="val" id="rkValCount">0</div></div>
-        <div class="rk-hero-card"><div class="lbl">Total Sisa Piutang (ENR)</div><div class="val" id="rkValAmt">Rp0</div></div>
-      </div>
-      <div class="rk-grid">
-        <div>${barListSection('Sebaran per Bucket (Kondisi Aktual)', d.perBucket)}</div>
-        <div>${barListSection('Flow & Back-to-Current (Branch-wide)', d.flowBtc)}</div>
-      </div>
+      <div class="rk-report-header"><div class="rk-report-title">${ic('chart')} Performance &amp; Provision</div><div class="rk-report-date">Update per: ${new Date().toLocaleDateString('id-ID', {day:'2-digit', month:'long', year:'numeric'})}</div></div>
+      <div class="dash-sec"><h3>A. Sebaran bucket dan provisi</h3><div class="dash-tbl-wrap"><table class="dash-tbl dash-xl"><thead>${grup(true)}</thead><tbody>${rowsA}${totA}</tbody></table></div></div>
+      <div class="dash-sec"><h3>B. Rasio kumulatif, flow dan back-to-current</h3><div class="dash-tbl-wrap"><table class="dash-tbl dash-xl"><thead>${grup(false)}</thead><tbody>${rowsB}</tbody></table></div></div>
+      <p class="sub" style="font-size:12px;color:var(--ink-soft);margin:10px 0 0;">Kolom Target dan Bulan lalu masih kosong sampai datanya diisi. Provisi dihitung dari nominal dikali rate provisi per bucket. Selisih ke bulan lalu = hari ini dikurangi tanggal yang sama bulan lalu.</p>
     </div>
+    <section class="achv-card" id="achvCard" aria-label="Pencapaian terhadap target hari ini" style="margin-top:16px;"></section>
     <div class="rk-report-card" id="trenCard" style="margin-top:16px;"></div>`;
   renderAchv(); loadTren();
-  animateCount(document.getElementById('rkValCount'), d.enrCount, false);
-  animateCount(document.getElementById('rkValAmt'), d.enr, true);
   document.querySelectorAll('#rkFleetToggle button').forEach(btn => {
     btn.classList.toggle('active', btn.getAttribute('data-mode') === RINGKASAN_FLEET_MODE);
     btn.addEventListener('click', () => { RINGKASAN_FLEET_MODE = btn.getAttribute('data-mode'); renderRingkasanView(); });
   });
 }
 
-// 2) Ringkasan productivity (dari tab PRODUCTIVITY lewat /api/cms)
+// 2) Productivity: layout sama dengan tabel CMS (Balance 1-30 per FE, Balance 31-60 per MR)
 function dashProduk_(body){
   if(!CMS_DATA){
     body.innerHTML = '<div class="skeleton-row"><div class="skel"></div><div class="skel"></div></div><div class="skel tall"></div>';
@@ -4171,18 +4206,18 @@ function dashProduk_(body){
   if(!D.tersedia){ body.innerHTML = '<div class="state-box">' + esc(D.pesan || 'Data productivity belum tersedia.') + '</div>'; return; }
   const cnt = {}; D.items.forEach(it => it.t.forEach(t => { cnt[t] = (cnt[t] || 0) + 1; }));
   const g = (b, co, m) => m === 'tdk' ? (cnt[b+'|'+co+'|terbentuk']||0) - (cnt[b+'|'+co+'|dikerjakan']||0) : (cnt[b+'|'+co+'|'+m] || 0);
-  const pc = (n, dn) => dn > 0 ? fmtDec(n / dn * 100, 1) + '%' : '-';
   const nm = n => (CO_META[n] || {}).short || n;
-  const baris = (b, co, label) => { const a = g(b,co,'actual'), t = g(b,co,'terbentuk'), k = g(b,co,'dikerjakan'), td = g(b,co,'tdk'), bt = g(b,co,'bertemu'), tb = g(b,co,'tidakbertemu'), jb = g(b,co,'acJB'), tt = g(b,co,'ttl');
-    return `<tr><td>${esc(label)}</td><td>${a}</td><td>${t}<br><small>${pc(t,a)}</small></td><td>${k}<br><small>${pc(k,t)}</small></td><td>${td}</td><td>${bt}<br><small>${pc(bt,k)}</small></td><td>${tb}<br><small>${pc(tb,k)}</small></td><td>${jb}</td><td>${tt}<br><small>${pc(tt,a)}</small></td></tr>`; };
+  const kolom = []; CMS_COLS.forEach((G, gi) => G.cols.forEach(c => kolom.push({ c, gi })));
+  const head1 = '<tr><th rowspan="2">PIC</th>' + CMS_COLS.map(G => G.cols.length && G.g ? '<th colspan="' + G.cols.length + '">' + esc(G.g) + '</th>' : '<th rowspan="2">Actual</th>').join('') + '</tr>';
+  const head2 = '<tr>' + CMS_COLS.map(G => G.g ? G.cols.map(c => '<th>' + esc(c.l) + '</th>').join('') : '').join('') + '</tr>';
+  const baris = (b, co, label, total) => '<tr' + (total ? ' class="dash-total"' : '') + '><td>' + esc(label) + '</td>' + kolom.map(k => '<td class="' + (CMS_CLS[k.gi] || '') + '">' + (k.c.pct ? cmsPct(g(b, co, k.c.pct[0]), g(b, co, k.c.pct[1])) : g(b, co, k.c.m)) + '</td>').join('') + '</tr>';
+  const tabel = (judul, rows) => '<div class="dash-sec"><h3>' + esc(judul) + '</h3><div class="dash-tbl-wrap"><table class="dash-tbl dash-xl dash-prod"><thead>' + head1 + head2 + '</thead><tbody>' + rows + '</tbody></table></div></div>';
   const fe = D.urutan.fe.filter(c => D.items.some(it => it.co === c));
-  const tabel = (judul, rows) => `<div class="dash-sec"><h3>${esc(judul)}</h3><div class="dash-tbl-wrap"><table class="dash-tbl"><thead><tr><th>PIC</th><th>Actual</th><th>DKH terbentuk</th><th>Dikerjakan</th><th>Tdk dikerjakan</th><th>Bertemu</th><th>Tdk bertemu</th><th>JB</th><th>Tdk terbentuk</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
   const M = D.meta || {};
-  body.innerHTML = `<div class="rk-report-card"><div class="rk-report-header"><div class="rk-report-title">${ic('chart')} Ringkasan productivity</div><div class="rk-report-date">Tgl tagihan terbaru ${esc(M.tglTagihanTerbaru || '-')}</div></div>
-    <p class="sub" style="font-size:12.5px;color:var(--ink-soft);margin:0 0 6px;">Persen terbentuk dari actual, dikerjakan dari terbentuk, bertemu dan tidak bertemu dari dikerjakan. JB = janji bayar.</p>
-    ${tabel('Balance 1-30 (FE)', baris('b1','*','TOTAL') + fe.map(c => baris('b1', c, nm(c))).join(''))}
-    ${tabel('Balance 31-60 (MR)', baris('b2','*', nm(D.urutan.mr)))}
-    <p class="sub" style="font-size:12px;color:var(--ink-soft);margin:10px 0 0;">Detail per kontrak ada di menu CMS Produktivitas.</p></div>`;
+  body.innerHTML = '<div class="rk-report-card"><div class="rk-report-header"><div class="rk-report-title">' + ic('chart') + ' Productivity</div><div class="rk-report-date">Tgl tagihan terbaru ' + esc(M.tglTagihanTerbaru || '-') + '</div></div>' +
+    tabel('BALANCE 1-30', fe.map(c => baris('b1', c, nm(c))).join('') + baris('b1', '*', 'TOTAL', true)) +
+    tabel('BALANCE 31-60', baris('b2', D.urutan.mr, nm(D.urutan.mr)) + baris('b2', '*', 'TOTAL', true)) +
+    '<p class="sub" style="font-size:12px;color:var(--ink-soft);margin:10px 0 0;">JB = janji bayar. Detail per kontrak ada di menu CMS Produktivitas.</p></div>';
 }
 
 // 4) Pemberat penyelesaian: kontrak bucket awal yang sudah flow (BUCKET UPDATE lebih buruk dari BUCKET AWAL), dibobot SIPOK
