@@ -6,13 +6,27 @@ const { cleanCell, bayarLPC } = require('./_sheet');
 // AUTH HELPERS (sama seperti di api/data.js)
 // ============================================================
 
-async function fetchSheetRange(sheetId, range, accessToken) {
+// Cache singkat di memori instance: tab besar (MASTER) tidak dibaca ulang dari Google di setiap buka halaman.
+// Permintaan yang datang bersamaan memakai satu bacaan yang sama. Cache dilewati saat admin membekukan ulang target.
+const CACHE_SHEET_MS = 45 * 1000;
+const cacheSheet = new Map();
+async function bacaSheetLangsung(sheetId, range, accessToken) {
   const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(range)}?valueRenderOption=UNFORMATTED_VALUE`, {
     headers: { Authorization: 'Bearer ' + accessToken }
   });
   const json = await res.json();
   if (!json.values) throw new Error('Gagal baca range ' + range + ': ' + JSON.stringify(json));
   return json.values;
+}
+async function fetchSheetRange(sheetId, range, accessToken, tanpaCache) {
+  if (tanpaCache) return bacaSheetLangsung(sheetId, range, accessToken);
+  const key = sheetId + '|' + range;
+  const hit = cacheSheet.get(key);
+  if (hit && Date.now() - hit.t < CACHE_SHEET_MS) return hit.p;
+  const p = bacaSheetLangsung(sheetId, range, accessToken);
+  cacheSheet.set(key, { t: Date.now(), p });
+  p.catch(() => { if (cacheSheet.get(key) && cacheSheet.get(key).p === p) cacheSheet.delete(key); });
+  return p;
 }
 
 function parseSheetGeneric(values, headerRowIndex) {
@@ -434,12 +448,13 @@ module.exports = async (req, res) => {
     const [email, accessToken] = await Promise.all([verifyIdToken(idToken), getAccessToken()]);
     const sheetId = process.env.GOOGLE_SHEET_ID;
     const modeTarget = !!(req.query && req.query.target);
+    const lewatiCache = !!(req.query && req.query.bekukan);
 
     // Mode target: baseline hari ini & hasil harian dibaca BERSAMAAN dengan MASTER/KA/CONFIG (dulu berurutan setelahnya), dan LOG_MINGGUAN tidak dibaca.
     const [masterRaw, kaRaw, roleRaw, baseAwal, hasilAwal, logRaw, lpcRaw] = await Promise.all([
-      fetchSheetRange(sheetId, 'MASTER', accessToken),
-      fetchSheetRange(sheetId, 'KA HARIAN', accessToken),
-      fetchSheetRange(sheetId, 'CONFIG_ROLE', accessToken),
+      fetchSheetRange(sheetId, 'MASTER', accessToken, lewatiCache),
+      fetchSheetRange(sheetId, 'KA HARIAN', accessToken, lewatiCache),
+      fetchSheetRange(sheetId, 'CONFIG_ROLE', accessToken, lewatiCache),
       modeTarget ? bacaBaseline(accessToken, sheetId, kunciTanggal(tdHariIni())).catch(() => null) : null,
       modeTarget ? bacaHasil(accessToken, sheetId).catch(() => []) : null,
       // LOG_MINGGUAN opsional — kalau belum ada/gagal dibaca, lanjut tanpa data historis W1-W4
@@ -530,7 +545,7 @@ module.exports.__test = { hitungTargetDaily, tdHariDariCell, tdSusunKontrak };
 // Dipanggil cron harian (api/log-snapshot.js): bekukan target hari ini dari data pagi, sebelum admin mulai update bayar.
 module.exports.bekukanTargetHariIni = async (accessToken, sheetId) => {
   const [masterRaw, kaRaw, roleRaw] = await Promise.all([
-    fetchSheetRange(sheetId, 'MASTER', accessToken), fetchSheetRange(sheetId, 'KA HARIAN', accessToken), fetchSheetRange(sheetId, 'CONFIG_ROLE', accessToken)
+    fetchSheetRange(sheetId, 'MASTER', accessToken, true), fetchSheetRange(sheetId, 'KA HARIAN', accessToken, true), fetchSheetRange(sheetId, 'CONFIG_ROLE', accessToken, true)
   ]);
   const masterList = parseSheetGeneric(masterRaw, 0).filter(m => m['NO KONTRAK']);
   const petaKA = {}; parseSheetGeneric(kaRaw, 15).forEach(r => { if (r['NO KONTRAK']) petaKA[r['NO KONTRAK']] = r; });
