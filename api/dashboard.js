@@ -109,7 +109,7 @@ function susunHead(o) {
       urai, irisan: ir.slice(0, 10), teratas: D.kontrakTeratas(p.rows, p.masalah, 20)
     };
     let terbesar = 0;
-    Object.values(urai).forEach(list => list.forEach(u => { if (u.pemberat && u.pengaruh > terbesar) terbesar = u.pengaruh; }));
+    Object.keys(urai).filter(dim => !D.DIMENSI_WAKTU.has(dim)).forEach(dim => urai[dim].forEach(u => { if (u.pemberat && u.pengaruh > terbesar) terbesar = u.pengaruh; }));
     if (terbesar > 0 && kal[1]) kandidatPenyebab.push({ angka, judul: D.ANGKA[angka].judul, kalimat: kal[1], pengaruh: r2h(terbesar) });
   });
   const penyebab = kandidatPenyebab.sort((a, b) => b.pengaruh - a.pengaruh).slice(0, 3);

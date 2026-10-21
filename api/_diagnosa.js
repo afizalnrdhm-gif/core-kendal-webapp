@@ -112,6 +112,8 @@ function kontrakTeratas(rows, masalah, n) {
   }));
 }
 
+// Dimensi waktu menggambarkan kapan kontrak jatuh tempo/janji, bukan penyebab: tampil di tabel, tidak dijadikan kalimat penyebab.
+const DIMENSI_WAKTU = new Set(['jatuhTempo', 'janjiBayar']);
 const BATAS_MINGGU = [7, 14, 21, 31];
 const SEGMEN = ['KARYAWAN', 'WIRASWASTA', 'SERABUTAN'];
 const r2 = v => Math.round(v * 100) / 100;
@@ -139,7 +141,7 @@ const juta = v => 'Rp ' + Math.round(v / 1e6).toLocaleString('id-ID') + ' jt';
 function kalimat(judul, rk, uraiPerDimensi) {
   const out = [`${judul}: penyelesaian ${fmt2(rk.penyelesaianPct)}% (${juta(rk.masalah)} bermasalah dari beban ${juta(rk.beban)}).`];
   const calon = [];
-  Object.keys(uraiPerDimensi || {}).forEach(dim => (uraiPerDimensi[dim] || []).forEach(u => { if (u.pemberat && u.pengaruh > 0) calon.push({ dim, u }); }));
+  Object.keys(uraiPerDimensi || {}).filter(dim => !DIMENSI_WAKTU.has(dim)).forEach(dim => (uraiPerDimensi[dim] || []).forEach(u => { if (u.pemberat && u.pengaruh > 0) calon.push({ dim, u }); }));
   calon.sort((a, b) => b.u.pengaruh - a.u.pengaruh);
   const dipakai = [];
   for (const c of calon) {
@@ -155,4 +157,4 @@ function kalimat(judul, rk, uraiPerDimensi) {
   return out;
 }
 
-module.exports = { ANGKA, DIMENSI, SEGMEN, populasi, ringkas, urai, irisan, kontrakTeratas, hariDari, mingguan, mingguanPerSegmen, kalimat };
+module.exports = { ANGKA, DIMENSI, DIMENSI_WAKTU, SEGMEN, populasi, ringkas, urai, irisan, kontrakTeratas, hariDari, mingguan, mingguanPerSegmen, kalimat };

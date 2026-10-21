@@ -110,3 +110,12 @@ test('kalimat: memuat pemberat terbesar dan pengaruhnya dalam poin', () => {
   const k2 = D.kalimat('X', D.ringkas(p2.rows, p2.masalah), { statusNbq: D.urai(p2.rows, p2.masalah, D.DIMENSI.statusNbq.nilai) });
   assert.ok(k2[k2.length - 1].includes('Tidak ada kelompok'));
 });
+
+test('kalimat: dimensi waktu (jatuh tempo, janji bayar) tidak dijadikan penyebab', () => {
+  const rows = [k('1', 'APPEAL', 'P001_030', { 'JATUH TEMPO': 18 }), k('2', 'APPEAL', 'P001_030', { 'JATUH TEMPO': 19 }), k('3', 'APPEAL', 'NOOD', { 'JATUH TEMPO': 2 }), k('4', 'APPEAL', 'NOOD', { 'JATUH TEMPO': 3 })];
+  const p = D.populasi(rows, 'nood', { fleet: false });
+  const u = D.urai(p.rows, p.masalah, D.DIMENSI.jatuhTempo.nilai);
+  assert.strictEqual(u[0].pemberat, true);
+  const kal = D.kalimat('X', D.ringkas(p.rows, p.masalah), { jatuhTempo: u });
+  assert.ok(kal[kal.length - 1].includes('Tidak ada kelompok'), kal.join(' | '));
+});
