@@ -293,7 +293,7 @@
   .hd-cause-t{font-weight:800;font-size:12px;color:var(--bad);} .hd-cause-go{font-size:12px;font-weight:700;color:var(--link);}
   .hd-tim{min-width:0 !important;} .hd-tim td:first-child{white-space:normal !important;} .hd-bad{color:var(--bad);font-weight:700;} .hd-good{color:var(--good);font-weight:700;}
   .hd-kerja{display:grid;grid-template-columns:1fr 1fr;gap:10px;} .hd-kerja div{background:var(--surface-alt);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:2px;} .hd-kerja b{font-size:22px;color:var(--ink);} .hd-kerja span{font-size:12px;color:var(--ink-soft);}
-  .hd-ax{font-size:11px;fill:var(--ink-soft);} .hd-jawab p{margin:0 0 8px;font-size:13.5px;line-height:1.5;color:var(--ink);} .hd-dims{margin-bottom:10px;} .hd-urai{min-width:640px;} .hd-pemberat td{background:var(--bad-bg);} .hd-tag{display:inline-block;font-size:10px;font-weight:800;color:var(--bad);border:1px solid var(--bad);border-radius:99px;padding:0 6px;margin-left:4px;} .hd-link{background:none;border:none;padding:0;font:inherit;font-weight:700;color:var(--link);cursor:pointer;text-align:left;} #hdSegToggle{margin-bottom:8px;} .hd-legs{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--ink-soft);margin-top:4px;} .hd-leg i{display:inline-block;width:12px;height:3px;border-radius:2px;margin-right:5px;vertical-align:middle;} .dash-xl{min-width:0;} .dash-prod{min-width:1300px;} .dash-tbl thead th{text-align:center;} .dash-tbl th[rowspan]{text-align:left;} .dash-total td{font-weight:700;background:var(--surface-sunken);} .dash-up{color:var(--ok,#157a3c);} .dash-down{color:var(--bad,#b3261e);} .dash-tbl td:first-child,.dash-tbl th:first-child{position:sticky;left:0;background:var(--surface,#fff);z-index:1;} .dash-total td:first-child{background:var(--surface-sunken);}
+  .hd-ax{font-size:11px;fill:var(--ink-soft);} .hd-ok{font-size:11.5px;font-weight:700;color:var(--good);} .hd-urai-s{min-width:0 !important;} .hd-jawab p{margin:0 0 8px;font-size:13.5px;line-height:1.5;color:var(--ink);} .hd-dims{margin-bottom:10px;} .hd-urai{min-width:640px;} .hd-pemberat td{background:var(--bad-bg);} .hd-tag{display:inline-block;font-size:10px;font-weight:800;color:var(--bad);border:1px solid var(--bad);border-radius:99px;padding:0 6px;margin-left:4px;} .hd-link{background:none;border:none;padding:0;font:inherit;font-weight:700;color:var(--link);cursor:pointer;text-align:left;} #hdSegToggle{margin-bottom:8px;} .hd-legs{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--ink-soft);margin-top:4px;} .hd-leg i{display:inline-block;width:12px;height:3px;border-radius:2px;margin-right:5px;vertical-align:middle;} .dash-xl{min-width:0;} .dash-prod{min-width:1300px;} .dash-tbl thead th{text-align:center;} .dash-tbl th[rowspan]{text-align:left;} .dash-total td{font-weight:700;background:var(--surface-sunken);} .dash-up{color:var(--ok,#157a3c);} .dash-down{color:var(--bad,#b3261e);} .dash-tbl td:first-child,.dash-tbl th:first-child{position:sticky;left:0;background:var(--surface,#fff);z-index:1;} .dash-total td:first-child{background:var(--surface-sunken);}
   .pill-toggle{display:inline-flex;background:var(--surface-sunken);border-radius:99px;padding:3px;border:1px solid var(--line);}
   .pill-toggle button{border:none;background:none;padding:8px 18px;min-height:36px;border-radius:99px;font-size:13px;font-weight:600;color:var(--ink-soft);cursor:pointer;transition:background .15s ease,color .15s ease;}
   .pill-toggle button.active{background:var(--primary);color:var(--on-primary);box-shadow:var(--shadow-1);}
@@ -4160,7 +4160,7 @@ function bindTrenToggle(){
 let HEAD_DATA = null, HEAD_LOADING = false;
 let DIAG_ANGKA = 'nood', DIAG_DIM = 'statusNbq', DIAG_SEG = 'ini';
 const hdPct_ = v => (v == null || isNaN(v)) ? '-' : fmtDec(v, 2) + '%';
-const hdJt_ = v => 'Rp ' + Math.round((Number(v) || 0) / 1e6).toLocaleString('id-ID') + ' jt';
+const hdJt_ = v => 'Rp ' + (Math.round((Number(v) || 0) / 1e6) || 0).toLocaleString('id-ID') + ' jt';
 function loadHead(lalu){
   if(HEAD_LOADING) return; HEAD_LOADING = true;
   // Respons bisa datang setelah head pindah menu: render hanya kalau layar head masih dibuka, sesuai menu yang aktif saat itu.
@@ -4227,6 +4227,60 @@ function renderHariIni(){
   wrap.querySelectorAll('.hd-cause').forEach(b => b.onclick = () => { DIAG_ANGKA = b.dataset.a; if(b.dataset.d) DIAG_DIM = b.dataset.d; if(document.getElementById('navDiagnosa')) switchView('diagnosa'); });
 }
 
+// Garis harian: seri [{label, warna, titik:[{tanggal, persen}]}]
+function garisHarian_(el, seri){
+  if(!el) return;
+  const tgl = [...new Set([].concat(...seri.map(s => s.titik.map(t => t.tanggal))))].sort();
+  if(!tgl.length){ el.innerHTML = '<p class="hd-note">Riwayat hasil harian belum ada bulan ini.</p>'; return; }
+  const W = 360, H = 200, L = 38, R = 12, T = 10, B = 26;
+  const semua = []; seri.forEach(s => s.titik.forEach(t => semua.push(t.persen)));
+  const top = Math.max(100, Math.ceil(Math.max.apply(null, semua.concat([0])) / 25) * 25), bawah = Math.min(0, Math.floor(Math.min.apply(null, semua.concat([0])) / 25) * 25);
+  const x = i => tgl.length === 1 ? (L + W - R) / 2 : L + (W - L - R) * i / (tgl.length - 1), y = v => T + (H - T - B) * (top - v) / (top - bawah);
+  let g = '';
+  for(let v = bawah; v <= top; v += (top - bawah) / 4){ g += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/><text x="${L - 6}" y="${y(v) + 4}" text-anchor="end" class="hd-ax">${Math.round(v)}%</text>`; }
+  g += `<line x1="${L}" x2="${W - R}" y1="${y(100)}" y2="${y(100)}" stroke="var(--good)" stroke-dasharray="4 4"/>`;
+  const langkah = Math.max(1, Math.ceil(tgl.length / 6));
+  tgl.forEach((t, i) => { if(i % langkah === 0 || i === tgl.length - 1) g += `<text x="${x(i)}" y="${H - 8}" text-anchor="middle" class="hd-ax">${Number(t.slice(8))}</text>`; });
+  seri.forEach(s => {
+    const pts = s.titik.map(t => [x(tgl.indexOf(t.tanggal)), y(t.persen), t]).sort((a, b) => a[0] - b[0]);
+    g += `<polyline fill="none" style="stroke:${s.warna}" stroke-width="2.5" points="${pts.map(p => p[0] + ',' + p[1]).join(' ')}"/>`;
+    g += pts.map(p => `<circle cx="${p[0]}" cy="${p[1]}" r="3.5" style="fill:${s.warna}"><title>${esc(s.label)} ${esc(p[2].tanggal)}: ${hdPct_(p[2].persen)}</title></circle>`).join('');
+  });
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Capaian target daily harian per PIC">${g}</svg><div class="hd-legs">${seri.map(s => `<span class="hd-leg"><i style="background:${s.warna}"></i>${esc(s.label)}</span>`).join('')}</div>`;
+}
+const TD_DIMS = [['statusKerja','Status kerja'],['hasil','Hasil kunjungan'],['janji','Janji bayar'],['pic','PIC'],['segmen','Segmen'],['jatuhTempo','Jatuh tempo']];
+let DIAG_TD_DIM = 'statusKerja';
+const HD_WARNA = ['#2a78d6','#eb6834','#1baf7a','#8a5cd1','#c2410c','#0e7490'];
+function hdStatus_(s){ return s === 'MERAH' ? '<span class="td-st td-st-merah">Merah</span>' : s === 'WASPADA' ? '<span class="td-st td-st-waspada">Waspada</span>' : '<span class="hd-ok">Aman</span>'; }
+function hdNama_(co){ return (CO_META[co] || {}).short || String(co).split(' ')[0]; }
+function renderDiagnosaTd_(wrap, chips){
+  const t = HEAD_DATA.targetDaily;
+  const baris = []; t.pic.forEach(p => p.poin.forEach(q => baris.push(`<tr><td>${esc(hdNama_(p.co))} <small>${esc(p.role || '')}</small></td><td>${esc(q.judul)}</td><td>${hdJt_(q.target)}</td><td class="${q.realisasi < 0 ? 'hd-bad' : ''}">${hdJt_(q.realisasi)}</td><td class="${q.tuntas ? 'hd-good' : 'hd-bad'}">${q.capaianPct == null ? '-' : hdPct_(q.capaianPct)}</td><td>${hdStatus_(q.status)}</td></tr>`)));
+  const dims = TD_DIMS.map(([k, l]) => `<button type="button" role="tab" data-td="${k}" class="${k === DIAG_TD_DIM ? 'on' : ''}" aria-selected="${k === DIAG_TD_DIM}">${l}</button>`).join('');
+  const urai = (t.belum.urai[DIAG_TD_DIM] || []);
+  const tabelUrai = urai.length ? `<div class="dash-tbl-wrap"><table class="dash-tbl hd-urai hd-urai-s"><thead><tr><th>Nilai</th><th>Kontrak</th><th>SIPOK</th><th>Porsi</th></tr></thead><tbody>${urai.map(u => `<tr><td>${esc(DIAG_TD_DIM === 'pic' ? hdNama_(u.nilai) : u.nilai)}</td><td>${u.kontrak}</td><td>${hdJt_(u.sipok)}</td><td>${hdPct_(u.porsiPct)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="hd-note">Tidak ada kontrak daftar pagi yang belum bayar.</p>';
+  const teratas = t.teratas.length ? `<div class="dash-tbl-wrap"><table class="dash-tbl hd-urai"><thead><tr><th>Konsumen</th><th>PIC</th><th>SIPOK</th><th>Status kerja</th><th>Hasil</th><th>Janji</th></tr></thead><tbody>${t.teratas.map(k => `<tr><td><button type="button" class="hd-link" data-no="${esc(k.noKontrak)}">${esc(k.nama || k.noKontrak)}</button><br><small>${esc(k.noKontrak)}</small></td><td>${esc(hdNama_(k.co))}</td><td>${hdJt_(k.sipok)}</td><td>${esc(k.statusKerja)}</td><td>${esc(k.hasil)}</td><td>${esc(k.janji)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="hd-note">Tidak ada.</p>';
+  wrap.innerHTML = `<div class="hd">
+    <div class="dash-tabs" role="tablist" aria-label="Angka yang ditanyakan">${chips}</div>
+    <section class="hd-sec hd-jawab"><h3>Jawaban singkat</h3>${t.kalimat.map(k => `<p>${esc(k)}</p>`).join('')}<button class="btn" id="hdSalin">Salin jawaban</button></section>
+    ${t.adaBaseline ? `<section class="hd-sec"><h3>Per PIC dan poin</h3><div class="dash-tbl-wrap"><table class="dash-tbl hd-urai"><thead><tr><th>PIC</th><th>Poin</th><th>Target</th><th>Realisasi</th><th>Capaian</th><th>Status</th></tr></thead><tbody>${baris.join('')}</tbody></table></div>
+      <p class="hd-note">Realisasi = perubahan posisi dari pagi ke data terakhir. Minus berarti posisi memburuk. Status: meleset 1-2 hari berturut-turut Waspada, 3 hari atau lebih Merah.</p></section>` : ''}
+    <section class="hd-sec"><h3>Tren capaian harian bulan ini</h3><div id="hdTren"></div></section>
+    <section class="hd-sec"><h3>Kontrak daftar pagi yang belum bayar</h3><p class="hd-note" style="margin-bottom:8px">${t.belum.kontrak} kontrak, ${hdJt_(t.belum.sipok)}</p><div class="dash-tabs hd-dims" role="tablist" aria-label="Dimensi">${dims}</div>${tabelUrai}</section>
+    <section class="hd-sec"><h3>Kontrak belum bayar terbesar</h3>${teratas}</section>
+  </div>`;
+  garisHarian_(document.getElementById('hdTren'), Object.keys(t.tren).map((co, i) => ({ label: hdNama_(co), warna: HD_WARNA[i % HD_WARNA.length], titik: t.tren[co] })));
+  wrap.querySelectorAll('[data-a]').forEach(b => b.onclick = () => { DIAG_ANGKA = b.dataset.a; renderDiagnosa(); });
+  wrap.querySelectorAll('[data-td]').forEach(b => b.onclick = () => { DIAG_TD_DIM = b.dataset.td; renderDiagnosa(); });
+  wrap.querySelectorAll('.hd-link').forEach(b => b.onclick = () => openPanel(b.dataset.no));
+  document.getElementById('hdSalin').onclick = () => salinTeks_(t.kalimat.join('\n'), document.getElementById('hdSalin'));
+}
+function salinTeks_(teks, tombol){
+  const ok = () => { if(tombol) tombol.textContent = 'Tersalin'; };
+  const cadangan = () => { try { const ta = document.createElement('textarea'); ta.value = teks; ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select(); const b = document.execCommand('copy'); document.body.removeChild(ta); if(b) ok(); else if(tombol) tombol.textContent = 'Gagal menyalin'; } catch(e){ if(tombol) tombol.textContent = 'Gagal menyalin'; } };
+  if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(teks).then(ok).catch(cadangan); else cadangan();
+}
+
 const DIAG_DIMS = [['statusNbq','Status approval'],['groupProduct','Group product'],['typeBarang','Type barang'],['co','CO'],['segmen','Segmen'],['mob','MOB'],['statusDkh','Status DKH'],['kontrakBesar','Nominal'],['jatuhTempo','Jatuh tempo'],['janjiBayar','Janji bayar'],['fleet','Fleet']];
 const DIAG_MASALAH = { btc130: 'belum kembali ke NOOD', btc3160: 'belum kembali ke NOOD' };
 function diagIrisan_(v){ return String(v).split(' × ').map(x => (CO_META[x] || {}).short || x).join(' × '); }
@@ -4237,9 +4291,11 @@ function diagTabel_(list, dim){
 }
 function renderDiagnosa(){
   const d = HEAD_DATA, wrap = document.getElementById('wrap'); if(!d || !wrap) return;
-  if(!d.diagnosa[DIAG_ANGKA]) DIAG_ANGKA = 'nood';
+  const adaTd = !!d.targetDaily;
+  if(!d.diagnosa[DIAG_ANGKA] && !(DIAG_ANGKA === 'td' && adaTd)) DIAG_ANGKA = 'nood';
+  const chips = (adaTd ? `<button type="button" role="tab" data-a="td" class="${DIAG_ANGKA === 'td' ? 'on' : ''}" aria-selected="${DIAG_ANGKA === 'td'}">Target Daily</button>` : '') + Object.keys(d.diagnosa).map(a => `<button type="button" role="tab" data-a="${a}" class="${a === DIAG_ANGKA ? 'on' : ''}" aria-selected="${a === DIAG_ANGKA}">${esc(d.diagnosa[a].judul)}</button>`).join('');
+  if(DIAG_ANGKA === 'td'){ renderDiagnosaTd_(wrap, chips); return; }
   const g = d.diagnosa[DIAG_ANGKA], mas = DIAG_MASALAH[DIAG_ANGKA] || 'flow (BUCKET UPDATE lebih buruk dari bucket awal)';
-  const chips = Object.keys(d.diagnosa).map(a => `<button type="button" role="tab" data-a="${a}" class="${a === DIAG_ANGKA ? 'on' : ''}" aria-selected="${a === DIAG_ANGKA}">${esc(d.diagnosa[a].judul)}</button>`).join('');
   const dims = DIAG_DIMS.map(([k, l]) => `<button type="button" role="tab" data-d="${k}" class="${k === DIAG_DIM ? 'on' : ''}" aria-selected="${k === DIAG_DIM}">${l}</button>`).join('');
   const teratas = g.teratas.length ? `<div class="dash-tbl-wrap"><table class="dash-tbl hd-urai"><thead><tr><th>Konsumen</th><th>CO</th><th>SIPOK</th><th>Awal → Update</th><th>Status approval</th><th>Produk</th></tr></thead><tbody>${g.teratas.map(t => `<tr><td><button type="button" class="hd-link" data-no="${esc(t.noKontrak)}">${esc(t.nama || t.noKontrak)}</button><br><small>${esc(t.noKontrak)}</small></td><td>${esc((CO_META[t.co] || {}).short || t.co)}</td><td>${hdJt_(t.sipok)}</td><td>${esc(fmtBucket(t.bucketAwal))} → ${esc(fmtBucket(t.bucketUpdate))}</td><td>${esc(t.statusNbq)}</td><td>${esc(t.groupProduct)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="hd-note">Tidak ada kontrak bermasalah.</p>';
   wrap.innerHTML = `<div class="hd">
@@ -4261,10 +4317,7 @@ function renderDiagnosa(){
   wrap.querySelectorAll('[data-d]').forEach(b => b.onclick = () => { DIAG_DIM = b.dataset.d; renderDiagnosa(); });
   wrap.querySelectorAll('#hdSegToggle button').forEach(b => b.onclick = () => { DIAG_SEG = b.dataset.s; renderDiagnosa(); });
   wrap.querySelectorAll('.hd-link').forEach(b => b.onclick = () => openPanel(b.dataset.no));
-  document.getElementById('hdSalin').onclick = () => {
-    const t = g.kalimat.join('\n');
-    (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => { document.getElementById('hdSalin').textContent = 'Tersalin'; }).catch(() => { document.getElementById('hdSalin').textContent = 'Gagal menyalin'; });
-  };
+  document.getElementById('hdSalin').onclick = () => salinTeks_(g.kalimat.join('\n'), document.getElementById('hdSalin'));
 }
 
 let DASH_TAB = 'actual', DASH_SET = 'NOOD', DASH_FLEET = false;
