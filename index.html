@@ -266,6 +266,19 @@
   .chip-x{cursor:pointer;color:var(--ink-soft);font-weight:700;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;line-height:1;font-size:11px;}
   .chip-x:hover{color:#fff;background:var(--bad);}
 
+
+  /* Dashboard: tab + pemberat penyelesaian */
+  .dash-tabs{display:flex;gap:6px;overflow-x:auto;padding:2px 0 12px;margin:0 -2px;-webkit-overflow-scrolling:touch;}
+  .dash-tabs button{flex:0 0 auto;border:1px solid var(--line);background:var(--surface);color:var(--ink-soft);padding:9px 14px;min-height:40px;border-radius:99px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;}
+  .dash-tabs button.on{background:var(--primary);color:var(--on-primary);border-color:transparent;box-shadow:var(--shadow-1);}
+  .dash-sec{margin-top:14px;} .dash-sec h3{margin:0 0 4px;font-size:15px;color:var(--ink);} .dash-sec .sub{margin:0 0 10px;font-size:12.5px;color:var(--ink-soft);}
+  .dash-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px;}
+  .dash-kpi{background:var(--surface-sunken);border:1px solid var(--line);border-radius:12px;padding:12px;} .dash-kpi small{display:block;color:var(--ink-soft);font-size:11.5px;} .dash-kpi b{font-size:20px;color:var(--ink);} .dash-kpi span{display:block;font-size:11.5px;color:var(--ink-soft);}
+  .pb-insight{margin:0;padding:0;list-style:none;display:grid;gap:8px;} .pb-insight li{border-left:3px solid var(--bad);background:var(--bad-bg);border-radius:8px;padding:9px 12px;font-size:13px;color:var(--ink);} .pb-insight li small{color:var(--ink-soft);display:block;}
+  .pb-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin-top:14px;} .pb-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px;} .pb-card h4{margin:0 0 8px;font-size:14px;color:var(--ink);}
+  .pb-row{padding:8px 0;border-bottom:1px solid var(--line);} .pb-row:last-child{border-bottom:none;} .pb-top{display:flex;justify-content:space-between;gap:8px;font-size:13px;} .pb-top b{color:var(--ink);font-weight:600;} .pb-top span{color:var(--ink-soft);white-space:nowrap;}
+  .pb-bar{height:6px;border-radius:6px;background:var(--surface-sunken);margin:5px 0 3px;} .pb-bar i{display:block;height:100%;border-radius:6px;background:var(--warn);} .pb-row.berat .pb-bar i{background:var(--bad);} .pb-sub{font-size:11.5px;color:var(--ink-soft);} .pb-flag{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:99px;background:var(--bad-bg);color:var(--bad);font-size:10.5px;font-weight:700;}
+  .dash-tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;} .dash-tbl{border-collapse:collapse;width:100%;font-size:12.5px;min-width:620px;} .dash-tbl th,.dash-tbl td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap;} .dash-tbl th:first-child,.dash-tbl td:first-child{text-align:left;font-weight:600;} .dash-tbl th{color:var(--ink-soft);font-weight:600;background:var(--surface-sunken);} .dash-tbl td small{color:var(--ink-soft);} .dash-xl{min-width:1100px;} .dash-prod{min-width:1300px;} .dash-tbl thead th{text-align:center;} .dash-tbl th[rowspan]{text-align:left;} .dash-total td{font-weight:700;background:var(--surface-sunken);} .dash-up{color:var(--ok,#157a3c);} .dash-down{color:var(--bad,#b3261e);} .dash-tbl td:first-child,.dash-tbl th:first-child{position:sticky;left:0;background:var(--surface,#fff);z-index:1;} .dash-total td:first-child{background:var(--surface-sunken);}
   .pill-toggle{display:inline-flex;background:var(--surface-sunken);border-radius:99px;padding:3px;border:1px solid var(--line);}
   .pill-toggle button{border:none;background:none;padding:8px 18px;min-height:36px;border-radius:99px;font-size:13px;font-weight:600;color:var(--ink-soft);cursor:pointer;transition:background .15s ease,color .15s ease;}
   .pill-toggle button.active{background:var(--primary);color:var(--on-primary);box-shadow:var(--shadow-1);}
@@ -536,6 +549,7 @@
     tbody td[data-label="Nama"]::before, tbody td[data-label="Nama Konsumen"]::before{display:none;}
     tbody tr.empty-row{display:block;}
     tbody td:nth-last-child(1){border-bottom:none;}
+    .dash-tbl{display:table;min-width:1100px;} .dash-prod{min-width:1300px;} .dash-tbl thead{display:table-header-group;} .dash-tbl tbody{display:table-row-group;} .dash-tbl tr,.dash-tbl thead tr{display:table-row;margin:0;border:none;border-radius:0;box-shadow:none;background:transparent;} .dash-tbl th,.dash-tbl td,.dash-tbl tbody td{display:table-cell;padding:8px 10px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line);} .dash-tbl td:first-child,.dash-tbl tbody td:first-child{text-align:left;} .dash-tbl tbody td::before{content:none;}
   }
   @media (min-width: 901px){
     .controls{position:relative;z-index:9;}
@@ -1287,7 +1301,7 @@
       <nav class="sidebar-nav">
         <button class="nav-item nav-hidden" data-view="ringkasan" id="navRingkasan">
           <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
-          <span>Ringkasan Cabang</span>
+          <span>Dashboard</span>
         </button>
         <button class="nav-item active" data-view="dashboard" id="navDashboard">
           <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="20" x2="6" y2="12"/><line x1="12" y1="20" x2="12" y2="6"/><line x1="18" y1="20" x2="18" y2="14"/></svg>
@@ -1754,7 +1768,7 @@ function onDataLoaded(res){
       VIEW_MODE = 'ringkasan';
       document.getElementById('navRingkasan').classList.add('active');
       document.getElementById('navDashboard').classList.remove('active');
-      document.getElementById('mobilePageTitle').textContent = 'Ringkasan Cabang';
+      document.getElementById('mobilePageTitle').textContent = 'Dashboard';
       loadRingkasan();
     } else {
       buildLayout();
@@ -2112,7 +2126,7 @@ function updateFilterBadge(){
 let VIEW_MODE = 'dashboard';
 let INSENTIF_DATA = null;
 
-const VIEW_TITLES = { ringkasan: 'Ringkasan Cabang', cms: 'CMS Produktivitas', usulan: 'Usulan DKH', dashboard: 'Beban Awal', targetdaily: 'Target Daily', nbq: 'NBQ', feever: 'FE Ever', tglbayar: 'Tgl Bayar Bulan Lalu', insentif: 'Insentif', dekscall: 'Deskcall', simulasi: 'Simulasi Penawaran', simulasirapor: 'Simulasi Rapor', panduan: 'Panduan KPI' };
+const VIEW_TITLES = { ringkasan: 'Dashboard', cms: 'CMS Produktivitas', usulan: 'Usulan DKH', dashboard: 'Beban Awal', targetdaily: 'Target Daily', nbq: 'NBQ', feever: 'FE Ever', tglbayar: 'Tgl Bayar Bulan Lalu', insentif: 'Insentif', dekscall: 'Deskcall', simulasi: 'Simulasi Penawaran', simulasirapor: 'Simulasi Rapor', panduan: 'Panduan KPI' };
 
 function triggerFadeIn(){
   const el = document.getElementById('wrap');
@@ -4031,39 +4045,6 @@ function barListSection(title, rows, opts){
   </div>`;
 }
 
-function bigCustSection(bigCust){
-  return `
-  <div class="ins-section">
-    <h2>Big Customer Non-Realisasi (SIPOK &gt; Rp100jt)</h2>
-    ${bigCust.map(b => `
-      <div class="bigcust-card">
-        <div class="bigcust-head">
-          <span class="bname">${esc(b.label)}</span>
-          <span class="btotal">${b.total.count} akun · ${fmtRupiah(b.total.amount)}</span>
-        </div>
-        <div class="bigcust-stats">
-          <div class="bigcust-stat"><span class="dot good"></span>Sudah Bayar<b>${b.sudah.count} · ${fmtRupiah(b.sudah.amount)}</b></div>
-          <div class="bigcust-stat"><span class="dot bad"></span>Belum Bayar<b>${b.belum.count} · ${fmtRupiah(b.belum.amount)}</b></div>
-        </div>
-        ${b.belumPerCO.length ? `
-        <div class="bigcust-co-list">
-          ${b.belumPerCO.map(c => `<div class="bigcust-co-row"><span>${(CO_META[c.co]||{short:c.co}).short}</span><span class="n">${c.count} akun · ${fmtRupiah(c.amount)}</span></div>`).join('')}
-        </div>` : ''}
-        ${b.detailBelum.length ? `
-        <div class="bigcust-detail-list">
-          ${b.detailBelum.map(d => `
-            <div class="bigcust-detail-row">
-              <span class="bigcust-detail-name">${esc(d.nama)}</span>
-              <span class="bigcust-detail-co">${(CO_META[d.co]||{short:d.co}).short}</span>
-              <span class="bigcust-detail-sipok">${fmtRupiah(d.sipok)}</span>
-            </div>`).join('')}
-          ${b.belum.count > 10 ? `<div class="bigcust-detail-more">+${b.belum.count - 10} kontrak lainnya</div>` : ''}
-        </div>` : ''}
-      </div>`).join('')}
-  </div>`;
-}
-
-
 // ---------- Tren penyelesaian mingguan (admin) ----------
 let TREN_DATA = null, TREN_MONTH = 'cur';
 function trenShell(inner){ return '<div class="rk-report-header"><div class="rk-report-title">' + ic('chart') + ' Tren penyelesaian mingguan</div></div>' + inner; }
@@ -4137,53 +4118,165 @@ function bindTrenToggle(){
   document.querySelectorAll('#trenToggle button').forEach(b => b.addEventListener('click', () => { TREN_MONTH = b.dataset.m; renderTren(); }));
 }
 
+let DASH_TAB = 'actual', DASH_SET = 'NOOD', DASH_FLEET = false;
 function renderRingkasanView(){
-  const full = RINGKASAN_DATA;
-  if(!full) return;
-  const d = full[RINGKASAN_FLEET_MODE];
-  const todayStr = new Date().toLocaleDateString('id-ID', {day:'2-digit', month:'long', year:'numeric'});
+  if(!RINGKASAN_DATA) return;
+  const tabs = [['actual','Actual cabang'],['produk','Productivity'],['segmen','Pola bayar segmen'],['pemberat','Pemberat penyelesaian']];
+  document.getElementById('wrap').innerHTML = `<div class="dash-tabs" role="tablist" aria-label="Isi dashboard">${tabs.map(t => `<button type="button" role="tab" data-t="${t[0]}" class="${DASH_TAB === t[0] ? 'on' : ''}" aria-selected="${DASH_TAB === t[0]}">${t[1]}</button>`).join('')}</div><div id="dashBody"></div>`;
+  document.querySelectorAll('.dash-tabs button').forEach(b => b.onclick = () => { DASH_TAB = b.dataset.t; renderRingkasanView(); });
+  const body = document.getElementById('dashBody');
+  if(DASH_TAB === 'actual') dashActual_(body);
+  else if(DASH_TAB === 'produk') dashProduk_(body);
+  else if(DASH_TAB === 'segmen'){ body.innerHTML = `<div class="rk-report-card"><div class="rk-report-header"><div class="rk-report-title">${ic('chart')} Pola bayar nasabah per segmen pekerjaan</div></div>${tglBayarChartHtml()}</div>`; tglBayarChartRender(); }
+  else dashPemberat_(body);
+}
 
-  document.getElementById('wrap').innerHTML = `
-    <section class="achv-card" id="achvCard" aria-label="Pencapaian terhadap target hari ini"></section>
-    <div class="rk-header">
-      <div class="pill-toggle" id="rkFleetToggle">
-        <button type="button" data-mode="nonfleet">Non-Fleet</button>
-        <button type="button" data-mode="all">Semua (+Fleet)</button>
-      </div>
-    </div>
+// 1) Actual cabang: tabel Performance & Provision (layout sama dengan Excel).
+// Kolom Target dan Bulan lalu masih kosong ("-"). Isi nanti di konstanta DASH_TARGET dan DASH_LALU di bawah.
+const DASH_PROVISI = { NOOD:0.0188, P001_030:0.0677, P031_060:0.201, P061_090:0.392, P091_120:0.561, P121_150:0.561, P151_180:0.561, P181_210:0.561 };
+const DASH_TARGET = {
+  enr: null,                      // target ENR (Rp), mis. 19110870230
+  bucket: {},                     // persen target per bucket, mis. { NOOD: 4.5, P001_030: 8.2 }
+  baris: {}                       // persen target per baris tabel B, mis. { '30+ (Delq)': 9.5, 'Flow NOOD': 20 }
+};
+const DASH_LALU = {
+  enr: null,                      // ENR bulan lalu di tanggal yang sama (Rp)
+  bucket: {},                     // nominal per bucket, mis. { NOOD: 12000000000 }
+  baris: {}                       // nominal per baris tabel B
+};
+function dashAngka_(n){ return (n === null || n === undefined || isNaN(n)) ? '-' : Math.round(n).toLocaleString('id-ID'); }
+function dashPersen_(n){ return (n === null || n === undefined || isNaN(n)) ? '-' : fmtDec(n, 2) + '%'; }
+function dashBeda_(n){ return (n === null || n === undefined || isNaN(n)) ? '<td>-</td>' : '<td class="' + (n > 0 ? 'dash-up' : n < 0 ? 'dash-down' : '') + '">' + Math.round(n).toLocaleString('id-ID') + '</td>'; }
+function dashBedaPct_(n){ return (n === null || n === undefined || isNaN(n)) ? '<td>-</td>' : '<td class="' + (n > 0 ? 'dash-up' : n < 0 ? 'dash-down' : '') + '">' + fmtDec(n, 2) + '%</td>'; }
+function dashActual_(body){
+  const d = RINGKASAN_DATA[RINGKASAN_FLEET_MODE];
+  const enr = d.enr, tEnr = DASH_TARGET.enr, lEnr = DASH_LALU.enr;
+  const pctOf = (amt, base) => (amt === null || amt === undefined || !base) ? null : amt / base * 100;
+  const sel = (a, b) => (a === null || a === undefined || b === null || b === undefined) ? null : a - b;
+  const bagi = (a, b) => (a === null || a === undefined || !b) ? null : a / b * 100;
+  // satu baris: kunci, label, kini {amt,pct}, rate provisi (boleh null), pctTarget, nominal lalu, pct lalu, jenisBase
+  const baris = (o) => {
+    const tPct = (o.tPct === undefined ? null : o.tPct);
+    const tAmt = (tPct !== null && tEnr) ? tEnr * tPct / 100 : null;
+    const lAmt = (o.lAmt === undefined ? null : o.lAmt);
+    const lPct = o.lPct !== undefined && o.lPct !== null ? o.lPct : pctOf(lAmt, lEnr);
+    const prov = (amt) => (o.rate && amt !== null) ? amt * o.rate : null;
+    return '<tr' + (o.total ? ' class="dash-total"' : '') + '><td>' + esc(o.label) + '</td>' +
+      '<td>' + dashAngka_(tAmt) + '</td><td>' + dashPersen_(tPct) + '</td>' + (o.rate !== undefined ? '<td>' + dashAngka_(prov(tAmt)) + '</td>' : '') +
+      '<td>' + dashAngka_(o.amt) + '</td><td>' + dashPersen_(o.pct) + '</td>' + (o.rate !== undefined ? '<td>' + dashAngka_(prov(o.amt)) + '</td>' : '') +
+      '<td>' + dashAngka_(lAmt) + '</td><td>' + dashPersen_(lPct) + '</td>' + (o.rate !== undefined ? '<td>' + dashAngka_(prov(lAmt)) + '</td>' : '') +
+      dashBeda_(sel(o.amt, lAmt)) + dashBedaPct_(sel(o.pct, lPct)) +
+      dashBeda_(sel(o.amt, tAmt)) + dashBedaPct_(sel(o.pct, tPct)) +
+      '<td>' + (tAmt ? dashPersen_(bagi(o.amt, tAmt)) : '-') + '</td></tr>';
+  };
+  const grup = (ada) => '<tr><th rowspan="2">Parameter</th><th colspan="' + (ada ? 3 : 2) + '">Target</th><th colspan="' + (ada ? 3 : 2) + '">Hari ini</th><th colspan="' + (ada ? 3 : 2) + '">Bulan lalu (tgl sama)</th><th colspan="2">Selisih ke bulan lalu</th><th colspan="2">Selisih ke target</th><th rowspan="2">% Achv</th></tr>' +
+    '<tr>' + [0,1,2].map(() => '<th>Amt</th><th>%</th>' + (ada ? '<th>Provisi</th>' : '')).join('') + '<th>Amt</th><th>%</th><th>Amt</th><th>%</th></tr>';
+  const rowsA = d.perBucket.map((b, i) => { const k = BUCKET_ORDER[i]; return baris({ label: b.label, amt: b.amount, pct: b.pct, rate: DASH_PROVISI[k], tPct: DASH_TARGET.bucket[k], lAmt: DASH_LALU.bucket[k] === undefined ? null : DASH_LALU.bucket[k] }); }).join('');
+  const provTotal = d.perBucket.reduce((s, b, i) => s + b.amount * (DASH_PROVISI[BUCKET_ORDER[i]] || 0), 0);
+  const totA = '<tr class="dash-total"><td>ENR</td><td>' + dashAngka_(tEnr) + '</td><td>' + (tEnr ? '100,00%' : '-') + '</td><td>-</td><td>' + dashAngka_(enr) + '</td><td>100,00%</td><td>' + dashAngka_(provTotal) + '</td><td>' + dashAngka_(lEnr) + '</td><td>' + (lEnr ? '100,00%' : '-') + '</td><td>-</td>' + dashBeda_(sel(enr, lEnr)) + '<td>-</td>' + dashBeda_(sel(enr, tEnr)) + '<td>-</td><td>' + (tEnr ? dashPersen_(bagi(enr, tEnr)) : '-') + '</td></tr>';
+  const rowsB = d.cumulative.concat(d.flowBtc).map(r => baris({ label: r.label, amt: r.amount, pct: r.pct, tPct: DASH_TARGET.baris[r.label], lAmt: DASH_LALU.baris[r.label] === undefined ? null : DASH_LALU.baris[r.label] })).join('');
+  body.innerHTML = `
+    <div class="rk-header"><div class="pill-toggle" id="rkFleetToggle"><button type="button" data-mode="nonfleet">Non-Fleet</button><button type="button" data-mode="all">Semua (+Fleet)</button></div></div>
     <div class="rk-report-card rk-compact" id="rkReportCard">
-      <div class="rk-report-header">
-        <div class="rk-report-title">${ic('chart')} Performa CORE Kendal</div>
-        <div class="rk-report-date">Update per: ${todayStr}</div>
-      </div>
-      <div class="rk-hero-row">
-        <div class="rk-hero-card"><div class="lbl">Total Kontrak (ENR)</div><div class="val" id="rkValCount">0</div></div>
-        <div class="rk-hero-card"><div class="lbl">Total Sisa Piutang (ENR)</div><div class="val" id="rkValAmt">Rp0</div></div>
-      </div>
-      <div class="rk-grid">
-        <div>${barListSection('Sebaran per Bucket (Kondisi Aktual)', d.perBucket)}</div>
-        <div>
-          ${barListSection('Analisis Kumulatif Overdue', d.cumulative, {gold:true})}
-          ${barListSection('Flow & Back-to-Current (Branch-wide)', d.flowBtc)}
-        </div>
-      </div>
-      ${bigCustSection(d.bigCust)}
+      <div class="rk-report-header"><div class="rk-report-title">${ic('chart')} Performance &amp; Provision</div><div class="rk-report-date">Update per: ${new Date().toLocaleDateString('id-ID', {day:'2-digit', month:'long', year:'numeric'})}</div></div>
+      <div class="dash-sec"><h3>A. Sebaran bucket dan provisi</h3><div class="dash-tbl-wrap"><table class="dash-tbl dash-xl"><thead>${grup(true)}</thead><tbody>${rowsA}${totA}</tbody></table></div></div>
+      <div class="dash-sec"><h3>B. Rasio kumulatif, flow dan back-to-current</h3><div class="dash-tbl-wrap"><table class="dash-tbl dash-xl"><thead>${grup(false)}</thead><tbody>${rowsB}</tbody></table></div></div>
+      <p class="sub" style="font-size:12px;color:var(--ink-soft);margin:10px 0 0;">Kolom Target dan Bulan lalu masih kosong sampai datanya diisi. Provisi dihitung dari nominal dikali rate provisi per bucket. Selisih ke bulan lalu = hari ini dikurangi tanggal yang sama bulan lalu.</p>
     </div>
-    <div class="rk-report-card" id="trenCard" style="margin-top:16px;"></div>
-  `;
-
-  renderAchv();
-  loadTren();
-  animateCount(document.getElementById('rkValCount'), d.enrCount, false);
-  animateCount(document.getElementById('rkValAmt'), d.enr, true);
-
+    <section class="achv-card" id="achvCard" aria-label="Pencapaian terhadap target hari ini" style="margin-top:16px;"></section>
+    <div class="rk-report-card" id="trenCard" style="margin-top:16px;"></div>`;
+  renderAchv(); loadTren();
   document.querySelectorAll('#rkFleetToggle button').forEach(btn => {
     btn.classList.toggle('active', btn.getAttribute('data-mode') === RINGKASAN_FLEET_MODE);
-    btn.addEventListener('click', () => {
-      RINGKASAN_FLEET_MODE = btn.getAttribute('data-mode');
-      renderRingkasanView();
-    });
+    btn.addEventListener('click', () => { RINGKASAN_FLEET_MODE = btn.getAttribute('data-mode'); renderRingkasanView(); });
   });
+}
+
+// 2) Productivity: layout sama dengan tabel CMS (Balance 1-30 per FE, Balance 31-60 per MR)
+function dashProduk_(body){
+  if(!CMS_DATA){
+    body.innerHTML = '<div class="skeleton-row"><div class="skel"></div><div class="skel"></div></div><div class="skel tall"></div>';
+    fetch('/api/cms', { headers: { Authorization: 'Bearer ' + ID_TOKEN } })
+      .then(r => r.json().then(b => ({ ok: r.ok, b })))
+      .then(({ok, b}) => { if(!ok){ if(DASH_TAB === 'produk') body.innerHTML = '<div class="state-box error">' + esc(b.error || 'Gagal memuat productivity.') + '</div>'; return; } CMS_DATA = b; if(VIEW_MODE === 'ringkasan' && DASH_TAB === 'produk') renderRingkasanView(); })
+      .catch(err => { if(DASH_TAB === 'produk') body.innerHTML = '<div class="state-box error">' + esc(pesanErr(err)) + '</div>'; });
+    return;
+  }
+  const D = CMS_DATA;
+  if(!D.tersedia){ body.innerHTML = '<div class="state-box">' + esc(D.pesan || 'Data productivity belum tersedia.') + '</div>'; return; }
+  const cnt = {}; D.items.forEach(it => it.t.forEach(t => { cnt[t] = (cnt[t] || 0) + 1; }));
+  const g = (b, co, m) => m === 'tdk' ? (cnt[b+'|'+co+'|terbentuk']||0) - (cnt[b+'|'+co+'|dikerjakan']||0) : (cnt[b+'|'+co+'|'+m] || 0);
+  const nm = n => (CO_META[n] || {}).short || n;
+  const kolom = []; CMS_COLS.forEach((G, gi) => G.cols.forEach(c => kolom.push({ c, gi })));
+  const head1 = '<tr><th rowspan="2">PIC</th>' + CMS_COLS.map(G => G.cols.length && G.g ? '<th colspan="' + G.cols.length + '">' + esc(G.g) + '</th>' : '<th rowspan="2">Actual</th>').join('') + '</tr>';
+  const head2 = '<tr>' + CMS_COLS.map(G => G.g ? G.cols.map(c => '<th>' + esc(c.l) + '</th>').join('') : '').join('') + '</tr>';
+  const baris = (b, co, label, total) => '<tr' + (total ? ' class="dash-total"' : '') + '><td>' + esc(label) + '</td>' + kolom.map(k => '<td class="' + (CMS_CLS[k.gi] || '') + '">' + (k.c.pct ? cmsPct(g(b, co, k.c.pct[0]), g(b, co, k.c.pct[1])) : g(b, co, k.c.m)) + '</td>').join('') + '</tr>';
+  const tabel = (judul, rows) => '<div class="dash-sec"><h3>' + esc(judul) + '</h3><div class="dash-tbl-wrap"><table class="dash-tbl dash-xl dash-prod"><thead>' + head1 + head2 + '</thead><tbody>' + rows + '</tbody></table></div></div>';
+  const fe = D.urutan.fe.filter(c => D.items.some(it => it.co === c));
+  const M = D.meta || {};
+  body.innerHTML = '<div class="rk-report-card"><div class="rk-report-header"><div class="rk-report-title">' + ic('chart') + ' Productivity</div><div class="rk-report-date">Tgl tagihan terbaru ' + esc(M.tglTagihanTerbaru || '-') + '</div></div>' +
+    tabel('BALANCE 1-30', fe.map(c => baris('b1', c, nm(c))).join('') + baris('b1', '*', 'TOTAL', true)) +
+    tabel('BALANCE 31-60', baris('b2', D.urutan.mr, nm(D.urutan.mr)) + baris('b2', '*', 'TOTAL', true)) +
+    '<p class="sub" style="font-size:12px;color:var(--ink-soft);margin:10px 0 0;">JB = janji bayar. Detail per kontrak ada di menu CMS Produktivitas.</p></div>';
+}
+
+// 4) Pemberat penyelesaian: kontrak bucket awal yang sudah flow (BUCKET UPDATE lebih buruk dari BUCKET AWAL), dibobot SIPOK
+function dashBi_(b){ return BUCKET_ORDER.indexOf(String(b || '').trim()); }
+function dashFlow_(r){ const a = dashBi_(r['BUCKET AWAL']), u = dashBi_(r['BUCKET UPDATE']); return a >= 0 && u > a; }
+function dashPemberat_(body){
+  const set = DATA.filter(r => r['BUCKET AWAL'] === DASH_SET && (DASH_FLEET || !tglBayarIsFleet_(r)));
+  const sip = r => (typeof r['SIPOK'] === 'number' ? r['SIPOK'] : 0);
+  const totSip = set.reduce((t, r) => t + sip(r), 0);
+  const flowRows = set.filter(dashFlow_);
+  const totFlow = flowRows.reduce((t, r) => t + sip(r), 0);
+  const flowPct = totSip > 0 ? totFlow / totSip * 100 : 0;
+  const minggu = h => h === null ? 'Tanpa tanggal' : h <= 7 ? 'Tgl 1-7' : h <= 14 ? 'Tgl 8-14' : h <= 21 ? 'Tgl 15-21' : h <= 28 ? 'Tgl 22-28' : 'Tgl 29+';
+  const mobGrup = r => { const n = nbqNum(r); return n === null ? 'Non-NBQ (MOB > 12)' : n <= 3 ? 'MOB 1-3' : n <= 6 ? 'MOB 4-6' : n <= 9 ? 'MOB 7-9' : n <= 12 ? 'MOB 10-12' : 'Non-NBQ (MOB > 12)'; };
+  const dims = [
+    ['Status tunggakan', r => Number(r['DPD']) > 0 ? 'Sudah menunggak (DPD > 0)' : 'DPD 0 (belum jatuh tempo / sudah bayar)'],
+    ['Status approval', r => { const v = String(r['STATUS NBQ'] || '').trim(); return v ? v : (nbqNum(r) !== null && nbqNum(r) <= 12 ? 'NBQ tanpa status' : 'Non-NBQ'); }],
+    ['NBQ vs non-NBQ', r => { const n = nbqNum(r); return n !== null && n >= 1 && n <= 12 ? 'NBQ (MOB 1-12)' : 'Non-NBQ'; }],
+    ['Umur kontrak (MOB)', mobGrup],
+    ['Tipe unit', r => String(r['TYPE BARANG'] || '-').trim().toUpperCase() || '-'],
+    ['Brand', r => String(r['TYPE UNIT'] || '').trim().split(/\s+/)[0].toUpperCase() || '-'],
+    ['Grup produk', r => String(r['GROUP PRODUCT'] || '-').trim().toUpperCase() || '-'],
+    ['Segmen pekerjaan', r => String(r['SEGMEN PEKERJAAN'] || '').trim().toUpperCase() || 'Belum terklasifikasi'],
+    ['Minggu jatuh tempo', r => minggu(tbHari_(r['JATUH TEMPO']))],
+    ['Minggu bayar bulan lalu', r => minggu(tbHari_(r['TANGGAL BAYAR BULAN LALU']))],
+    ['Cara bayar', r => String(r['CARA BAYAR'] || '-').trim() || '-'],
+    ['CO', r => ((CO_META[r['CO ALL']] || {}).short) || r['CO ALL'] || '-']
+  ];
+  const hitung = fn => { const m = {}; set.forEach(r => { const k = fn(r); const o = m[k] || (m[k] = { k, n: 0, sip: 0, nf: 0, flow: 0 }); o.n++; o.sip += sip(r); if(dashFlow_(r)){ o.nf++; o.flow += sip(r); } }); return Object.values(m).sort((a, b) => b.flow - a.flow); };
+  const hasil = dims.map(([judul, fn]) => ({ judul, rows: hitung(fn) }));
+  const berat = (o) => { if(totFlow <= 0 || o.flow <= 0) return false; const kon = o.flow / totFlow; return kon >= 0.3 || (kon >= 0.15 && o.sip > 0 && o.flow / o.sip * 100 >= flowPct + 5); };
+  const insight = [];
+  hasil.forEach(h => h.rows.forEach(o => { if(berat(o) && o.flow > 0) insight.push({ judul: h.judul, o }); }));
+  insight.sort((a, b) => b.o.flow - a.o.flow);
+  const rp = tdRp;
+  const rowHtml = (o) => { const kon = totFlow > 0 ? o.flow / totFlow * 100 : 0, fp = o.sip > 0 ? o.flow / o.sip * 100 : 0, bt = berat(o);
+    return `<div class="pb-row${bt ? ' berat' : ''}"><div class="pb-top"><b>${esc(o.k)}${bt ? '<span class="pb-flag">pemberat</span>' : ''}</b><span>${rp(o.flow)} · ${fmtDec(kon,0)}%</span></div><div class="pb-bar"><i style="width:${Math.min(100, kon)}%"></i></div><div class="pb-sub">${o.n} kontrak · ${rp(o.sip)} · flow ${fmtDec(fp,0)}% (rata-rata ${fmtDec(flowPct,0)}%)</div></div>`; };
+  const top = flowRows.slice().sort((a, b) => sip(b) - sip(a)).slice(0, 10);
+  const setBtn = (k, t) => `<button type="button" data-set="${k}" class="${DASH_SET === k ? 'active' : ''}">${t}</button>`;
+  body.innerHTML = `
+    <div class="rk-header" style="gap:10px;flex-wrap:wrap;"><div class="pill-toggle" id="pbSet">${setBtn('NOOD','Bucket awal NOOD')}${setBtn('P001_030','Bucket awal 1-30')}${setBtn('P031_060','Bucket awal 31-60')}</div>
+      <div class="pill-toggle" id="pbFleet"><button type="button" data-f="0" class="${DASH_FLEET ? '' : 'active'}">Non-Fleet</button><button type="button" data-f="1" class="${DASH_FLEET ? 'active' : ''}">Semua (+Fleet)</button></div></div>
+    <div class="rk-report-card"><div class="rk-report-header"><div class="rk-report-title">${ic('chart')} Pemberat penyelesaian</div></div>
+      <div class="dash-kpis">
+        <div class="dash-kpi"><small>Penyelesaian aktual</small><b>${fmtDec(100 - flowPct,1)}%</b><span>100% − flow</span></div>
+        <div class="dash-kpi"><small>Flow</small><b>${fmtDec(flowPct,1)}%</b><span>${rp(totFlow)} dari ${rp(totSip)}</span></div>
+        <div class="dash-kpi"><small>Kontrak flow</small><b>${flowRows.length}</b><span>dari ${set.length} kontrak</span></div>
+      </div>
+      <div class="dash-sec"><h3>Pemberat utama</h3><p class="sub">Kelompok yang menyumbang ≥30% dari total flow, atau ≥15% dengan flow di atas rata-rata.</p>
+        ${insight.length ? `<ul class="pb-insight">${insight.slice(0, 8).map(x => `<li><b>${esc(x.judul)}: ${esc(x.o.k)}</b> — ${rp(x.o.flow)} (${fmtDec(totFlow > 0 ? x.o.flow / totFlow * 100 : 0,0)}% dari flow), flow ${fmtDec(x.o.sip > 0 ? x.o.flow / x.o.sip * 100 : 0,0)}% dari ${x.o.n} kontrak<small>Rata-rata flow set ini ${fmtDec(flowPct,0)}%</small></li>`).join('')}</ul>` : '<p class="td-empty">Tidak ada kelompok yang menonjol.</p>'}
+      </div>
+      <div class="pb-grid">${hasil.map(h => `<div class="pb-card"><h4>${esc(h.judul)}</h4>${h.rows.slice(0, 8).map(rowHtml).join('')}</div>`).join('')}</div>
+      <div class="dash-sec"><h3>10 kontrak flow terbesar</h3><p class="sub">Urut SIPOK. Klik untuk membuka detail.</p>
+        <ul class="td-list">${top.map(r => `<li class="td-row"><button type="button" class="td-open" data-k="${esc(r['NO KONTRAK'])}"><span class="td-kn"><b>${esc(r['NAMA KONSUMEN'] || '-')}</b><small>${esc(fmtBucket(r['BUCKET AWAL']))} → ${esc(fmtBucket(r['BUCKET UPDATE']))} · DPD ${esc(r['DPD'] == null ? '-' : r['DPD'])} · ${esc(((CO_META[r['CO ALL']] || {}).short) || r['CO ALL'] || '-')}</small></span><span class="td-amt">${fmtRupiah(sip(r))}</span></button></li>`).join('')}</ul></div>
+      <p class="tb-note" style="margin-top:12px;">Flow = BUCKET UPDATE sudah melewati BUCKET AWAL, dibobot SIPOK (sama dengan rumus penyelesaian insentif). Kontrak berstatus 1-30 tapi DPD 0 tetap dihitung flow mengikuti rumus insentif.</p>
+    </div>`;
+  body.querySelectorAll('#pbSet button').forEach(b => b.onclick = () => { DASH_SET = b.dataset.set; renderRingkasanView(); });
+  body.querySelectorAll('#pbFleet button').forEach(b => b.onclick = () => { DASH_FLEET = b.dataset.f === '1'; renderRingkasanView(); });
+  body.querySelectorAll('.td-open[data-k]').forEach(b => b.onclick = () => openPanel(b.dataset.k));
 }
 
 // ============================================================
