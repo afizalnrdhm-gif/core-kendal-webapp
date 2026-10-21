@@ -24,11 +24,15 @@ async function ensureTab(token, sheetId) {
 }
 
 // Baca baseline untuk tanggal tertentu → { 'PIC|kunci': { targetHari, baseNilai, kontrak:[[no,sipok,nama],...] } } (baris TERAKHIR menang)
-async function bacaBaseline(token, sheetId, kunciTgl) {
-  const r = await sf('https://sheets.googleapis.com/v4/spreadsheets/' + sheetId + '/values/' + encodeURIComponent(TAB) + '?valueRenderOption=UNFORMATTED_VALUE', token);
-  if (!r.ok || !r.json.values) return {};
+// pembaca opsional (mis. bacaSheet dengan cache 45 detik): (sheetId, range, token) -> values. Dipakai hanya untuk bacaan
+// read-only (mis. mode=head) — pastikanBaseline TIDAK memakainya karena perlu baca ulang segar setelah menulis baseline baru.
+async function bacaBaseline(token, sheetId, kunciTgl, pembaca) {
+  let nilai;
+  if (pembaca) { nilai = await pembaca(sheetId, TAB, token).catch(() => null); }
+  else { const r = await sf('https://sheets.googleapis.com/v4/spreadsheets/' + sheetId + '/values/' + encodeURIComponent(TAB) + '?valueRenderOption=UNFORMATTED_VALUE', token); nilai = r.ok ? r.json.values : null; }
+  if (!nilai) return {};
   const out = {};
-  r.json.values.slice(1).forEach(row => {
+  nilai.slice(1).forEach(row => {
     if (String(row[0] || '') !== kunciTgl) return;
     const k = row[1] + '|' + row[2];
     // baris terakhir menang: pembekuan ulang (cron 09.00 / tombol admin) menimpa yang lebih awal

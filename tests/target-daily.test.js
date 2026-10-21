@@ -149,6 +149,38 @@ test('statusStreak: 0 aman, 1-2 waspada, 3+ merah', () => {
   assert.deepStrictEqual([0, 1, 2, 3, 7].map(statusStreak), ['AMAN', 'WASPADA', 'WASPADA', 'MERAH', 'MERAH']);
 });
 
+test('bacaBaseline: tanpa pembaca tetap fetch langsung (perilaku lama)', async () => {
+  const { bacaBaseline } = require('../api/_tdsnap');
+  const lama = global.fetch, panggil = [];
+  global.fetch = async (url) => { panggil.push(String(url)); return { ok: true, status: 200, json: async () => ({ values: [['TANGGAL', 'PIC', 'KUNCI', 'TARGET_HARI', 'BASE_NILAI', 'KONTRAK', 'WAKTU'], ['2026-10-21', 'X', 'flow_nood', 100, 500, '[]', 'w']] }) }; };
+  try {
+    const b = await bacaBaseline('t', 's', '2026-10-21');
+    assert.strictEqual(panggil.length, 1);
+    assert.deepStrictEqual(b['X|flow_nood'], { targetHari: 100, baseNilai: 500, kontrak: [], waktu: 'w' });
+  } finally { global.fetch = lama; }
+});
+
+test('bacaBaseline: dengan pembaca (cache) memakai nilai darinya, tidak fetch langsung', async () => {
+  const { bacaBaseline } = require('../api/_tdsnap');
+  const lama = global.fetch; let fetchDipanggil = false;
+  global.fetch = async () => { fetchDipanggil = true; return { ok: true, status: 200, json: async () => ({ values: [] }) }; };
+  try {
+    const nilai = [['TANGGAL', 'PIC', 'KUNCI', 'TARGET_HARI', 'BASE_NILAI', 'KONTRAK', 'WAKTU'], ['2026-10-21', 'X', 'flow_nood', 100, 500, '[]', 'w']];
+    const panggil = [];
+    const pembaca = async (sheetId, range, token) => { panggil.push({ sheetId, range, token }); return nilai; };
+    const b = await bacaBaseline('t', 's', '2026-10-21', pembaca);
+    assert.strictEqual(fetchDipanggil, false, 'tidak boleh fetch langsung bila ada pembaca cache');
+    assert.deepStrictEqual(panggil[0], { sheetId: 's', range: 'LOG_TARGET_DAILY', token: 't' });
+    assert.deepStrictEqual(b['X|flow_nood'], { targetHari: 100, baseNilai: 500, kontrak: [], waktu: 'w' });
+  } finally { global.fetch = lama; }
+});
+
+test('bacaBaseline: pembaca gagal (tab belum ada) -> baseline kosong, tidak melempar', async () => {
+  const { bacaBaseline } = require('../api/_tdsnap');
+  const b = await bacaBaseline('t', 's', '2026-10-21', async () => { throw new Error('tidak ada'); });
+  assert.deepStrictEqual(b, {});
+});
+
 test('hasil harian mencatat nilai terbaru walau realisasi turun (posisi bisa memburuk)', async () => {
   const { catatHasilHariIni } = require('../api/_tdsnap');
   const lama = global.fetch, kirim = [];

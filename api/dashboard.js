@@ -159,7 +159,9 @@ function bangunTdHead({ mRaw, master, ka, lpc, prodRaw, config, base, hasil, har
   terapkanProgres(td, base || {});
   let cmsItems = [];
   try { if (prodRaw && prodRaw.length) cmsItems = require('./cms').compute(mRaw, prodRaw, config).items || []; } catch (e) { cmsItems = []; }
-  const dkh = dkhBulanIni(dkhAssign || [], `${hariIni.tahun}-${String(hariIni.bulan).padStart(2, '0')}`);
+  // dkhAssign null berarti DKH_ASSIGN gagal dibaca (bukan "tidak ada DKH bulan ini") — teruskan null agar
+  // _tdhead.js tidak menyimpulkan BELUM DKH dari data yang sebenarnya tidak tersedia.
+  const dkh = dkhAssign == null ? null : dkhBulanIni(dkhAssign, `${hariIni.tahun}-${String(hariIni.bulan).padStart(2, '0')}`);
   return susunTargetDailyHead({ td, base: base || {}, hasil: hasil || [], cmsItems, master, hariIni, dkh });
 }
 
@@ -172,7 +174,7 @@ async function handleHead(res, accessToken, sheetId) {
     opsional(bacaSheet(sheetId, 'LPC', accessToken)), opsional(bacaSheet(sheetId, 'DKH_ASSIGN', accessToken)),
     bacaSheet(sheetId, 'CONFIG_ROLE', accessToken), bacaLogHarian(accessToken, sheetId, bacaSheet).catch(() => ({})),
     opsional(bacaSheet(sheetId, 'PRODUCTIVITY', accessToken)),
-    bacaBaseline(accessToken, sheetId, kunciTanggal(hariIniWIB_())).catch(() => ({})), bacaHasil(accessToken, sheetId).catch(() => [])
+    bacaBaseline(accessToken, sheetId, kunciTanggal(hariIniWIB_()), bacaSheet).catch(() => ({})), bacaHasil(accessToken, sheetId).catch(() => [])
   ]);
   const master = parseSheetValues(mRaw).filter(r => r['NO KONTRAK']);
   const ka = parseSheetValues(kRaw, 15).filter(r => r['NO KONTRAK']);

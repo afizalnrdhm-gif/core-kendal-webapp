@@ -14,11 +14,13 @@ const pad2 = n => String(n).padStart(2, '0');
 
 // dkh: Set nomor kontrak ber-DKH bulan ini (DKH_ASSIGN) untuk kontrak yang tidak ada di data CMS (mis. DPD 0 tapi BUCKET UPDATE sudah 1-30).
 function statusKerja_(item, no, dkh) {
-  if (!item) return dkh ? (dkh.has(no) ? 'ADA DKH (TANPA DATA KUNJUNGAN)' : 'BELUM DKH') : 'TIDAK ADA DATA';
-  const m = new Set((item.t || []).map(t => String(t).split('|').pop()));
+  const m = item ? new Set((item.t || []).map(t => String(t).split('|').pop())) : new Set();
   if (m.has('dikerjakan')) return 'SUDAH DIKUNJUNGI';
   if (m.has('terbentuk')) return 'DKH, BELUM DIKERJAKAN';
-  return 'BELUM DKH';
+  // Tidak ada tanda kerja dari CMS (baik tanpa item, atau item ada tapi tidak match PIC/awal) → cek DKH_ASSIGN bulan ini.
+  // dkh = null berarti DKH_ASSIGN gagal dibaca; jangan menyimpulkan BELUM DKH dari data yang sebenarnya tidak ada.
+  if (!dkh) return 'TIDAK ADA DATA';
+  return dkh.has(no) ? 'ADA DKH (TANPA DATA KUNJUNGAN)' : 'BELUM DKH';
 }
 function hasil_(item) {
   const kode = teks(item && item.ac).split('|')[0].trim().toUpperCase();
@@ -44,7 +46,7 @@ function susunTargetDailyHead({ td, base, hasil, cmsItems, master, hariIni, dkh 
   const mst = new Map((master || []).map(m => [teks(m['NO KONTRAK']), m]));
 
   const belumPer = new Map(); // noKontrak -> {no, nama, co, sipok}
-  let totT = 0, totR = 0;
+  let totPoin = 0, totTuntas = 0;
   const pic = (td.pic || []).map(p => ({
     co: p.namaCO, role: p.role,
     poin: (p.poin || []).map(q => {
@@ -55,7 +57,10 @@ function susunTargetDailyHead({ td, base, hasil, cmsItems, master, hariIni, dkh 
       const st = streak.find(x => x.pic === p.namaCO && x.kunci === q.kunci);
       const streakHari = st ? st.hari : 0;
       const target = g ? Number(g.targetHari) || 0 : 0, realisasi = g ? Number(g.tercapai) || 0 : 0;
-      if (g) { totT += Math.max(0, target); totR += realisasi; }
+      // Tidak dijumlah jadi satu rupiah: poin FE/MR dan poin BCH (cabang) tumpang tindih kontrak yang sama,
+      // dan arah balance vs flow berlawanan — menjumlahkannya bisa menghasilkan "realisasi" rupiah yang minus/tidak berarti.
+      // Agregat total memakai hitungan poin tuntas saja (lihat total di bawah).
+      if (g) { totPoin++; if (g.tuntas) totTuntas++; }
       return {
         kunci: q.kunci, judul: q.judul || q.kunci, target, realisasi,
         capaianPct: g ? r2(target > 0 ? realisasi / target * 100 : 100) : null,
@@ -95,11 +100,10 @@ function susunTargetDailyHead({ td, base, hasil, cmsItems, master, hariIni, dkh 
   Object.keys(tren).forEach(k => tren[k].sort((a, b) => a.tanggal.localeCompare(b.tanggal)));
 
   // Kalimat
-  const capaianPct = totT > 0 ? r2(totR / totT * 100) : 0;
   const kalimat = [];
   if (!adaBaseline) kalimat.push('Target hari ini belum dibekukan (cron 09.00 atau tombol Bekukan di menu Target Daily), jadi realisasi belum bisa dihitung.');
   else {
-    kalimat.push(`Target daily hari ini: realisasi ${juta(totR)} dari target ${juta(totT)} (${fmt2(capaianPct)}%).`);
+    kalimat.push(`Target daily hari ini: ${totTuntas} dari ${totPoin} poin tuntas.`);
     const semua = []; pic.forEach(p => p.poin.forEach(q => semua.push(Object.assign({ co: p.co }, q))));
     const kurang = semua.filter(q => q.kurangRp > 0).sort((a, b) => b.kurangRp - a.kurangRp)[0];
     if (kurang) kalimat.push(`Kekurangan terbesar: ${kurang.judul} ${kurang.co} kurang ${juta(kurang.kurangRp)} (realisasi ${juta(kurang.realisasi)} dari target ${juta(kurang.target)}).`);
@@ -109,7 +113,7 @@ function susunTargetDailyHead({ td, base, hasil, cmsItems, master, hariIni, dkh 
     if (merah.length) kalimat.push(`Status merah (meleset 3 hari atau lebih berturut-turut): ${merah.map(q => q.judul + ' ' + q.co + ' (' + q.streakHari + ' hari)').join(', ')}.`);
   }
 
-  return { adaBaseline, pic, total: { target: totT, realisasi: totR, capaianPct }, kalimat, belum: { kontrak: daftar.length, sipok: totSipok, urai }, teratas, tren };
+  return { adaBaseline, pic, total: { poinTuntas: totTuntas, poinTotal: totPoin }, kalimat, belum: { kontrak: daftar.length, sipok: totSipok, urai }, teratas, tren };
 }
 
 module.exports = { susunTargetDailyHead };

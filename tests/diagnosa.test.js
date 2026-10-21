@@ -142,6 +142,26 @@ test('tindakan: gabungan kekurangan target daily dan penyebab diagnosa, urut dam
   assert.deepStrictEqual(D.tindakan([], { adaBaseline: false, pic: [] }, {}), []);
 });
 
+test('tindakan: poin BCH (cabang) dikecualikan bila ada kekurangan FE/MR, supaya tidak duplikat', () => {
+  const tdHead = { adaBaseline: true, pic: [
+    { co: 'X', role: 'FE', poin: [{ judul: 'Flow NOOD', target: 500, realisasi: 200, kurangRp: 300, status: 'AMAN', belumKontrak: ['A'] }] },
+    { co: 'BOSS', role: 'BCH', poin: [{ judul: 'Flow NOOD', target: 2000, realisasi: 500, kurangRp: 1500, status: 'AMAN', belumKontrak: ['A', 'B'] }] }
+  ] };
+  const t = D.tindakan([], tdHead, {});
+  assert.strictEqual(t.length, 1, 'poin BCH dibuang karena sudah ada kekurangan FE');
+  assert.strictEqual(t[0].pic, 'X');
+});
+
+test('tindakan: poin BCH tetap dipakai bila tidak ada kekurangan FE/MR sama sekali', () => {
+  const tdHead = { adaBaseline: true, pic: [
+    { co: 'X', role: 'FE', poin: [{ judul: 'Flow NOOD', target: 500, realisasi: 500, kurangRp: 0, status: 'AMAN', belumKontrak: [] }] },
+    { co: 'BOSS', role: 'BCH', poin: [{ judul: 'Flow NOOD', target: 2000, realisasi: 500, kurangRp: 1500, status: 'AMAN', belumKontrak: ['A', 'B'] }] }
+  ] };
+  const t = D.tindakan([], tdHead, {});
+  assert.strictEqual(t.length, 1);
+  assert.strictEqual(t[0].pic, 'BOSS');
+});
+
 test('tindakan: rupiah nyaris nol tidak tampil "-0 jt"', () => {
   const td = { adaBaseline: true, pic: [{ co: 'X', poin: [{ judul: 'P', target: 5e8, realisasi: -4e5, kurangRp: 5e8, status: 'AMAN', belumKontrak: [] }] }] };
   assert.ok(!D.tindakan([], td, {})[0].temuan.includes('-0 jt'));

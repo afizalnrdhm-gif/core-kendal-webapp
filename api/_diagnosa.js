@@ -161,12 +161,20 @@ function kalimat(judul, rk, uraiPerDimensi) {
 const COCOK_TERATAS = { co: 'co', statusNbq: 'statusNbq', groupProduct: 'groupProduct' };
 function tindakan(penyebab, tdHead, diagnosa) {
   const out = [];
-  if (tdHead && tdHead.adaBaseline) (tdHead.pic || []).forEach(p => (p.poin || []).forEach(q => {
-    if (!(q.kurangRp > 0)) return;
-    out.push({ judul: `Kejar target ${q.judul} ${p.co}`, temuan: `Realisasi ${juta(q.realisasi)} dari target ${juta(q.target)} hari ini.`,
-      alasan: `Kurang ${juta(q.kurangRp)}${q.status && q.status !== 'AMAN' ? '; status ' + q.status.toLowerCase() + ' (' + q.streakHari + ' hari meleset)' : ''}.`,
-      kontrak: (q.belumKontrak || []).slice(0, 5), pic: p.co, dampakRp: q.kurangRp });
-  }));
+  if (tdHead && tdHead.adaBaseline) {
+    const semuaPoin = [];
+    (tdHead.pic || []).forEach(p => (p.poin || []).forEach(q => semuaPoin.push({ p, q })));
+    // Poin BCH (cabang) dan poin FE/MR bisa menghitung kontrak yang sama dari dua sisi (cabang vs per-CO), jadi
+    // keduanya jadi tindakan yang nyaris sama dan berebut 5 slot. BCH hanya dipakai bila tidak ada kekurangan FE/MR.
+    const adaKekuranganNonBch = semuaPoin.some(({ p, q }) => p.role !== 'BCH' && q.kurangRp > 0);
+    semuaPoin.forEach(({ p, q }) => {
+      if (!(q.kurangRp > 0)) return;
+      if (adaKekuranganNonBch && p.role === 'BCH') return;
+      out.push({ judul: `Kejar target ${q.judul} ${p.co}`, temuan: `Realisasi ${juta(q.realisasi)} dari target ${juta(q.target)} hari ini.`,
+        alasan: `Kurang ${juta(q.kurangRp)}${q.status && q.status !== 'AMAN' ? '; status ' + q.status.toLowerCase() + ' (' + q.streakHari + ' hari meleset)' : ''}.`,
+        kontrak: (q.belumKontrak || []).slice(0, 5), pic: p.co, dampakRp: q.kurangRp });
+    });
+  }
   (penyebab || []).forEach(p => {
     const g = diagnosa && diagnosa[p.angka]; if (!g || !p.dim || !g.urai || !g.urai[p.dim]) return;
     const u = g.urai[p.dim].filter(x => x.pemberat).sort((a, b) => b.pengaruh - a.pengaruh)[0]; if (!u) return;

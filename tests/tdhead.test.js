@@ -18,11 +18,12 @@ function fixture(opsi) {
 test('ringkasan total dan per poin dengan status dari streak', () => {
   const r = susunTargetDailyHead(fixture());
   assert.strictEqual(r.adaBaseline, true);
-  assert.strictEqual(r.total.capaianPct, 40);
+  // Total memakai hitungan poin tuntas, bukan jumlah rupiah (poin FE/MR dan BCH tumpang tindih kontrak yang sama).
+  assert.deepStrictEqual(r.total, { poinTuntas: 0, poinTotal: 1 });
+  assert.ok(r.kalimat[0].includes('0 dari 1 poin tuntas'), r.kalimat[0]);
   const q = r.pic[0].poin[0];
   assert.deepStrictEqual([q.target, q.realisasi, q.kurangRp, q.status, q.streakHari], [100, 40, 60, 'MERAH', 3]);
   assert.deepStrictEqual(q.belumKontrak, ['A', 'B']);
-  assert.ok(r.kalimat[0].includes('(40,00%)'), r.kalimat[0]);
   assert.ok(r.kalimat.some(k => k.includes('merah')), r.kalimat.join(' | '));
 });
 
@@ -49,16 +50,18 @@ test('kontrak di luar baseline pagi tidak ikut; tren dari hasil harian', () => {
 });
 
 test('hasil kunjungan dari action code dan tanpa baseline aman', () => {
-  const f = fixture(); f.cmsItems = [{ k: 'A', t: ['b1|X|terbentuk', 'b1|X|dikerjakan'], ac: 'KTD | KONSUMEN TIDAK DITEMPAT' }, { k: 'B', t: [], ac: 'JB | JANJI BAYAR' }];
+  const f = fixture(); f.dkh = new Set();
+  f.cmsItems = [{ k: 'A', t: ['b1|X|terbentuk', 'b1|X|dikerjakan'], ac: 'KTD | KONSUMEN TIDAK DITEMPAT' }, { k: 'B', t: [], ac: 'JB | JANJI BAYAR' }];
   const r = susunTargetDailyHead(f);
   assert.strictEqual(r.belum.urai.hasil.find(x => x.nilai === 'TIDAK BERTEMU: KTD').kontrak, 1);
   assert.strictEqual(r.belum.urai.hasil.find(x => x.nilai === 'BERTEMU: JB').kontrak, 1);
   assert.strictEqual(r.belum.urai.statusKerja.find(x => x.nilai === 'SUDAH DIKUNJUNGI').kontrak, 1);
+  // B punya item CMS tapi tanpa tag terbentuk/dikerjakan (tidak match PIC/awal) — tetap dicek ke DKH_ASSIGN, bukan otomatis BELUM DKH.
   assert.strictEqual(r.belum.urai.statusKerja.find(x => x.nilai === 'BELUM DKH').kontrak, 1);
   const kosong = susunTargetDailyHead(fixture({ tanpaBase: true }));
   assert.strictEqual(kosong.adaBaseline, false);
   assert.strictEqual(kosong.belum.kontrak, 0);
-  assert.ok(Number.isFinite(kosong.total.capaianPct));
+  assert.deepStrictEqual(kosong.total, { poinTuntas: 0, poinTotal: 0 });
 });
 
 test('kontrak tanpa data CMS dicek ke DKH bulan ini; rupiah nol tidak tampil -0', () => {
@@ -69,4 +72,25 @@ test('kontrak tanpa data CMS dicek ke DKH bulan ini; rupiah nol tidak tampil -0'
   assert.strictEqual(susunTargetDailyHead(g).belum.urai.statusKerja.find(x => x.nilai === 'BELUM DKH').kontrak, 1);
   const h = fixture(); h.td.pic[0].poin[0].progres.tercapai = -0.4;
   assert.ok(!susunTargetDailyHead(h).kalimat.join(' ').includes('-0 jt'));
+});
+
+test('item CMS ada tapi tanpa tag terbentuk/dikerjakan (mis. "tidak terbentuk" di cms.js): dicek ke DKH', () => {
+  // Bug sebelumnya: kontrak yang punya item CMS (karena bucket awal 1-30/31-60) tapi pic PRODUCTIVITY tidak match
+  // (mis. OD KA 0 / DPD null) hanya punya tag seperti 'b1|X|awal'/'b1|X|ttl'/'b1|X|flow' — tanpa 'terbentuk'/'dikerjakan' —
+  // dan selalu dilabeli BELUM DKH walau sebenarnya sudah ada DKH-nya di DKH_ASSIGN.
+  const f = fixture();
+  f.cmsItems = [{ k: 'A', t: ['b1|X|awal', 'b1|X|actual', 'b1|X|ttl', 'b1|X|flow'], ac: '' }];
+  f.dkh = new Set(['A']);
+  const r = susunTargetDailyHead(f);
+  assert.strictEqual(r.belum.urai.statusKerja.find(x => x.nilai === 'ADA DKH (TANPA DATA KUNJUNGAN)').kontrak, 1);
+});
+
+test('DKH_ASSIGN gagal dibaca (dkh null): kontrak tanpa data CMS jadi TIDAK ADA DATA, bukan BELUM DKH', () => {
+  // Bug sebelumnya: saat DKH_ASSIGN tidak terbaca, dkh jadi Set kosong (bukan null) sehingga kontrak tanpa data CMS
+  // dilabeli BELUM DKH — klaim palsu yang akan dilaporkan ke atasan. Kontrak A (punya tag 'terbentuk') tidak terpengaruh.
+  const f = fixture(); f.dkh = null;
+  const r = susunTargetDailyHead(f);
+  assert.strictEqual(r.belum.urai.statusKerja.find(x => x.nilai === 'TIDAK ADA DATA').kontrak, 1, 'kontrak B: tanpa item CMS');
+  assert.strictEqual(r.belum.urai.statusKerja.find(x => x.nilai === 'DKH, BELUM DIKERJAKAN').kontrak, 1, 'kontrak A: tag terbentuk, tidak tergantung dkh');
+  assert.strictEqual(r.belum.urai.statusKerja.find(x => x.nilai === 'BELUM DKH'), undefined);
 });

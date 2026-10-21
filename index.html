@@ -4377,7 +4377,7 @@ function teksLaporan_(jenis, d){
     const t = d.targetDaily;
     L.push(`*Target Daily ${tgl}*`);
     if(!t || !t.adaBaseline){ L.push('Target hari ini belum dibekukan.'); return L.join('\n'); }
-    L.push(`Total: realisasi ${hdJt_(t.total.realisasi)} dari target ${hdJt_(t.total.target)} (${hdPct_(t.total.capaianPct)})`);
+    L.push(`Total: ${t.total.poinTuntas} dari ${t.total.poinTotal} poin tuntas`);
     t.pic.forEach(p => { L.push('', `*${hdNama_(p.co)} (${p.role || ''})*`); p.poin.forEach(q => L.push(`• ${q.judul}: ${hdJt_(q.realisasi)} / ${hdJt_(q.target)} (${q.capaianPct == null ? '-' : hdPct_(q.capaianPct)})${q.status !== 'AMAN' ? ' — ' + q.status.toLowerCase() : ''}`)); });
     L.push('', '*Kenapa*'); t.kalimat.slice(1).forEach(k => L.push('• ' + k));
   } else {
