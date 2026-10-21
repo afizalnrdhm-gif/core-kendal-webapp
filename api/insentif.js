@@ -257,12 +257,33 @@ function hitungPenyelesaianSemua(masterList, configRows) {
 // TARGET DAILY (menu "Target Daily")
 // Meniru REPORT DAILY di Excel: target harian = (belum bayar - batas flow yang masih boleh) / sisa hari.
 // Dua poin per PIC mengikuti KPI rapor: Balance dan Flow.
-//   FE  : Balance NOOD (target cabang 88%, dibagi sesuai beban) + Flow NOOD   | MR : Balance 31-60 + Flow 1-30 | BCH : Balance 1-60 + Flow 31-60
+//   Logic = aplikasi baru (project 3): FE 4 poin (Balance NOOD 95, Balance 1-30 8,5, Flow NOOD 2,7, Flow 1-30 6,7) | MR 3 poin | BCH (cabang) 5 poin
 // Data MASTER/KA HARIAN adalah kondisi H-1, jadi "hari ini" ikut dihitung sebagai hari yang tersisa.
 // ============================================================
-const TD_BATAS_FLOW = { FE: 2, MR: 6, BCH: 28 };       // % beban awal yang boleh flow (parameter J di Excel REPORT DAILY)
-const TD_BATAS_BALANCE = { MR: 1.8, BCH: 9 };       // % AR (batas poin maksimal tiering KPI rapor)
-const TD_TARGET_NOOD = 88;                          // FE: target porsi NOOD cabang terhadap total AR (bukan KPI rapor), dibagi ke FE sesuai beban awal
+// Parameter target harian = konfigurasi_target Okt 2026 di aplikasi baru (project 3). Basis balance = total SIPOK beban awal
+// (FE: per CO FE; cabang: semua), basis flow = SIPOK beban awal bucket asal (FE: per CO ALL; cabang: semua). Fleet ikut dihitung.
+// batas (rupiah) = basis x persen / 100; target harian = max(0, selisih terhadap batas) / sisa hari.
+const TD_B_30PLUS = ['P031_060', 'P061_090', 'P091_120', 'P121_150', 'P151_180', 'P181_210'];
+const TD_PARAMETER = {
+  FE: [
+    { kunci: 'balance_nood', jenis: 'balance', buckets: ['NOOD'], persen: 95, arah: 'naik', judul: 'Balance NOOD', pic: true },
+    { kunci: 'balance_1_30', jenis: 'balance', buckets: ['P001_030'], persen: 8.5, arah: 'turun', judul: 'Balance 1-30', pic: true },
+    { kunci: 'flow_nood', jenis: 'flow', buckets: ['NOOD'], persen: 2.7, arah: 'turun', judul: 'Flow NOOD', pic: true },
+    { kunci: 'flow_1_30', jenis: 'flow', buckets: ['P001_030'], persen: 6.7, arah: 'turun', judul: 'Flow 1-30', pic: true }
+  ],
+  MR: [
+    { kunci: 'balance_31_60', jenis: 'balance', buckets: ['P031_060'], persen: 1.8, arah: 'turun', judul: 'Balance 31-60' },
+    { kunci: 'balance_30plus', jenis: 'balance', buckets: TD_B_30PLUS, persen: 2.0, arah: 'turun', judul: 'Balance 30+' },
+    { kunci: 'flow_31_60', jenis: 'flow', buckets: ['P031_060'], persen: 27, arah: 'turun', judul: 'Flow 31-60' }
+  ],
+  BCH: [ // CABANG
+    { kunci: 'balance_nood', jenis: 'balance', buckets: ['NOOD'], persen: 88, arah: 'naik', judul: 'Balance NOOD' },
+    { kunci: 'balance_1_30', jenis: 'balance', buckets: ['P001_030'], persen: 8.0, arah: 'turun', judul: 'Balance 1-30' },
+    { kunci: 'flow_nood', jenis: 'flow', buckets: ['NOOD'], persen: 2.0, arah: 'turun', judul: 'Flow NOOD' },
+    { kunci: 'flow_1_30', jenis: 'flow', buckets: ['P001_030'], persen: 5.0, arah: 'turun', judul: 'Flow 1-30' },
+    { kunci: 'flow_31_60', jenis: 'flow', buckets: ['P031_060'], persen: 27, arah: 'turun', judul: 'Flow 31-60' }
+  ]
+};
 const TD_LABEL = { NOOD: 'NOOD', P001_030: '1-30', P031_060: '31-60', P061_090: '61-90' };
 const tdLbl = b => TD_LABEL[b] || String(b || '').replace(/^P0*/, '').replace('_', '-');
 
@@ -344,83 +365,59 @@ function tdSusunKontrak(kandidat, perHari, D, akhirBulan) {
 function hitungTargetDaily(masterList, petaKA, configRows, lpc) {
   lpc = lpc || new Map();
   const w = tdHariIni(); const D = w.hari;
-  const arAll = (filterKA) => { let t = 0; Object.values(petaKA).forEach(ka => { if (!filterKA(ka)) return; const i = bucketIndex(ka['BUCKET UPDATE']); const sisa = typeof ka['SISA PIUTANG'] === 'number' ? ka['SISA PIUTANG'] : 0; if (i !== -1 && i <= bucketIndex('P181_210')) t += sisa; }); return t; };
-  // Balance NOOD cabang (non-fleet): target 88% dari total AR, selisihnya dibagi ke FE sesuai beban awal masing-masing
-  const nonFleet = ka => ka['FLEET/NON FLEET'] !== 'FLEET';
-  const arCab = arAll(nonFleet);
-  let noodCab = 0;
-  Object.values(petaKA).forEach(ka => { if (nonFleet(ka) && ka['BUCKET UPDATE'] === 'NOOD') noodCab += (typeof ka['SISA PIUTANG'] === 'number' ? ka['SISA PIUTANG'] : 0); });
-  const gapNood = Math.max(0, arCab * TD_TARGET_NOOD / 100 - noodCab);
-  const feList = configRows.filter(r => r['ROLE'] === 'FE').map(r => r['NAMA_CO']);
-  const bebanFE = {}; let bebanFETotal = 0;
-  feList.forEach(n => { bebanFE[n] = masterList.filter(m => m['CO ALL'] === n && m['FLEET/NON FLEET'] !== 'FLEET').reduce((t, m) => t + sipokOf(m), 0); bebanFETotal += bebanFE[n]; });
+  const sisaPiutang = ka => (typeof ka['SISA PIUTANG'] === 'number' ? ka['SISA PIUTANG'] : 0);
+  const ENR_MAKS = bucketIndex('P181_210');
+  const kaList = Object.values(petaKA);
   const hasil = configRows.filter(r => ['FE', 'MR', 'BCH'].includes(r['ROLE'])).map(cfg => {
     const role = cfg['ROLE'], namaCO = cfg['NAMA_CO'];
-    const penyelesaian = (cfg['BUCKET_PENYELESAIAN'] || '').toString().split(',').map(x => x.trim()).filter(Boolean);
-    let asal = (cfg['BUCKET_ASAL_FLOW'] || '').toString().trim();
-    let balBuckets = (cfg['BUCKET_BALANCE'] || '').toString().split(',').map(x => x.trim()).filter(Boolean);
-    if (role === 'BCH') { asal = 'P031_060'; balBuckets = ['P001_030', 'P031_060']; }
-    const incFleet = role === 'BCH';
-    const scopeM = m => (incFleet || m['FLEET/NON FLEET'] !== 'FLEET') && (role !== 'FE' || m['CO ALL'] === namaCO);
     // Realisasi = kontrak yang sudah bayar hari ini: kolom REALISASI (KA HARIAN) > 0 ATAU ada angsuran di LPC hari ini. Dihitung dengan SIPOK-nya.
     const sudahBayar = no => lpc.has(String(no).trim()) || (petaKA[no] && Number(petaKA[no]['REALISASI']) > 0);
-    // Bucket awal tidak dibatasi di sini: progres hanya menghitung kontrak yang ada di daftar pagi poin itu (lihat terapkanProgres).
-    const realisasiDari = () => masterList.filter(m => scopeM(m) && sudahBayar(m['NO KONTRAK']))
+    const scopeCoAll = m => role !== 'FE' || m['CO ALL'] === namaCO;
+    const realisasiDari = () => masterList.filter(m => scopeCoAll(m) && sudahBayar(m['NO KONTRAK']))
       .map(m => [m['NO KONTRAK'], sipokOf(m), m['NAMA KONSUMEN'] || '-']);
-    const scopeKA = ka => (incFleet || ka['FLEET/NON FLEET'] !== 'FLEET') && (role !== 'FE' || ka['NAMA COLLECTOR'] === namaCO);
-
-    // ---- Poin 1: BALANCE (porsi AR bucket terhadap total AR) ----
-    const arTotal = arAll(scopeKA);
-    let arBucket = 0;
-    Object.values(petaKA).forEach(ka => { if (!scopeKA(ka)) return; if (balBuckets.includes(ka['BUCKET UPDATE'])) arBucket += (typeof ka['SISA PIUTANG'] === 'number' ? ka['SISA PIUTANG'] : 0); });
-    const batasBal = TD_BATAS_BALANCE[role] || 0;
-    const pctBal = arTotal > 0 ? arBucket / arTotal * 100 : 0;
-    const perluBal = Math.max(0, arBucket - arTotal * batasBal / 100);
-    const kandBal = masterList.filter(m => scopeM(m) && (role === 'FE' ? m['BUCKET UPDATE'] === 'P001_030' : balBuckets.includes(m['BUCKET UPDATE'])));
-    let balance;
-    if (role === 'FE') {
-      const porsi = bebanFETotal > 0 ? bebanFE[namaCO] / bebanFETotal : 0;
-      const perlu = gapNood * porsi;
-      balance = {
-        kunci: 'balance', arah: 'naik', judul: 'Balance NOOD',
-        keterangan: 'Target porsi NOOD cabang ' + TD_TARGET_NOOD + '% dari total AR. Kekurangannya dibagi ke FE sesuai beban awal (porsi ' + Math.round(porsi * 1000) / 10 + '%)',
-        nilaiAmt: noodCab, nilaiPct: arCab > 0 ? noodCab / arCab * 100 : 0, batasPct: TD_TARGET_NOOD, bolehAmt: arCab * TD_TARGET_NOOD / 100,
-        porsiPct: porsi * 100, bebanAmt: bebanFE[namaCO], gapCabang: gapNood, perluAmt: perlu, perHari: perlu / w.sisaHari,
-        // Balance NOOD = seluruh kontrak KA HARIAN dengan BUCKET UPDATE NOOD. Milik FE ini (NAMA COLLECTOR) dipakai untuk progres: kenaikannya dari baseline pagi.
-        nilaiFE: Object.values(petaKA).reduce((t, ka) => t + (nonFleet(ka) && ka['NAMA COLLECTOR'] === namaCO && ka['BUCKET UPDATE'] === 'NOOD' ? (typeof ka['SISA PIUTANG'] === 'number' ? ka['SISA PIUTANG'] : 0) : 0), 0),
-        ...tdSusunKontrak(kandBal, perlu / w.sisaHari, D, w.akhirBulan)
-      };
-    } else {
-      balance = {
-        kunci: 'balance', judul: 'Balance ' + balBuckets.map(tdLbl).join(' + '),
-        keterangan: 'Porsi AR bucket ' + balBuckets.map(tdLbl).join(' + ') + ' terhadap total AR; batas poin maksimal ' + batasBal + '%',
-        nilaiAmt: arBucket, nilaiPct: pctBal, batasPct: batasBal, perluAmt: perluBal, perHari: perluBal / w.sisaHari,
-        ...tdSusunKontrak(kandBal, perluBal / w.sisaHari, D, w.akhirBulan)
-      };
-    }
-
-    // ---- Poin 2: FLOW (belum bayar di bucket asal yang masih bisa flow) ----
-    const bAsal = role === 'BCH' ? 'P031_060' : (role === 'FE' ? (asal || 'NOOD') : (asal || 'P001_030'));
-    let beban = 0, unpaid = 0; const kandFlow = [];
-    masterList.forEach(m => {
-      if (!scopeM(m) || m['BUCKET AWAL'] !== bAsal) return;
-      // MR: flow 1-30 dihitung se-cabang (sama seperti rapor); FE hanya kontrak miliknya
-      beban += sipokOf(m);
-      if (bucketIndex(m['BUCKET UPDATE']) > bucketIndex(m['BUCKET AWAL'])) { unpaid += sipokOf(m); kandFlow.push(m); }
+    const poin = (TD_PARAMETER[role] || []).map(prm => {
+      const perPic = !!prm.pic;
+      const lbl = prm.buckets.length === 1 ? tdLbl(prm.buckets[0]) : '30+';
+      let nilaiAmt = 0, basis = 0, kand = [];
+      if (prm.jenis === 'balance') {
+        // posisi = SISA PIUTANG bucket (dalam cakupan AR NOOD..181-210); FE: milik NAMA COLLECTOR; basis = total SIPOK beban awal (per CO FE)
+        kaList.forEach(ka => {
+          if (perPic && ka['NAMA COLLECTOR'] !== namaCO) return;
+          const i = bucketIndex(ka['BUCKET UPDATE']);
+          if (i !== -1 && i <= ENR_MAKS && prm.buckets.includes(ka['BUCKET UPDATE'])) nilaiAmt += sisaPiutang(ka);
+        });
+        masterList.forEach(m => { if (!perPic || (m['CO FE'] || m['CO ALL']) === namaCO) basis += sipokOf(m); });
+        // yang bisa dikejar: naik = kontrak 1-30 yang bayar lalu kembali NOOD; turun = kontrak yang sedang di bucket itu
+        const asalBayar = prm.arah === 'naik' ? ['P001_030'] : prm.buckets;
+        kand = masterList.filter(m => {
+          if (!asalBayar.includes(m['BUCKET UPDATE'])) return false;
+          if (!perPic) return true;
+          const ka = petaKA[m['NO KONTRAK']];
+          return (ka ? ka['NAMA COLLECTOR'] : m['CO ALL']) === namaCO;
+        });
+      } else {
+        // posisi = SIPOK beban awal bucket asal yang belum bayar (sudah flow); basis = SIPOK beban awal bucket asal (per CO ALL)
+        masterList.forEach(m => {
+          if (!prm.buckets.includes(m['BUCKET AWAL']) || (perPic && m['CO ALL'] !== namaCO)) return;
+          basis += sipokOf(m);
+          if (bucketIndex(m['BUCKET UPDATE']) > bucketIndex(m['BUCKET AWAL'])) { nilaiAmt += sipokOf(m); kand.push(m); }
+        });
+      }
+      const batasRp = basis * prm.persen / 100;
+      const naik = prm.arah === 'naik';
+      const perlu = Math.max(0, naik ? batasRp - nilaiAmt : nilaiAmt - batasRp);
+      const perHari = perlu / w.sisaHari;
+      const ket = prm.jenis === 'balance'
+        ? (naik ? 'Posisi NOOD ' : 'Posisi bucket ' + lbl + ' ') + (perPic ? 'milik FE' : 'cabang') + ' terhadap total beban awal; ' + (naik ? 'target minimal ' : 'batas maksimal ') + prm.persen + '%'
+        : 'Kontrak bucket awal ' + lbl + ' yang belum bayar (sudah flow); yang boleh flow maks ' + prm.persen + '% dari beban awal';
+      return Object.assign({
+        kunci: prm.kunci, judul: prm.judul, arah: prm.arah, jenis: prm.jenis, keterangan: ket,
+        bebanAmt: basis, nilaiAmt, nilaiPct: basis > 0 ? nilaiAmt / basis * 100 : 0, batasPct: prm.persen, bolehAmt: batasRp,
+        perluAmt: perlu, perHari, jumlahBelumBayar: kand.length,
+        realisasi: realisasiDari()
+      }, tdSusunKontrak(kand, perHari, D, w.akhirBulan));
     });
-    const batasFlow = TD_BATAS_FLOW[role];
-    const boleh = beban * batasFlow / 100;
-    const perluFlow = Math.max(0, unpaid - boleh);
-    const flow = {
-      kunci: 'flow', judul: 'Flow ' + tdLbl(bAsal),
-      keterangan: 'Kontrak bucket ' + tdLbl(bAsal) + ' yang belum bayar (berpotensi flow); yang boleh flow maks ' + batasFlow + '% dari beban awal',
-      bebanAmt: beban, nilaiAmt: unpaid, nilaiPct: beban > 0 ? unpaid / beban * 100 : 0, batasPct: batasFlow, bolehAmt: boleh,
-      perluAmt: perluFlow, perHari: perluFlow / w.sisaHari, jumlahBelumBayar: kandFlow.length,
-      ...tdSusunKontrak(kandFlow, perluFlow / w.sisaHari, D, w.akhirBulan)
-    };
-    balance.realisasi = realisasiDari();
-    flow.realisasi = realisasiDari();
-    return { namaCO, role, poin: [balance, flow] };
+    return { namaCO, role, poin };
   });
   return { tanggal: w, pic: hasil };
 }
