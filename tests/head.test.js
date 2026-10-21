@@ -69,3 +69,12 @@ test('susunHead: tanggal 1 sisa hari 0 dan penyebab membawa dimensi', () => {
   assert.strictEqual(typeof h.penyebab[0].dim, 'string');
   assert.ok(Object.keys(h.diagnosa[h.penyebab[0].angka].urai).includes(h.penyebab[0].dim));
 });
+
+test('susunHead: menyertakan targetDaily dan tindakan bila tdHead diberikan', () => {
+  const tdHead = { adaBaseline: true, pic: [{ co: 'FE A', poin: [{ judul: 'Flow NOOD', target: 500, realisasi: 100, kurangRp: 400, status: 'MERAH', belumKontrak: ['2'] }] }], kalimat: [], total: {}, belum: {}, teratas: [], tren: {} };
+  const h = susunHead(Object.assign({ logHarian: {}, tdHead }, dasar));
+  assert.strictEqual(h.targetDaily, tdHead);
+  assert.strictEqual(h.tindakan[0].dampakRp, 400);
+  const tanpa = susunHead(Object.assign({ logHarian: {} }, dasar));
+  assert.strictEqual(tanpa.targetDaily, null);
+});

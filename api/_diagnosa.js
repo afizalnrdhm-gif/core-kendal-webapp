@@ -157,4 +157,26 @@ function kalimat(judul, rk, uraiPerDimensi) {
   return out;
 }
 
-module.exports = { ANGKA, DIMENSI, DIMENSI_WAKTU, SEGMEN, populasi, ringkas, urai, irisan, kontrakTeratas, hariDari, mingguan, mingguanPerSegmen, kalimat };
+// Maksimal 5 tindakan hari ini dari kekurangan Target Daily per PIC/poin dan dari penyebab diagnosa, urut dampak rupiah.
+const COCOK_TERATAS = { co: 'co', statusNbq: 'statusNbq', groupProduct: 'groupProduct' };
+function tindakan(penyebab, tdHead, diagnosa) {
+  const out = [];
+  if (tdHead && tdHead.adaBaseline) (tdHead.pic || []).forEach(p => (p.poin || []).forEach(q => {
+    if (!(q.kurangRp > 0)) return;
+    out.push({ judul: `Kejar target ${q.judul} ${p.co}`, temuan: `Realisasi ${juta(q.realisasi)} dari target ${juta(q.target)} hari ini.`,
+      alasan: `Kurang ${juta(q.kurangRp)}${q.status && q.status !== 'AMAN' ? '; status ' + q.status.toLowerCase() + ' (' + q.streakHari + ' hari meleset)' : ''}.`,
+      kontrak: (q.belumKontrak || []).slice(0, 5), pic: p.co, dampakRp: q.kurangRp });
+  }));
+  (penyebab || []).forEach(p => {
+    const g = diagnosa && diagnosa[p.angka]; if (!g || !p.dim || !g.urai || !g.urai[p.dim]) return;
+    const u = g.urai[p.dim].filter(x => x.pemberat).sort((a, b) => b.pengaruh - a.pengaruh)[0]; if (!u) return;
+    const f = COCOK_TERATAS[p.dim];
+    const kontrak = (g.teratas || []).filter(t => !f || String(t[f]) === String(u.nilai)).slice(0, 5).map(t => t.noKontrak);
+    const dj = (DIMENSI[p.dim] && DIMENSI[p.dim].judul) || p.dim;
+    out.push({ judul: `Tangani ${dj} ${u.nilai} di ${g.judul}`, temuan: p.kalimat, alasan: `Pengaruh ${fmt2(u.pengaruh)} poin penyelesaian.`,
+      kontrak, pic: p.dim === 'co' ? u.nilai : '-', dampakRp: Math.round(u.pengaruh * ((g.ringkas && g.ringkas.beban) || 0) / 100) });
+  });
+  return out.sort((a, b) => b.dampakRp - a.dampakRp).slice(0, 5);
+}
+
+module.exports = { tindakan, ANGKA, DIMENSI, DIMENSI_WAKTU, SEGMEN, populasi, ringkas, urai, irisan, kontrakTeratas, hariDari, mingguan, mingguanPerSegmen, kalimat };

@@ -125,3 +125,19 @@ test('hariDari: angka hari yang tersimpan sebagai teks', () => {
   assert.strictEqual(D.hariDari(' 5 '), 5);
   assert.strictEqual(D.hariDari('32'), null);
 });
+
+test('tindakan: gabungan kekurangan target daily dan penyebab diagnosa, urut dampak rupiah, maks 5', () => {
+  const tdHead = { adaBaseline: true, pic: [{ co: 'X', poin: [{ judul: 'Flow NOOD', target: 500, realisasi: 200, kurangRp: 300, status: 'AMAN', belumKontrak: ['A'] }, { judul: 'Flow 1-30', target: 10, realisasi: 10, kurangRp: 0, status: 'AMAN', belumKontrak: [] }] }] };
+  const penyebab = [{ angka: 'nood', dim: 'statusNbq', kalimat: 'k', pengaruh: 2 }];
+  const diagnosa = { nood: { judul: 'Balance/Flow NOOD', ringkas: { beban: 10000 }, urai: { statusNbq: [{ nilai: 'APPEAL', pemberat: true, pengaruh: 2 }] },
+    teratas: [{ noKontrak: 'K1', statusNbq: 'APPEAL' }, { noKontrak: 'K2', statusNbq: 'NORMAL' }] } };
+  const t = D.tindakan(penyebab, tdHead, diagnosa);
+  assert.deepStrictEqual(t.map(x => x.dampakRp), [300, 200]);
+  assert.deepStrictEqual(t[0].kontrak, ['A']);
+  assert.strictEqual(t[0].pic, 'X');
+  assert.deepStrictEqual(t[1].kontrak, ['K1']);
+  assert.ok(t[1].judul.includes('APPEAL'));
+  const banyak = { adaBaseline: true, pic: [{ co: 'X', poin: Array.from({ length: 8 }, (_, i) => ({ judul: 'P' + i, target: 100, realisasi: 0, kurangRp: 100 + i, status: 'AMAN', belumKontrak: [] })) }] };
+  assert.strictEqual(D.tindakan([], banyak, {}).length, 5);
+  assert.deepStrictEqual(D.tindakan([], { adaBaseline: false, pic: [] }, {}), []);
+});

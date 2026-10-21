@@ -9,11 +9,12 @@ const AC_TIDAK = ['KPR', 'KTD', 'TKK', 'TTP'];
 const teks = v => String(v == null ? '' : v).trim();
 const r2 = v => Math.round((Number(v) || 0) * 100) / 100;
 const fmt2 = v => r2(v).toFixed(2).replace('.', ',');
-const juta = v => 'Rp ' + Math.round((Number(v) || 0) / 1e6).toLocaleString('id-ID') + ' jt';
+const juta = v => 'Rp ' + (Math.round((Number(v) || 0) / 1e6) || 0).toLocaleString('id-ID') + ' jt';
 const pad2 = n => String(n).padStart(2, '0');
 
-function statusKerja_(item) {
-  if (!item) return 'TIDAK ADA DATA';
+// dkh: Set nomor kontrak ber-DKH bulan ini (DKH_ASSIGN) untuk kontrak yang tidak ada di data CMS (mis. DPD 0 tapi BUCKET UPDATE sudah 1-30).
+function statusKerja_(item, no, dkh) {
+  if (!item) return dkh ? (dkh.has(no) ? 'ADA DKH (TANPA DATA KUNJUNGAN)' : 'BELUM DKH') : 'TIDAK ADA DATA';
   const m = new Set((item.t || []).map(t => String(t).split('|').pop()));
   if (m.has('dikerjakan')) return 'SUDAH DIKUNJUNGI';
   if (m.has('terbentuk')) return 'DKH, BELUM DIKERJAKAN';
@@ -33,7 +34,7 @@ function janji_(m, hari) {
 }
 const minggu_ = h => h == null ? '-' : h <= 7 ? 'W1' : h <= 14 ? 'W2' : h <= 21 ? 'W3' : 'W4';
 
-function susunTargetDailyHead({ td, base, hasil, cmsItems, master, hariIni }) {
+function susunTargetDailyHead({ td, base, hasil, cmsItems, master, hariIni, dkh }) {
   base = base || {}; hasil = hasil || [];
   const tglIni = `${hariIni.tahun}-${pad2(hariIni.bulan)}-${pad2(hariIni.hari)}`;
   const bulanIni = tglIni.slice(0, 7);
@@ -69,7 +70,7 @@ function susunTargetDailyHead({ td, base, hasil, cmsItems, master, hariIni }) {
   const totSipok = daftar.reduce((s, x) => s + x.sipok, 0);
   const DIM = {
     pic: x => x.co,
-    statusKerja: x => statusKerja_(item.get(x.no)),
+    statusKerja: x => statusKerja_(item.get(x.no), x.no, dkh),
     hasil: x => hasil_(item.get(x.no)),
     janji: x => janji_(mst.get(x.no), hariIni.hari),
     segmen: x => teks((mst.get(x.no) || {})['SEGMEN PEKERJAAN']).toUpperCase() || 'TIDAK DIKETAHUI',

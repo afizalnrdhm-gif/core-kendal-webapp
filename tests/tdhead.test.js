@@ -60,3 +60,13 @@ test('hasil kunjungan dari action code dan tanpa baseline aman', () => {
   assert.strictEqual(kosong.belum.kontrak, 0);
   assert.ok(Number.isFinite(kosong.total.capaianPct));
 });
+
+test('kontrak tanpa data CMS dicek ke DKH bulan ini; rupiah nol tidak tampil -0', () => {
+  const f = fixture(); f.dkh = new Set(['B']);
+  const r = susunTargetDailyHead(f);
+  assert.strictEqual(r.belum.urai.statusKerja.find(x => x.nilai === 'ADA DKH (TANPA DATA KUNJUNGAN)').kontrak, 1);
+  const g = fixture(); g.dkh = new Set();
+  assert.strictEqual(susunTargetDailyHead(g).belum.urai.statusKerja.find(x => x.nilai === 'BELUM DKH').kontrak, 1);
+  const h = fixture(); h.td.pic[0].poin[0].progres.tercapai = -0.4;
+  assert.ok(!susunTargetDailyHead(h).kalimat.join(' ').includes('-0 jt'));
+});
