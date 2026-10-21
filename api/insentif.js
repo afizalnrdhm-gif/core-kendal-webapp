@@ -545,7 +545,7 @@ module.exports.__test = { hitungTargetDaily, tdHariDariCell, tdSusunKontrak };
 // Dipanggil cron harian (api/log-snapshot.js): bekukan target hari ini dari data pagi, sebelum admin mulai update bayar.
 module.exports.bekukanTargetHariIni = async (accessToken, sheetId) => {
   const [masterRaw, kaRaw, roleRaw] = await Promise.all([
-    fetchSheetRange(sheetId, 'MASTER', accessToken, true), fetchSheetRange(sheetId, 'KA HARIAN', accessToken), fetchSheetRange(sheetId, 'CONFIG_ROLE', accessToken)
+    fetchSheetRange(sheetId, 'MASTER', accessToken, true), fetchSheetRange(sheetId, 'KA HARIAN', accessToken, true), fetchSheetRange(sheetId, 'CONFIG_ROLE', accessToken, true)
   ]);
   const masterList = parseSheetGeneric(masterRaw, 0).filter(m => m['NO KONTRAK']);
   const petaKA = {}; parseSheetGeneric(kaRaw, 15).forEach(r => { if (r['NO KONTRAK']) petaKA[r['NO KONTRAK']] = r; });
