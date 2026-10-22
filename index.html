@@ -1262,31 +1262,62 @@
   .tbchart .tb-note{font-size:11.5px;color:var(--ink-soft);margin-top:8px;}
 
   /* =====================================================================
-     V6 — RAPIKAN BEBAN AWAL: pecah kesamaan kartu (radius/shadow seragam
-     di semua tempat terasa kaku), kuatkan hierarki & aksen warna bucket.
+     V7 — BEBAN AWAL "LAPANG & LEMBUT": kurangi jumlah kotak bergaris
+     terpisah, satukan jadi panel besar, radius lebih lega, angka hero
+     diperbesar, status bayar pakai ikon lingkaran. Berlaku untuk semua
+     halaman yang memakai komponen kartu yang sama (NBQ, FE Ever, dst)
+     supaya tampilannya konsisten satu bahasa desain.
      ===================================================================== */
-  .grand-card{box-shadow:none;}
-  .grand-card:nth-child(1){box-shadow:0 18px 36px -16px rgba(11,61,98,.65);}
-  .grand-card:nth-child(n+2){background:var(--surface-alt);border-top:3px solid var(--gold);}
-  .grand-card:nth-child(n+2) .lbl{color:var(--gold-ink);}
+  .panel-title{font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);margin:0 0 14px 2px;}
+
+  .grand-row{gap:16px;}
+  .grand-card{border:none;border-radius:22px;padding:24px 26px;box-shadow:none;}
+  .grand-card:nth-child(1){background:linear-gradient(135deg,#0B3D62 0%,#1B78B0 100%);box-shadow:0 18px 36px -16px rgba(11,61,98,.65);}
+  .grand-card:nth-child(n+2){background:var(--surface-alt);border-top:none;}
+  .grand-card:nth-child(n+2) .lbl{color:var(--ink-soft);}
   .grand-card:nth-child(n+2)::after{display:none;}
+  .grand-card .lbl{font-size:12.5px;font-weight:600;}
+  .grand-card .val{font-size:34px;margin-top:8px;}
 
-  .status-card{box-shadow:none;border-top:3px solid var(--accent,var(--line-strong));}
+  .status-row{gap:16px;}
+  .status-card{border:none;border-top:none;border-radius:20px;padding:20px 22px;background:var(--surface-alt);box-shadow:none;}
   .status-card:hover{box-shadow:0 10px 26px -16px rgba(15,30,45,.22);}
-  .status-card .bname::before{content:'';display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent,var(--ink-soft));margin-right:8px;vertical-align:middle;}
+  .status-card .bname{display:inline-flex;align-items:center;font-size:15.5px;}
+  .status-card .bname::before{content:'';display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--accent,var(--ink-soft));margin-right:8px;vertical-align:middle;}
+  .status-card .progress{height:7px;background:color-mix(in srgb, var(--accent,var(--line)) 18%, var(--surface-sunken));}
+  .status-card .progress span{background:var(--accent,var(--good));}
+  .status-card .srow{border-top:none;padding:8px 0;}
+  .status-card .dot{width:18px;height:18px;border-radius:50%;}
+  .status-card .dot.good{background:var(--good-bg);box-shadow:inset 0 0 0 2px var(--good);}
+  .status-card .dot.bad{background:var(--bad-bg);box-shadow:inset 0 0 0 2px var(--bad);}
 
-  .alert-row{display:flex;flex-wrap:wrap;margin-bottom:10px;}
-  .alert-tile{flex:0 1 auto;min-width:0;background:var(--surface);box-shadow:none;border-radius:var(--radius-sm);padding:11px 16px;border-left-width:3px;}
-  .alert-tile:hover{box-shadow:none;transform:none;background:var(--surface-alt);}
+  /* Panel lembut yang menampung hero + bucket + janji + proyeksi di Beban Awal, supaya
+     tidak terasa seperti tumpukan kotak-kotak terpisah — lihat pembungkus .ba-panel di buildLayout(). */
+  .ba-panel{background:var(--surface);border-radius:26px;padding:26px 28px;margin-bottom:24px;}
+
+  .alert-row{display:flex;flex-wrap:wrap;gap:10px;margin:20px 0 14px;}
+  .alert-tile{flex:0 1 auto;min-width:0;border:none;border-left:none;border-radius:16px;background:var(--surface-alt);box-shadow:none;padding:13px 18px;}
+  .alert-tile:hover{box-shadow:none;transform:none;filter:brightness(.98);}
   .alert-tile:active{transform:none;}
+  .alert-tile.info .at-n{color:var(--navy-lighter);} .alert-tile.bad .at-n{color:var(--bad);} .alert-tile.warn .at-n{color:var(--warn);}
+  .at-n{font-size:25px;}
 
-  .co-row{margin-top:0;}
-  .co-card{box-shadow:none;}
+  .proy-row{margin:0 0 4px;}
+  .proy-chip{border:none;background:var(--surface-alt);border-radius:12px;box-shadow:none;}
+  .proy-chip.active{background:color-mix(in srgb,var(--pc) 20%, var(--surface));box-shadow:none;}
+
+  .co-row{margin-top:0;gap:16px;}
+  .co-card{border:none;border-radius:18px;padding:18px 20px;background:var(--surface-alt);box-shadow:none;}
   .co-card:hover{box-shadow:0 10px 26px -16px rgba(15,30,45,.22);}
   .co-card .chead{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
-  .co-avatar{width:32px;height:32px;border-radius:50%;flex:none;display:grid;place-items:center;font-weight:800;font-size:13px;color:#fff;background:var(--ac,var(--navy));}
+  .co-avatar{width:36px;height:36px;border-radius:50%;flex:none;display:grid;place-items:center;font-weight:800;font-size:14px;color:#fff;background:var(--ac,var(--navy));}
   .co-card .name{font-weight:700;font-size:14px;line-height:1.25;}
   .co-card .role{font-size:11.5px;color:var(--ink-soft);margin-top:1px;}
+
+  /* Cari & filter nempel di bawah header (dipakai di semua halaman tabel) biar tidak perlu
+     scroll balik ke atas tiap mau cari kontrak — ini langsung menjawab masukan "filter taruh di atas". */
+  .controls{position:sticky;top:68px;z-index:8;background:color-mix(in srgb, var(--bg) 94%, transparent);-webkit-backdrop-filter:saturate(1.3) blur(8px);backdrop-filter:saturate(1.3) blur(8px);padding:10px 0;margin:0 0 4px;}
+  @media (max-width:900px){ .controls{top:72px;} }
 </style>
 </head>
 <body>
@@ -1899,6 +1930,7 @@ function buildLayout(){
 
   let html = '';
 
+  html += `<div class="ba-panel">`;
   if(IS_ADMIN || IS_DESKCALL){
     html += `<div class="panel-title">Beban Awal — Semua PIC</div>
       <div class="grand-row" id="grandRow"></div>
@@ -1914,6 +1946,7 @@ function buildLayout(){
   html += `
     <div class="alert-row" id="janjiStrip" role="group" aria-label="Pantauan janji bayar"></div>
     <div class="proy-row" id="proyStrip" role="group" aria-label="Filter proyeksi"></div>
+  </div>
     <details class="fold" id="foldSebaran"${window.innerWidth>900?' open':''}>
       <summary><span>Sebaran bucket${IS_ADMIN ? ' &amp; per CO' : ''}</span><small>klik untuk memfilter tabel</small></summary>
       <div class="bucket-bar" id="bucketBar"></div>
