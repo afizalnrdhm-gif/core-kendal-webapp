@@ -25,7 +25,7 @@ async function ensureTab(token, sheetId) {
 
 // Baca baseline untuk tanggal tertentu → { 'PIC|kunci': { targetHari, baseNilai, kontrak:[[no,sipok,nama],...] } } (baris TERAKHIR menang)
 // pembaca opsional (mis. bacaSheet dengan cache 45 detik): (sheetId, range, token) -> values. Dipakai hanya untuk bacaan
-// read-only (mis. mode=head) — pastikanBaseline TIDAK memakainya karena perlu baca ulang segar setelah menulis baseline baru.
+// read-only — pastikanBaseline TIDAK memakainya karena perlu baca ulang segar setelah menulis baseline baru.
 async function bacaBaseline(token, sheetId, kunciTgl, pembaca) {
   let nilai;
   if (pembaca) { nilai = await pembaca(sheetId, TAB, token).catch(() => null); }
