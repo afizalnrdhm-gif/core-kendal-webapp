@@ -1260,6 +1260,33 @@
   .tbchart th:first-child,.tbchart td:first-child{text-align:left;}
   .tbchart thead th{color:var(--ink-soft);font-weight:600;border-top:0;}
   .tbchart .tb-note{font-size:11.5px;color:var(--ink-soft);margin-top:8px;}
+
+  /* =====================================================================
+     V6 — RAPIKAN BEBAN AWAL: pecah kesamaan kartu (radius/shadow seragam
+     di semua tempat terasa kaku), kuatkan hierarki & aksen warna bucket.
+     ===================================================================== */
+  .grand-card{box-shadow:none;}
+  .grand-card:nth-child(1){box-shadow:0 18px 36px -16px rgba(11,61,98,.65);}
+  .grand-card:nth-child(n+2){background:var(--surface-alt);border-top:3px solid var(--gold);}
+  .grand-card:nth-child(n+2) .lbl{color:var(--gold-ink);}
+  .grand-card:nth-child(n+2)::after{display:none;}
+
+  .status-card{box-shadow:none;border-top:3px solid var(--accent,var(--line-strong));}
+  .status-card:hover{box-shadow:0 10px 26px -16px rgba(15,30,45,.22);}
+  .status-card .bname::before{content:'';display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent,var(--ink-soft));margin-right:8px;vertical-align:middle;}
+
+  .alert-row{display:flex;flex-wrap:wrap;margin-bottom:10px;}
+  .alert-tile{flex:0 1 auto;min-width:0;background:var(--surface);box-shadow:none;border-radius:var(--radius-sm);padding:11px 16px;border-left-width:3px;}
+  .alert-tile:hover{box-shadow:none;transform:none;background:var(--surface-alt);}
+  .alert-tile:active{transform:none;}
+
+  .co-row{margin-top:0;}
+  .co-card{box-shadow:none;}
+  .co-card:hover{box-shadow:0 10px 26px -16px rgba(15,30,45,.22);}
+  .co-card .chead{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+  .co-avatar{width:32px;height:32px;border-radius:50%;flex:none;display:grid;place-items:center;font-weight:800;font-size:13px;color:#fff;background:var(--ac,var(--navy));}
+  .co-card .name{font-weight:700;font-size:14px;line-height:1.25;}
+  .co-card .role{font-size:11.5px;color:var(--ink-soft);margin-top:1px;}
 </style>
 </head>
 <body>
@@ -1518,6 +1545,8 @@ const CO_META = {
   'SIGIT KURNIAWAN': {short:'Sigit', role:'Mid Range'},
   'REM': {short:'Remedial', role:'Penanganan remedial'}
 };
+// Warna avatar kartu CO per role (Rencana 3 — rapikan Beban Awal), dipakai di renderCoRow().
+const ROLE_AVATAR_COLOR = { 'Front End':'var(--navy-lighter)', 'Mid Range':'var(--gold)' };
 const FIELD_GROUPS = [
   { title:'Identitas & Alamat', fields:['KELURAHAN','KECAMATAN','ALAMAT','KONTAK'] },
   { title:'Kontrak & Unit', fields:['TYPE BARANG','NOPOL','TYPE UNIT','GROUP PRODUCT','FLEET/NON FLEET','KRITERIA ACCT'] },
@@ -1829,7 +1858,7 @@ function renderStatusCards(containerId, records, buckets){
     const showEver = (b === 'P001_030' || b === 'P031_060');
     const e = showEver ? everStat_(records, b) : null;
     return `
-    <div class="status-card ${state.bucket===b && state.tab==='own' ? 'active':''}" data-bucket="${b}">
+    <div class="status-card ${state.bucket===b && state.tab==='own' ? 'active':''}" data-bucket="${b}" style="--accent:${BUCKET_COLOR[b]||'var(--ink-soft)'}">
       <div class="bhead">
         <span class="bname">${fmtBucket(b)}</span>
         <span class="btotal">${s.total.count} kontrak · ${fmtRupiah(s.total.sipok)}</span>
@@ -4855,7 +4884,9 @@ function renderCoRow(){
     const meta = CO_META[co] || {short:co, role:''};
     const card = document.createElement('div');
     card.className = 'co-card' + (state.co===co?' active':'');
-    card.innerHTML = `<div class="name">${esc(meta.short)}</div><div class="role">${esc(meta.role)}</div>
+    const inisial = esc((meta.short || '?').trim().charAt(0).toUpperCase());
+    const avatarColor = ROLE_AVATAR_COLOR[meta.role] || 'var(--ink-soft)';
+    card.innerHTML = `<div class="chead"><div class="co-avatar" style="--ac:${avatarColor}">${inisial}</div><div><div class="name">${esc(meta.short)}</div><div class="role">${esc(meta.role)}</div></div></div>
       <div class="stats"><div>Kontrak<b>${coStats[co].count}</b></div><div style="text-align:right">Sisa Piutang<b>${fmtRupiah(coStats[co].sipok)}</b></div></div>`;
     card.onclick = () => { state.co = state.co===co?'ALL':co; render(); };
     row.appendChild(card);
