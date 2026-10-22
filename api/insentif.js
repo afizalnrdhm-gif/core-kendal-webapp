@@ -1,4 +1,4 @@
-const { catatHasilHariIni, pastikanBaseline, terapkanProgres, finalkanKemarin, bacaHasil, bacaBaseline, kunciTanggal, hitungStreak } = require('./_tdsnap');
+const { statusStreak, catatHasilHariIni, pastikanBaseline, terapkanProgres, finalkanKemarin, bacaHasil, bacaBaseline, kunciTanggal, hitungStreak } = require('./_tdsnap');
 const { getAccessToken, sendError, verifyIdToken } = require('./_auth');
 const { cleanCell, bayarLPC } = require('./_sheet');
 
@@ -463,6 +463,8 @@ module.exports = async (req, res) => {
       td.adaBaseline = adaBaseline;
       if (adaBaseline && !td.tertunda) { try { await catatHasilHariIni(accessToken, sheetId, td, hasilAwal || []); } catch (e) { console.error('Gagal catat hasil hari ini:', e.message); } }
       try { td.streak = hitungStreak((hasilAwal || []).filter(x => x.tanggal !== kunciTanggal(td.tanggal))); } catch (e) { td.streak = { daftar: [], riwayatHari: 0 }; }
+      // Status per poin: meleset 1-2 hari berturut-turut = WASPADA, >= 3 hari = MERAH (hari ini belum dihitung).
+      td.pic.forEach(p => p.poin.forEach(q => { const st = td.streak.daftar.find(x => x.pic === p.namaCO && x.kunci === q.kunci); q.streakHari = st ? st.hari : 0; q.status = statusStreak(q.streakHari); }));
       if (admin) { res.status(200).json(Object.assign({ isAdmin: true }, td)); return; }
       const rec = masterList.find(m => (m['EMAIL CO'] || '').toString().trim().toLowerCase() === email);
       const nama = rec ? rec['CO ALL'] : null;

@@ -24,11 +24,15 @@ async function ensureTab(token, sheetId) {
 }
 
 // Baca baseline untuk tanggal tertentu → { 'PIC|kunci': { targetHari, baseNilai, kontrak:[[no,sipok,nama],...] } } (baris TERAKHIR menang)
-async function bacaBaseline(token, sheetId, kunciTgl) {
-  const r = await sf('https://sheets.googleapis.com/v4/spreadsheets/' + sheetId + '/values/' + encodeURIComponent(TAB) + '?valueRenderOption=UNFORMATTED_VALUE', token);
-  if (!r.ok || !r.json.values) return {};
+// pembaca opsional (mis. bacaSheet dengan cache 45 detik): (sheetId, range, token) -> values. Dipakai hanya untuk bacaan
+// read-only (mis. mode=head) — pastikanBaseline TIDAK memakainya karena perlu baca ulang segar setelah menulis baseline baru.
+async function bacaBaseline(token, sheetId, kunciTgl, pembaca) {
+  let nilai;
+  if (pembaca) { nilai = await pembaca(sheetId, TAB, token).catch(() => null); }
+  else { const r = await sf('https://sheets.googleapis.com/v4/spreadsheets/' + sheetId + '/values/' + encodeURIComponent(TAB) + '?valueRenderOption=UNFORMATTED_VALUE', token); nilai = r.ok ? r.json.values : null; }
+  if (!nilai) return {};
   const out = {};
-  r.json.values.slice(1).forEach(row => {
+  nilai.slice(1).forEach(row => {
     if (String(row[0] || '') !== kunciTgl) return;
     const k = row[1] + '|' + row[2];
     // baris terakhir menang: pembekuan ulang (cron 09.00 / tombol admin) menimpa yang lebih awal
@@ -74,22 +78,24 @@ async function pastikanBaseline(token, sheetId, td, baseAwal, opsi) {
   return { base, baru: true };
 }
 
-// Tempelkan progres ke tiap poin. Target & daftar kontrak DIKUNCI dari baseline pagi (seperti kolom pengunci di Excel).
-// Realisasi = kontrak di daftar yang dikunci pagi yang sudah bayar hari ini (LPC / kolom REALISASI) atau sudah keluar dari daftar
-// (BUCKET UPDATE-nya sudah kembali setelah data KA di-update). Dihitung dengan SIPOK pagi-nya, tiap kontrak sekali.
+// Tempelkan progres ke tiap poin (§7.4 spec project 3). Target dibekukan pagi; realisasi = perubahan posisi parameter dari
+// posisi pagi (BASE_NILAI) ke posisi sekarang, positif bila bergerak ke arah yang diinginkan (naik untuk Balance NOOD,
+// turun untuk Balance 1-30/31-60/30+ dan Flow). Bisa minus bila posisi memburuk. Daftar kontrak pagi yang sudah bayar/keluar
+// tetap disertakan sebagai informasi, tidak dipakai untuk angka.
 function terapkanProgres(td, base) {
   td.pic.forEach(p => p.poin.forEach(q => {
     const b = base[p.namaCO + '|' + q.kunci];
     const sekarang = new Set((q.semuaKandidat || []).map(x => String(x[0])));
     const bayarHariIni = new Set((q.realisasi || []).map(x => String(x[0])));
     if (b) {
+      const posisi = Number(q.nilaiFE !== undefined ? q.nilaiFE : q.nilaiAmt) || 0;
+      const tercapai = q.arah === 'naik' ? posisi - b.baseNilai : b.baseNilai - posisi;
       const dilihat = new Set();
       const bayar = (b.kontrak || []).filter(x => { const k = String(x[0]); if (dilihat.has(k)) return false; dilihat.add(k); return bayarHariIni.has(k) || !sekarang.has(k); });
-      const tercapai = bayar.reduce((t, x) => t + (Number(x[1]) || 0), 0);
       q.progres = {
-        targetHari: b.targetHari, baseNilai: b.baseNilai, tercapai,
-        persen: b.targetHari > 0 ? tercapai / b.targetHari * 100 : (tercapai > 0 ? 100 : 0),
-        sisa: Math.max(0, b.targetHari - tercapai), tuntas: tercapai >= b.targetHari,
+        targetHari: b.targetHari, baseNilai: b.baseNilai, posisiSekarang: posisi, arah: q.arah, tercapai,
+        persen: b.targetHari > 0 ? tercapai / b.targetHari * 100 : 100,
+        sisa: Math.max(0, b.targetHari - tercapai), tuntas: b.targetHari <= 0 || tercapai >= b.targetHari,
         jumlahBayar: bayar.length, jumlahBase: (b.kontrak || []).length, jumlahSekarang: sekarang.size, waktuBase: b.waktu || '',
         kontrakBayar: bayar.slice().sort((a, c) => c[1] - a[1]).slice(0, 15).map(x => ({ noKontrak: x[0], sipok: x[1], nama: x[2] || '-' }))
       };
@@ -98,6 +104,9 @@ function terapkanProgres(td, base) {
   }));
   return td;
 }
+
+// Status dari jumlah hari berturut-turut tidak mencapai target: 1-2 hari waspada, 3 hari atau lebih merah.
+function statusStreak(hari) { return hari >= 3 ? 'MERAH' : hari >= 1 ? 'WASPADA' : 'AMAN'; }
 
 // ---- Hasil harian (untuk riwayat & streak "tidak target") ----
 const HASIL_TAB = 'LOG_TARGET_HASIL';
@@ -114,7 +123,7 @@ async function bacaHasil(token, sheetId) {
 }
 
 // LPC berganti tiap hari, jadi hasil harian TIDAK bisa dihitung ulang esok harinya.
-// Hasil hari ini dicatat saat halaman Target Daily dibuka (baris pertama hari itu, lalu hanya kalau TERCAPAI naik); baris terakhir menang saat dibaca.
+// Hasil hari ini dicatat saat halaman Target Daily dibuka (baris pertama hari itu, lalu setiap kali TERCAPAI berubah); baris terakhir menang saat dibaca.
 async function catatHasilHariIni(token, sheetId, td, hasilAda) {
   const tgl = kunciTanggal(td.tanggal);
   const ada = {}; (hasilAda || []).filter(x => x.tanggal === tgl).forEach(x => { ada[x.pic + '|' + x.kunci] = x; });
@@ -122,7 +131,7 @@ async function catatHasilHariIni(token, sheetId, td, hasilAda) {
   td.pic.forEach(p => p.poin.forEach(q => {
     const g = q.progres; if (!g) return;
     const lama = ada[p.namaCO + '|' + q.kunci];
-    if (lama && Math.round(g.tercapai) <= lama.tercapai) return;
+    if (lama && Math.round(g.tercapai) === Math.round(lama.tercapai)) return; // realisasi posisi bisa naik-turun: catat nilai terbaru bila berubah
     rows.push([tgl, safe(p.namaCO), q.kunci, Math.round(g.targetHari), Math.round(g.tercapai), Math.round(g.persen * 10) / 10, (g.targetHari <= 0 || g.tuntas) ? 'TRUE' : 'FALSE']);
   }));
   if (!rows.length) return 0;
@@ -151,4 +160,4 @@ function hitungStreak(hasil) {
   return { daftar: out.filter(x => x.hari > 0).sort((a, b) => b.hari - a.hari), riwayatHari: tanggal.length };
 }
 
-module.exports = { catatHasilHariIni, JAM_BEKU, jamWIB, TAB, HASIL_TAB, kemarin, bacaHasil, finalkanKemarin, hitungStreak, kunciTanggal, bacaBaseline, pastikanBaseline, terapkanProgres, barisBaseline };
+module.exports = { statusStreak, catatHasilHariIni, JAM_BEKU, jamWIB, TAB, HASIL_TAB, kemarin, bacaHasil, finalkanKemarin, hitungStreak, kunciTanggal, bacaBaseline, pastikanBaseline, terapkanProgres, barisBaseline };

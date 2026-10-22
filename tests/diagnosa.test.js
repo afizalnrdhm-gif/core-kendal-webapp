@@ -119,3 +119,50 @@ test('kalimat: dimensi waktu (jatuh tempo, janji bayar) tidak dijadikan penyebab
   const kal = D.kalimat('X', D.ringkas(p.rows, p.masalah), { jatuhTempo: u });
   assert.ok(kal[kal.length - 1].includes('Tidak ada kelompok'), kal.join(' | '));
 });
+
+test('hariDari: angka hari yang tersimpan sebagai teks', () => {
+  assert.strictEqual(D.hariDari('21'), 21);
+  assert.strictEqual(D.hariDari(' 5 '), 5);
+  assert.strictEqual(D.hariDari('32'), null);
+});
+
+test('tindakan: gabungan kekurangan target daily dan penyebab diagnosa, urut dampak rupiah, maks 5', () => {
+  const tdHead = { adaBaseline: true, pic: [{ co: 'X', poin: [{ judul: 'Flow NOOD', target: 500, realisasi: 200, kurangRp: 300, status: 'AMAN', belumKontrak: ['A'] }, { judul: 'Flow 1-30', target: 10, realisasi: 10, kurangRp: 0, status: 'AMAN', belumKontrak: [] }] }] };
+  const penyebab = [{ angka: 'nood', dim: 'statusNbq', kalimat: 'k', pengaruh: 2 }];
+  const diagnosa = { nood: { judul: 'Balance/Flow NOOD', ringkas: { beban: 10000 }, urai: { statusNbq: [{ nilai: 'APPEAL', pemberat: true, pengaruh: 2 }] },
+    teratas: [{ noKontrak: 'K1', statusNbq: 'APPEAL' }, { noKontrak: 'K2', statusNbq: 'NORMAL' }] } };
+  const t = D.tindakan(penyebab, tdHead, diagnosa);
+  assert.deepStrictEqual(t.map(x => x.dampakRp), [300, 200]);
+  assert.deepStrictEqual(t[0].kontrak, ['A']);
+  assert.strictEqual(t[0].pic, 'X');
+  assert.deepStrictEqual(t[1].kontrak, ['K1']);
+  assert.ok(t[1].judul.includes('APPEAL'));
+  const banyak = { adaBaseline: true, pic: [{ co: 'X', poin: Array.from({ length: 8 }, (_, i) => ({ judul: 'P' + i, target: 100, realisasi: 0, kurangRp: 100 + i, status: 'AMAN', belumKontrak: [] })) }] };
+  assert.strictEqual(D.tindakan([], banyak, {}).length, 5);
+  assert.deepStrictEqual(D.tindakan([], { adaBaseline: false, pic: [] }, {}), []);
+});
+
+test('tindakan: poin BCH (cabang) dikecualikan bila ada kekurangan FE/MR, supaya tidak duplikat', () => {
+  const tdHead = { adaBaseline: true, pic: [
+    { co: 'X', role: 'FE', poin: [{ judul: 'Flow NOOD', target: 500, realisasi: 200, kurangRp: 300, status: 'AMAN', belumKontrak: ['A'] }] },
+    { co: 'BOSS', role: 'BCH', poin: [{ judul: 'Flow NOOD', target: 2000, realisasi: 500, kurangRp: 1500, status: 'AMAN', belumKontrak: ['A', 'B'] }] }
+  ] };
+  const t = D.tindakan([], tdHead, {});
+  assert.strictEqual(t.length, 1, 'poin BCH dibuang karena sudah ada kekurangan FE');
+  assert.strictEqual(t[0].pic, 'X');
+});
+
+test('tindakan: poin BCH tetap dipakai bila tidak ada kekurangan FE/MR sama sekali', () => {
+  const tdHead = { adaBaseline: true, pic: [
+    { co: 'X', role: 'FE', poin: [{ judul: 'Flow NOOD', target: 500, realisasi: 500, kurangRp: 0, status: 'AMAN', belumKontrak: [] }] },
+    { co: 'BOSS', role: 'BCH', poin: [{ judul: 'Flow NOOD', target: 2000, realisasi: 500, kurangRp: 1500, status: 'AMAN', belumKontrak: ['A', 'B'] }] }
+  ] };
+  const t = D.tindakan([], tdHead, {});
+  assert.strictEqual(t.length, 1);
+  assert.strictEqual(t[0].pic, 'BOSS');
+});
+
+test('tindakan: rupiah nyaris nol tidak tampil "-0 jt"', () => {
+  const td = { adaBaseline: true, pic: [{ co: 'X', poin: [{ judul: 'P', target: 5e8, realisasi: -4e5, kurangRp: 5e8, status: 'AMAN', belumKontrak: [] }] }] };
+  assert.ok(!D.tindakan([], td, {})[0].temuan.includes('-0 jt'));
+});

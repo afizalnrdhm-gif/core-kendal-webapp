@@ -7,10 +7,11 @@ const BUCKET_LABEL = {
 };
 function bucketIndex(b) { return BUCKET_ORDER.indexOf(String(b == null ? '' : b).trim()); }
 function sipokOf(m) { return typeof m['SIPOK'] === 'number' && isFinite(m['SIPOK']) ? m['SIPOK'] : 0; }
+function isFleet(row) { return String(row && row['FLEET/NON FLEET'] != null ? row['FLEET/NON FLEET'] : '').trim().toUpperCase() === 'FLEET'; }
 function sisaOf(k) { return typeof k['SISA PIUTANG'] === 'number' && isFinite(k['SISA PIUTANG']) ? k['SISA PIUTANG'] : 0; }
 
 function hitungKpi(masterRows, kaRows, includeFleet) {
-  const passFleet = (row) => includeFleet || row['FLEET/NON FLEET'] !== 'FLEET';
+  const passFleet = (row) => includeFleet || !isFleet(row);
   const bucketAmounts = {}; const bucketCounts = {};
   BUCKET_ORDER.forEach(b => { bucketAmounts[b] = 0; bucketCounts[b] = 0; });
   (kaRows || []).forEach(ka => {
@@ -63,7 +64,7 @@ function btcKe(masterRows, awal, includeFleet) {
 function rasio_(masterRows, awal, includeFleet, kena) {
   let beban = 0, amount = 0, count = 0;
   (masterRows || []).forEach(m => {
-    if (!includeFleet && m['FLEET/NON FLEET'] === 'FLEET') return;
+    if (!includeFleet && isFleet(m)) return;
     if (String(m['BUCKET AWAL'] || '').trim() !== awal) return;
     const s = sipokOf(m); beban += s;
     if (kena(m)) { amount += s; count += 1; }
@@ -71,4 +72,4 @@ function rasio_(masterRows, awal, includeFleet, kena) {
   return { amount, count, pct: beban > 0 ? amount / beban * 100 : 0, beban };
 }
 
-module.exports = { BUCKET_ORDER, BUCKET_LABEL, bucketIndex, sipokOf, sisaOf, hitungKpi, flowLebar, btcKe };
+module.exports = { BUCKET_ORDER, BUCKET_LABEL, bucketIndex, sipokOf, sisaOf, isFleet, hitungKpi, flowLebar, btcKe };

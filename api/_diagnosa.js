@@ -1,6 +1,6 @@
 // Mesin diagnosis untuk tampilan head: menguraikan angka yang ditanyakan atasan menjadi penyumbang per dimensi.
 // Fungsi murni (tanpa akses Sheet). Rumus mengikuti spec docs/superpowers/specs/2026-10-21-tampilan-head-design.md §4.4.
-const { bucketIndex, sipokOf } = require('./_kpi');
+const { bucketIndex, sipokOf, isFleet } = require('./_kpi');
 
 const ANGKA = {
   nood: { judul: 'Balance/Flow NOOD', awal: 'NOOD' },
@@ -12,7 +12,6 @@ const ANGKA = {
 };
 
 const teks = v => String(v == null ? '' : v).trim();
-const isFleet = r => teks(r['FLEET/NON FLEET']).toUpperCase() === 'FLEET';
 const flowRow = r => { const a = bucketIndex(r['BUCKET AWAL']); return a > -1 && bucketIndex(r['BUCKET UPDATE']) > a; };
 const statusNbq = r => { const s = teks(r['STATUS NBQ']).toUpperCase(); return !s || s === '#N/A' ? 'NON NBQ' : s; };
 
@@ -35,6 +34,7 @@ function hariDari(v) {
     return null;
   }
   const s = teks(v);
+  if (/^\d{1,2}$/.test(s)) { const n = Number(s); return n >= 1 && n <= 31 ? n : null; }
   let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/); if (m) return Number(m[3]);
   m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/); if (m) return Number(m[1]);
   return null;
@@ -135,7 +135,7 @@ function mingguanPerSegmen(rows, hariBayarFn) {
 }
 
 const fmt2 = v => (Math.round(v * 100) / 100).toFixed(2).replace('.', ',');
-const juta = v => 'Rp ' + Math.round(v / 1e6).toLocaleString('id-ID') + ' jt';
+const juta = v => 'Rp ' + (Math.round((Number(v) || 0) / 1e6) || 0).toLocaleString('id-ID') + ' jt';
 
 // 2-4 kalimat jawaban dari ringkasan dan tabel penguraian per dimensi.
 function kalimat(judul, rk, uraiPerDimensi) {
@@ -157,4 +157,34 @@ function kalimat(judul, rk, uraiPerDimensi) {
   return out;
 }
 
-module.exports = { ANGKA, DIMENSI, DIMENSI_WAKTU, SEGMEN, populasi, ringkas, urai, irisan, kontrakTeratas, hariDari, mingguan, mingguanPerSegmen, kalimat };
+// Maksimal 5 tindakan hari ini dari kekurangan Target Daily per PIC/poin dan dari penyebab diagnosa, urut dampak rupiah.
+const COCOK_TERATAS = { co: 'co', statusNbq: 'statusNbq', groupProduct: 'groupProduct' };
+function tindakan(penyebab, tdHead, diagnosa) {
+  const out = [];
+  if (tdHead && tdHead.adaBaseline) {
+    const semuaPoin = [];
+    (tdHead.pic || []).forEach(p => (p.poin || []).forEach(q => semuaPoin.push({ p, q })));
+    // Poin BCH (cabang) dan poin FE/MR bisa menghitung kontrak yang sama dari dua sisi (cabang vs per-CO), jadi
+    // keduanya jadi tindakan yang nyaris sama dan berebut 5 slot. BCH hanya dipakai bila tidak ada kekurangan FE/MR.
+    const adaKekuranganNonBch = semuaPoin.some(({ p, q }) => p.role !== 'BCH' && q.kurangRp > 0);
+    semuaPoin.forEach(({ p, q }) => {
+      if (!(q.kurangRp > 0)) return;
+      if (adaKekuranganNonBch && p.role === 'BCH') return;
+      out.push({ judul: `Kejar target ${q.judul} ${p.co}`, temuan: `Realisasi ${juta(q.realisasi)} dari target ${juta(q.target)} hari ini.`,
+        alasan: `Kurang ${juta(q.kurangRp)}${q.status && q.status !== 'AMAN' ? '; status ' + q.status.toLowerCase() + ' (' + q.streakHari + ' hari meleset)' : ''}.`,
+        kontrak: (q.belumKontrak || []).slice(0, 5), pic: p.co, dampakRp: q.kurangRp });
+    });
+  }
+  (penyebab || []).forEach(p => {
+    const g = diagnosa && diagnosa[p.angka]; if (!g || !p.dim || !g.urai || !g.urai[p.dim]) return;
+    const u = g.urai[p.dim].filter(x => x.pemberat).sort((a, b) => b.pengaruh - a.pengaruh)[0]; if (!u) return;
+    const f = COCOK_TERATAS[p.dim];
+    const kontrak = (g.teratas || []).filter(t => !f || String(t[f]) === String(u.nilai)).slice(0, 5).map(t => t.noKontrak);
+    const dj = (DIMENSI[p.dim] && DIMENSI[p.dim].judul) || p.dim;
+    out.push({ judul: `Tangani ${dj} ${u.nilai} di ${g.judul}`, temuan: p.kalimat, alasan: `Pengaruh ${fmt2(u.pengaruh)} poin penyelesaian.`,
+      kontrak, pic: p.dim === 'co' ? u.nilai : '-', dampakRp: Math.round(u.pengaruh * ((g.ringkas && g.ringkas.beban) || 0) / 100) });
+  });
+  return out.sort((a, b) => b.dampakRp - a.dampakRp).slice(0, 5);
+}
+
+module.exports = { tindakan, ANGKA, DIMENSI, DIMENSI_WAKTU, SEGMEN, populasi, ringkas, urai, irisan, kontrakTeratas, hariDari, mingguan, mingguanPerSegmen, kalimat };

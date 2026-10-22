@@ -80,19 +80,6 @@ test('Balance 1-30 FE turun ke 8,5% dan Balance cabang NOOD 88% untuk BCH', () =
   assert.strictEqual(nood.perluAmt, 0);                 // NOOD 9000 sudah di atas
 });
 
-test('progres target harian: jumlah SIPOK kontrak dengan REALISASI > 0', () => {
-  const { terapkanProgres } = require('../api/_tdsnap');
-  const td = { pic: [{ namaCO: 'A', poin: [{ kunci: 'flow', perHari: 100, semuaKandidat: [['K2', 40, 'Dua']], realisasi: [['K1', 60, 'Satu']] }] }] };
-  terapkanProgres(td, { 'A|flow': { targetHari: 100, baseNilai: 170, kontrak: [['K1', 60, 'Satu'], ['K2', 40, 'Dua']] } });
-  const q = td.pic[0].poin[0];
-  assert.equal(q.progres.tercapai, 60);
-  assert.equal(q.progres.persen, 60);
-  assert.equal(q.progres.sisa, 40);
-  assert.equal(q.progres.tuntas, false);
-  assert.equal(q.progres.kontrakBayar[0].noKontrak, 'K1');
-  assert.equal(q.realisasi, undefined);
-});
-
 test('streak tidak target: hitung hari berturut-turut dari yang terbaru', () => {
   const { hitungStreak, kemarin } = require('../api/_tdsnap');
   const h = (tanggal, pic, tuntas) => ({ tanggal, pic, kunci: 'flow', target: 100, tercapai: tuntas ? 100 : 10, persen: tuntas ? 100 : 10, tuntas });
@@ -101,24 +88,6 @@ test('streak tidak target: hitung hari berturut-turut dari yang terbaru', () => 
   assert.equal(r.daftar.find(x => x.pic === 'B').hari, 1);
   assert.equal(r.riwayatHari, 4);
   assert.deepEqual(kemarin({ tahun: 2026, bulan: 11, hari: 1 }), { tahun: 2026, bulan: 10, hari: 31 });
-});
-
-test('Realisasi dari KA HARIAN: Flow = REALISASI>0 pada bucket awal asal flow; Balance FE = bucket awal 1-30; dihitung by SIPOK', () => {
-  const { terapkanProgres } = require('../api/_tdsnap');
-  const mk2 = (no, awal, co) => ({ 'NO KONTRAK': no, 'NAMA KONSUMEN': no, 'CO ALL': co || 'FE1', 'FLEET/NON FLEET': 'NON FLEET', 'BUCKET AWAL': awal, 'BUCKET UPDATE': awal, SIPOK: 100 });
-  const ka = (no, real) => ({ 'NO KONTRAK': no, 'BUCKET UPDATE': 'NOOD', 'SISA PIUTANG': 100, 'NAMA COLLECTOR': 'FE1', REALISASI: real });
-  const cfg = [{ NAMA_CO: 'FE1', ROLE: 'FE' }];
-  const master = [mk2('A', 'NOOD'), mk2('B', 'NOOD'), mk2('C', 'NOOD'), mk2('D', 'P001_030'), mk2('E', 'NOOD', 'FE2')];
-  const td = hitungTargetDaily(master, { A: ka('A', 5), B: ka('B', 0), C: ka('C', ''), D: ka('D', 3), E: ka('E', 9) }, cfg);
-  // daftar pagi dikunci: semua kontrak FE1 ada di baseline, dan masih ada di daftar sekarang (belum keluar)
-  const tetap = q => q.semuaKandidat.map(x => x.slice()).filter(x => !['A', 'B', 'C', 'D'].includes(x[0]));
-  const bf = tetap(td.pic[0].poin[2]).concat([['A', 100, 'A'], ['B', 100, 'B'], ['C', 100, 'C']]);
-  const bb = tetap(td.pic[0].poin[0]).concat([['D', 100, 'D']]);
-  td.pic[0].poin[2].semuaKandidat = bf.slice(); td.pic[0].poin[0].semuaKandidat = bb.slice();
-  terapkanProgres(td, { 'FE1|balance_nood': { targetHari: 500, baseNilai: 0, kontrak: bb }, 'FE1|flow_nood': { targetHari: 200, baseNilai: 0, kontrak: bf } });
-  assert.equal(td.pic[0].poin[2].progres.tercapai, 100); // hanya A (E milik FE lain)
-  assert.equal(td.pic[0].poin[2].progres.jumlahBayar, 1);
-  assert.equal(td.pic[0].poin[0].progres.tercapai, 100); // hanya D (awal 1-30)
 });
 
 test('baseline tidak dibekukan sebelum jam 09.00 WIB (data pagi belum tentu masuk)', async () => {
@@ -144,11 +113,84 @@ test('LPC: bayar angsuran hari ini (tanggal tertukar pun cocok), denda saja tida
   assert.deepStrictEqual(Array.from(m.keys()).sort(), ['111', '444']);
 });
 
-test('pengunci pagi: realisasi hanya kontrak di daftar pagi yang bayar (LPC) atau keluar dari daftar', () => {
+test('§7.4 realisasi = perubahan posisi ke arah yang diinginkan (flow turun)', () => {
   const { terapkanProgres } = require('../api/_tdsnap');
-  const td = { pic: [{ namaCO: 'A', poin: [{ kunci: 'flow', semuaKandidat: [['K1', 60, 'x'], ['K2', 40, 'y'], ['K9', 999, 'baru']], realisasi: [['K1', 60, 'x'], ['K8', 500, 'tidak di pagi']] }] }] };
-  terapkanProgres(td, { 'A|flow': { targetHari: 200, baseNilai: 0, kontrak: [['K1', 60, 'x'], ['K2', 40, 'y'], ['K3', 30, 'z']] } });
+  const td = { pic: [{ namaCO: 'A', poin: [{ kunci: 'flow_nood', arah: 'turun', nilaiAmt: 450, semuaKandidat: [['K2', 40, 'Dua']], realisasi: [] }] }] };
+  terapkanProgres(td, { 'A|flow_nood': { targetHari: 100, baseNilai: 600, kontrak: [['K1', 150, 'Satu'], ['K2', 40, 'Dua']] } });
   const g = td.pic[0].poin[0].progres;
-  assert.equal(g.tercapai, 90); // K1 (LPC) + K3 (keluar dari daftar); K8 tidak di daftar pagi
-  assert.equal(g.jumlahBayar, 2);
+  assert.strictEqual(g.tercapai, 150);
+  assert.strictEqual(g.persen, 150);
+  assert.strictEqual(g.tuntas, true);
+  assert.strictEqual(g.posisiSekarang, 450);
+  assert.strictEqual(g.kontrakBayar[0].noKontrak, 'K1', 'daftar kontrak yang keluar tetap sebagai informasi');
+  assert.strictEqual(td.pic[0].poin[0].semuaKandidat, undefined);
+});
+
+test('§7.4 posisi memburuk (Balance NOOD turun) = realisasi minus, tidak tuntas', () => {
+  const { terapkanProgres } = require('../api/_tdsnap');
+  const td = { pic: [{ namaCO: 'A', poin: [{ kunci: 'balance_nood', arah: 'naik', nilaiAmt: 940, semuaKandidat: [] }] }] };
+  terapkanProgres(td, { 'A|balance_nood': { targetHari: 50, baseNilai: 1000, kontrak: [] } });
+  const g = td.pic[0].poin[0].progres;
+  assert.strictEqual(g.tercapai, -60);
+  assert.strictEqual(g.tuntas, false);
+  assert.strictEqual(g.sisa, 110);
+});
+
+test('§7.4 posisi dari nilaiFE bila ada (sama dengan yang dibekukan); tanpa baseline tidak ada progres', () => {
+  const { terapkanProgres } = require('../api/_tdsnap');
+  const td = { pic: [{ namaCO: 'A', poin: [{ kunci: 'balance_nood', arah: 'naik', nilaiAmt: 5000, nilaiFE: 1100 }, { kunci: 'flow_nood', arah: 'turun', nilaiAmt: 10 }] }] };
+  terapkanProgres(td, { 'A|balance_nood': { targetHari: 50, baseNilai: 1000, kontrak: [] } });
+  assert.strictEqual(td.pic[0].poin[0].progres.tercapai, 100);
+  assert.strictEqual(td.pic[0].poin[1].progres, undefined);
+});
+
+test('statusStreak: 0 aman, 1-2 waspada, 3+ merah', () => {
+  const { statusStreak } = require('../api/_tdsnap');
+  assert.deepStrictEqual([0, 1, 2, 3, 7].map(statusStreak), ['AMAN', 'WASPADA', 'WASPADA', 'MERAH', 'MERAH']);
+});
+
+test('bacaBaseline: tanpa pembaca tetap fetch langsung (perilaku lama)', async () => {
+  const { bacaBaseline } = require('../api/_tdsnap');
+  const lama = global.fetch, panggil = [];
+  global.fetch = async (url) => { panggil.push(String(url)); return { ok: true, status: 200, json: async () => ({ values: [['TANGGAL', 'PIC', 'KUNCI', 'TARGET_HARI', 'BASE_NILAI', 'KONTRAK', 'WAKTU'], ['2026-10-21', 'X', 'flow_nood', 100, 500, '[]', 'w']] }) }; };
+  try {
+    const b = await bacaBaseline('t', 's', '2026-10-21');
+    assert.strictEqual(panggil.length, 1);
+    assert.deepStrictEqual(b['X|flow_nood'], { targetHari: 100, baseNilai: 500, kontrak: [], waktu: 'w' });
+  } finally { global.fetch = lama; }
+});
+
+test('bacaBaseline: dengan pembaca (cache) memakai nilai darinya, tidak fetch langsung', async () => {
+  const { bacaBaseline } = require('../api/_tdsnap');
+  const lama = global.fetch; let fetchDipanggil = false;
+  global.fetch = async () => { fetchDipanggil = true; return { ok: true, status: 200, json: async () => ({ values: [] }) }; };
+  try {
+    const nilai = [['TANGGAL', 'PIC', 'KUNCI', 'TARGET_HARI', 'BASE_NILAI', 'KONTRAK', 'WAKTU'], ['2026-10-21', 'X', 'flow_nood', 100, 500, '[]', 'w']];
+    const panggil = [];
+    const pembaca = async (sheetId, range, token) => { panggil.push({ sheetId, range, token }); return nilai; };
+    const b = await bacaBaseline('t', 's', '2026-10-21', pembaca);
+    assert.strictEqual(fetchDipanggil, false, 'tidak boleh fetch langsung bila ada pembaca cache');
+    assert.deepStrictEqual(panggil[0], { sheetId: 's', range: 'LOG_TARGET_DAILY', token: 't' });
+    assert.deepStrictEqual(b['X|flow_nood'], { targetHari: 100, baseNilai: 500, kontrak: [], waktu: 'w' });
+  } finally { global.fetch = lama; }
+});
+
+test('bacaBaseline: pembaca gagal (tab belum ada) -> baseline kosong, tidak melempar', async () => {
+  const { bacaBaseline } = require('../api/_tdsnap');
+  const b = await bacaBaseline('t', 's', '2026-10-21', async () => { throw new Error('tidak ada'); });
+  assert.deepStrictEqual(b, {});
+});
+
+test('hasil harian mencatat nilai terbaru walau realisasi turun (posisi bisa memburuk)', async () => {
+  const { catatHasilHariIni } = require('../api/_tdsnap');
+  const lama = global.fetch, kirim = [];
+  global.fetch = async (url, init) => { if (init && init.body && String(url).includes(':append')) kirim.push(JSON.parse(init.body).values); return { ok: true, status: 200, json: async () => ({}) }; };
+  try {
+    const td = { tanggal: { tahun: 2026, bulan: 10, hari: 21 }, pic: [{ namaCO: 'A', poin: [{ kunci: 'flow_nood', progres: { targetHari: 100, tercapai: 80, persen: 80, tuntas: false } }] }] };
+    const n = await catatHasilHariIni('t', 's', td, [{ tanggal: '2026-10-21', pic: 'A', kunci: 'flow_nood', tercapai: 150 }]);
+    assert.strictEqual(n, 1);
+    assert.strictEqual(kirim[0][0][4], 80);
+    const sama = await catatHasilHariIni('t', 's', td, [{ tanggal: '2026-10-21', pic: 'A', kunci: 'flow_nood', tercapai: 80 }]);
+    assert.strictEqual(sama, 0, 'nilai sama tidak ditulis ulang');
+  } finally { global.fetch = lama; }
 });

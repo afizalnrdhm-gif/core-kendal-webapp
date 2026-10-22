@@ -60,3 +60,21 @@ test('susunHead: minggu yang belum terjadi bernilai null di garis bulan ini', ()
   assert.strictEqual(h.diagnosa.nood.segmen.ini.KARYAWAN[2], null);
   assert.strictEqual(h.diagnosa.nood.mingguan.lalu[3], 50, 'bulan lalu tetap lengkap');
 });
+
+test('susunHead: tanggal 1 sisa hari 0 dan penyebab membawa dimensi', () => {
+  const h1 = susunHead(Object.assign({ logHarian: {} }, dasar, { hariIni: { tahun: 2026, bulan: 11, hari: 1 }, minggu: 4 }));
+  assert.strictEqual(h1.minggu.sisaHari, 0);
+  const h = susunHead(Object.assign({ logHarian: {} }, dasar));
+  assert.ok(h.penyebab.length > 0);
+  assert.strictEqual(typeof h.penyebab[0].dim, 'string');
+  assert.ok(Object.keys(h.diagnosa[h.penyebab[0].angka].urai).includes(h.penyebab[0].dim));
+});
+
+test('susunHead: menyertakan targetDaily dan tindakan bila tdHead diberikan', () => {
+  const tdHead = { adaBaseline: true, pic: [{ co: 'FE A', poin: [{ judul: 'Flow NOOD', target: 500, realisasi: 100, kurangRp: 400, status: 'MERAH', belumKontrak: ['2'] }] }], kalimat: [], total: {}, belum: {}, teratas: [], tren: {} };
+  const h = susunHead(Object.assign({ logHarian: {}, tdHead }, dasar));
+  assert.strictEqual(h.targetDaily, tdHead);
+  assert.strictEqual(h.tindakan[0].dampakRp, 400);
+  const tanpa = susunHead(Object.assign({ logHarian: {} }, dasar));
+  assert.strictEqual(tanpa.targetDaily, null);
+});

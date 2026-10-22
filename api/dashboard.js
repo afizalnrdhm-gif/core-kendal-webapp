@@ -36,6 +36,9 @@ const { bacaSheet } = require('./_cachesheet');
 const { bacaLogHarian } = require('./_logharian');
 const { segmenGabung, petaKA: petaKASegmen } = require('./_segmen');
 const INS = require('./insentif');
+const { bayarLPC } = require('./_sheet');
+const { terapkanProgres, bacaBaseline, bacaHasil, kunciTanggal } = require('./_tdsnap');
+const { susunTargetDailyHead } = require('./_tdhead');
 
 const AMBANG_BERUBAH = 2;
 const PASANGAN_IRISAN = [['groupProduct', 'statusNbq'], ['co', 'statusNbq'], ['co', 'groupProduct'], ['segmen', 'statusNbq'], ['typeBarang', 'statusNbq'], ['co', 'segmen']];
@@ -47,12 +50,8 @@ function batasCabang_(kunci, awalan) {
   return p ? `batas akhir bulan ${p.arah === 'naik' ? '≥' : '≤'}${String(p.persen).replace('.', ',')}%` : '';
 }
 
-function susunHead(o) {
-  const { master, ka, lpc, dkhAssign, logHarian, config, hariIni, minggu } = o;
-  const tanggal = `${hariIni.tahun}-${pad2(hariIni.bulan)}-${pad2(hariIni.hari)}`;
-  const bulanIni = `${hariIni.tahun}-${pad2(hariIni.bulan)}`;
-
-  // DKH bulan ini (ASSIGN/DIBUAT)
+// Nomor kontrak dengan DKH bulan ini (STATUS ASSIGN/DIBUAT di DKH_ASSIGN).
+function dkhBulanIni(dkhAssign, bulanIni) {
   const dkh = new Set();
   const dh = (dkhAssign && dkhAssign[0] || []).map(x => String(x || '').trim().toUpperCase());
   const iT = dh.indexOf('UNTUK_TANGGAL'), iN = dh.indexOf('NO_KONTRAK'), iS = dh.indexOf('STATUS');
@@ -60,6 +59,15 @@ function susunHead(o) {
     const st = String(r[iS] || '').trim().toUpperCase();
     if ((st === 'ASSIGN' || st === 'DIBUAT') && String(r[iT] || '').startsWith(bulanIni)) dkh.add(String(r[iN] || '').trim());
   });
+  return dkh;
+}
+
+function susunHead(o) {
+  const { master, ka, lpc, dkhAssign, logHarian, config, hariIni, minggu, tdHead } = o;
+  const tanggal = `${hariIni.tahun}-${pad2(hariIni.bulan)}-${pad2(hariIni.hari)}`;
+  const bulanIni = `${hariIni.tahun}-${pad2(hariIni.bulan)}`;
+
+  const dkh = dkhBulanIni(dkhAssign, bulanIni);
   const konteks = { dkh };
 
   // Riwayat: snapshot terakhir sebelum hari ini
@@ -114,9 +122,9 @@ function susunHead(o) {
       segmen: { ini: potongSeg(D.mingguanPerSegmen(p.rows, hariIniFn)), lalu: D.mingguanPerSegmen(p.rows, hariLaluFn) },
       urai, irisan: ir.slice(0, 10), teratas: D.kontrakTeratas(p.rows, p.masalah, 20)
     };
-    let terbesar = 0;
-    Object.keys(urai).filter(dim => !D.DIMENSI_WAKTU.has(dim)).forEach(dim => urai[dim].forEach(u => { if (u.pemberat && u.pengaruh > terbesar) terbesar = u.pengaruh; }));
-    if (terbesar > 0 && kal[1]) kandidatPenyebab.push({ angka, judul: D.ANGKA[angka].judul, kalimat: kal[1], pengaruh: r2h(terbesar) });
+    let terbesar = 0, dimUtama = null;
+    Object.keys(urai).filter(dim => !D.DIMENSI_WAKTU.has(dim)).forEach(dim => urai[dim].forEach(u => { if (u.pemberat && u.pengaruh > terbesar) { terbesar = u.pengaruh; dimUtama = dim; } }));
+    if (terbesar > 0 && kal[1]) kandidatPenyebab.push({ angka, judul: D.ANGKA[angka].judul, kalimat: kal[1], pengaruh: r2h(terbesar), dim: dimUtama });
   });
   const penyebab = kandidatPenyebab.sort((a, b) => b.pengaruh - a.pengaruh).slice(0, 3);
 
@@ -136,24 +144,47 @@ function susunHead(o) {
     janjiHariIni: master.filter(janjiHariIni).length
   };
 
-  return { tanggal, minggu: { ke: minggu, sisaHari: (minggu === 4 ? new Date(Date.UTC(hariIni.tahun, hariIni.bulan, 0)).getUTCDate() : minggu * 7) - hariIni.hari + 1 },
-    riwayatCukup, kartu, berubah, penyebab, tim, kerja, diagnosa };
+  // Tanggal 1: data masih penutupan bulan lalu (W4 bulan lalu) — tidak ada sisa hari.
+  const sisaHari = hariIni.hari === 1 && minggu === 4 ? 0 : (minggu === 4 ? new Date(Date.UTC(hariIni.tahun, hariIni.bulan, 0)).getUTCDate() : minggu * 7) - hariIni.hari + 1;
+  return { tanggal, minggu: { ke: minggu, sisaHari },
+    riwayatCukup, kartu, berubah, penyebab, tim, kerja, diagnosa,
+    targetDaily: tdHead || null, tindakan: D.tindakan(penyebab, tdHead, diagnosa) };
 }
+
+// Target Daily untuk head: target & daftar pagi dari baseline (tidak membekukan, tidak menulis hasil), realisasi §7.4.
+function bangunTdHead({ mRaw, master, ka, lpc, prodRaw, config, base, hasil, hariIni, dkhAssign }) {
+  const petaKA = {}; (ka || []).forEach(r => { petaKA[r['NO KONTRAK']] = r; });
+  const td = INS.__test.hitungTargetDaily(master, petaKA, config, bayarLPC(lpc || [], hariIni.hari, hariIni.bulan));
+  td.pic.forEach(p => p.poin.forEach(q => { q.belum = (q.semuaKandidat || []).slice(); }));
+  terapkanProgres(td, base || {});
+  let cmsItems = [];
+  try { if (prodRaw && prodRaw.length) cmsItems = require('./cms').compute(mRaw, prodRaw, config).items || []; } catch (e) { cmsItems = []; }
+  // dkhAssign null berarti DKH_ASSIGN gagal dibaca (bukan "tidak ada DKH bulan ini") — teruskan null agar
+  // _tdhead.js tidak menyimpulkan BELUM DKH dari data yang sebenarnya tidak tersedia.
+  const dkh = dkhAssign == null ? null : dkhBulanIni(dkhAssign, `${hariIni.tahun}-${String(hariIni.bulan).padStart(2, '0')}`);
+  return susunTargetDailyHead({ td, base: base || {}, hasil: hasil || [], cmsItems, master, hariIni, dkh });
+}
+
+function hariIniWIB_() { const w = new Date(Date.now() + 7 * 3600 * 1000); return { tahun: w.getUTCFullYear(), bulan: w.getUTCMonth() + 1, hari: w.getUTCDate() }; }
 
 async function handleHead(res, accessToken, sheetId) {
   const opsional = p => p.catch(() => null);
-  const [mRaw, kRaw, lpc, dkhAssign, roleRaw, logHarian] = await Promise.all([
+  const [mRaw, kRaw, lpc, dkhAssign, roleRaw, logHarian, prodRaw, base, hasil] = await Promise.all([
     bacaSheet(sheetId, 'MASTER', accessToken), bacaSheet(sheetId, 'KA HARIAN', accessToken),
     opsional(bacaSheet(sheetId, 'LPC', accessToken)), opsional(bacaSheet(sheetId, 'DKH_ASSIGN', accessToken)),
-    bacaSheet(sheetId, 'CONFIG_ROLE', accessToken), bacaLogHarian(accessToken, sheetId).catch(() => ({}))
+    bacaSheet(sheetId, 'CONFIG_ROLE', accessToken), bacaLogHarian(accessToken, sheetId, bacaSheet).catch(() => ({})),
+    opsional(bacaSheet(sheetId, 'PRODUCTIVITY', accessToken)),
+    bacaBaseline(accessToken, sheetId, kunciTanggal(hariIniWIB_()), bacaSheet).catch(() => ({})), bacaHasil(accessToken, sheetId).catch(() => [])
   ]);
   const master = parseSheetValues(mRaw).filter(r => r['NO KONTRAK']);
   const ka = parseSheetValues(kRaw, 15).filter(r => r['NO KONTRAK']);
   const seg = petaKASegmen(kRaw || []);
   master.forEach(r => { const s = String(r['SEGMEN PEKERJAAN'] || '').trim().toUpperCase(); r['SEGMEN PEKERJAAN'] = s || segmenGabung(seg[String(r['NO KONTRAK']).trim()], r['PEKERJAAN KONSUMEN']); });
-  const w = new Date(Date.now() + 7 * 3600 * 1000);
-  const hariIni = { tahun: w.getUTCFullYear(), bulan: w.getUTCMonth() + 1, hari: w.getUTCDate() };
-  res.status(200).json(susunHead({ master, ka, lpc: lpc || [], dkhAssign: dkhAssign || [], logHarian: logHarian || {}, config: parseSheetValues(roleRaw), hariIni, minggu: INS.getMingguSekarang() }));
+  const hariIni = hariIniWIB_();
+  const config = parseSheetValues(roleRaw);
+  let tdHead = null;
+  try { tdHead = bangunTdHead({ mRaw, master, ka, lpc, prodRaw, config, base, hasil, hariIni, dkhAssign }); } catch (e) { console.error('Target Daily head gagal:', e.message); }
+  res.status(200).json(susunHead({ master, ka, lpc: lpc || [], dkhAssign: dkhAssign || [], logHarian: logHarian || {}, config, hariIni, minggu: INS.getMingguSekarang(), tdHead }));
 }
 
 module.exports = async (req, res) => {
@@ -227,4 +258,4 @@ module.exports = async (req, res) => {
     sendError(res, err);
   }
 };
-module.exports.__test = { susunHead };
+module.exports.__test = { susunHead, bangunTdHead };

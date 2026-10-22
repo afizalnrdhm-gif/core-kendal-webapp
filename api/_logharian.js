@@ -58,8 +58,9 @@ async function tulisLogHarian(token, sheetId, baris) {
   return { ditulis: baris.length };
 }
 
-async function bacaLogHarian(token, sheetId) {
-  const isi = await bacaMentah_(token, sheetId);
+// pembaca opsional (mis. bacaSheet dengan cache 45 detik): (sheetId, range, token) -> values
+async function bacaLogHarian(token, sheetId, pembaca) {
+  const isi = pembaca ? await pembaca(sheetId, TAB, token).catch(() => null) : await bacaMentah_(token, sheetId);
   const out = {};
   (isi || []).slice(1).forEach(r => {
     if (!r || !r[0]) return;
