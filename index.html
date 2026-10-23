@@ -417,6 +417,19 @@
   .ins-total-card .ins-metric{border-top-color:rgba(255,255,255,.18);}
   .ins-total-card .ins-metric .mlabel{color:var(--hero-soft);}
   .ins-total-card .ins-metric .mval{color:#fff;}
+  @media (max-width:680px){
+    .ins-row{grid-template-columns:1fr 1fr;gap:10px;}
+    .ins-card{padding:12px 13px;}
+    .ins-card .ihead{flex-direction:column;align-items:flex-start;gap:6px;margin-bottom:8px;}
+    .ins-card .iname{font-size:13px;}
+    .ins-card .irole{font-size:11px;}
+    .kategori-pill{font-size:9.5px;padding:2px 7px;}
+    .ins-nilai{font-size:19px;margin:6px 0 2px;}
+    .ins-insentif{font-size:13px;}
+    .ins-metric{font-size:11px;padding:6px 0;}
+    .ins-metric .mval{display:flex;flex-direction:column;align-items:flex-end;gap:1px;font-size:11px;}
+    .ins-metric .mval .mpoin{margin-left:0;font-size:9.5px;}
+  }
   .ins-total-card .ins-nilai{color:#fff;}
   .ins-total-card .ins-insentif{color:#8FE3B6;}
   .ins-total-label{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--hero-soft);margin-top:14px;}
