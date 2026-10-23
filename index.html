@@ -2596,7 +2596,7 @@ function renderUsulanAdmin(){
   d.co.forEach((c, ci) => {
     const exp = c.role === 'FE' ? 'P001_030' : 'P031_060';
     const nAsg = c.kontrak.filter(x => x.assign).length;
-    h += '<section class="pg-card ud-co"' + (d.co.length > 1 && ci !== UD_CO_IDX ? ' style="display:none"' : '') + '><div class="ud-co-head"><div><b>' + esc(c.nama) + '</b> <span class="ud-chip">' + esc(c.role) + '</span><span class="ud-chip ud-selcount" id="udSelCount' + ci + '" hidden></span></div>' +
+    h += '<section class="pg-card ud-co"' + (d.co.length > 1 && ci !== UD_CO_IDX ? ' style="display:none"' : '') + '><div class="ud-co-head"><div><b>' + esc(c.nama) + '</b> <span class="ud-chip">' + esc(c.role) + '</span><span class="ud-chip ud-selcount" id="udSelCount' + ci + '" hidden></span><button type="button" class="ud-link" id="udClearBtn' + ci + '" onclick="udBatalPilih(' + ci + ')" hidden>Batal pilih semua</button></div>' +
       (c.sudahKirim ? '<span class="ud-sub">' + c.kontrak.length + ' kontrak · ' + nAsg + ' dikirim ke Silvi · terkirim ' + fmtWaktu(c.waktu) + '</span>' : '<span class="ud-chip bad">Belum kirim usulan</span>') + '</div>';
     if(c.kurang > 0) h += '<div class="ud-kurang">Target DKH ' + d.target + ' kontrak, <b>kurang ' + c.kurang + '</b>.</div>';
     if(c.sudahKirim || c.kontrak.length){
@@ -2693,6 +2693,15 @@ function udHitungPilih(ci){
   const total = n + nRek;
   const s = document.getElementById('udSelCount' + ci);
   if(s){ s.hidden = !total; s.textContent = total + ' dipilih'; }
+  const cl = document.getElementById('udClearBtn' + ci);
+  if(cl) cl.hidden = !total;
+}
+function udBatalPilih(ci){
+  document.querySelectorAll('.ud-co input[data-co="' + ci + '"]:checked, input[data-rek="' + ci + '"]:checked').forEach(i => {
+    i.checked = false;
+    const r = i.closest('.ud-row'); if(r) r.classList.remove('on');
+  });
+  udHitungPilih(ci);
 }
 function udPilihCO(i){ UD_CO_IDX = i; renderUsulanAdmin(); }
 function udAssign(list, aksi, ci){
