@@ -959,7 +959,7 @@
   .cms-track{height:10px;border-radius:99px;background:var(--surface-sunken);overflow:hidden;}
   .cms-fill{height:100%;border-radius:99px;background:var(--cf,var(--navy-lighter));transition:width .6s cubic-bezier(.2,.8,.2,1);}
   .p-ter{--cf:var(--navy-lighter);} .p-dik{--cf:var(--good);}
-  .cms-flag{display:flex;}
+  .cms-flag{display:flex;flex-wrap:wrap;gap:8px;}
   .cms-warnbtn{font:inherit;font-size:13px !important;font-weight:700;color:var(--warn) !important;background:var(--warn-bg) !important;border-radius:99px !important;padding:7px 14px !important;}
   .cms-okmsg{font-size:13px;font-weight:700;color:var(--good);background:var(--good-bg);border-radius:99px;padding:7px 14px;}
   .cms-more{display:flex;flex-direction:column;gap:12px;padding-top:12px;}
@@ -5290,13 +5290,14 @@ function renderCms(){
     const G = CMS_COLS; const act = get(bal, co, 'actual'), ter = get(bal, co, 'terbentuk'), dik = get(bal, co, 'dikerjakan'), tdk = get(bal, co, 'tdk');
     const cm = (i) => G[i].cols.filter(c => !c.pct);
     const pctOf = (i) => { const pc = G[i].cols.find(c => c.pct); return pc ? cmsPct(get(bal, co, pc.pct[0]), get(bal, co, pc.pct[1])) : ''; };
-    const terC = G[1].cols[0], dikC = G[1].cols[4], tdkC = G[1].cols[2];
+    const terC = G[1].cols[0], dikC = G[1].cols[4], tdkC = G[1].cols[2], ttlC = G[5].cols[3];
     const tdkBtn = tdk > 0 ? `<button type="button" class="cms-warnbtn cms-hit" ${attr(bal, co, tdkC, label)}>${tdk} kontrak belum dikerjakan</button>` : `<span class="cms-okmsg">Semua sudah dikerjakan</span>`;
     const ttl = get(bal, co, 'ttl');
+    const ttlBtn = ttl > 0 ? `<button type="button" class="cms-warnbtn cms-hit" ${attr(bal, co, ttlC, label)}>${ttl} belum terbentuk DKH</button>` : `<span class="cms-okmsg">Semua sudah terbentuk</span>`;
     return `<article class="cms-co-card${isTotal ? ' tot' : ''}">
       <header class="cms-ch"><div><div class="cms-cn">${esc(label)}</div><div class="cms-sub">${isTotal ? 'Gabungan semua CO' : 'Kontrak di bucket ini'}</div></div><div class="cms-act"><b>${hit(bal, co, G[0].cols[0], label, act)}</b><span>kontrak actual</span></div></header>
       <div class="cms-progs">${bar('DKH terbentuk', ter, act, 'p-ter', hit(bal, co, terC, label, ter))}${bar('Sudah dikerjakan', dik, ter, 'p-dik', hit(bal, co, dikC, label, dik))}</div>
-      <div class="cms-flag">${tdkBtn}</div>
+      <div class="cms-flag">${ttlBtn}${tdkBtn}</div>
       <details class="fold cms-more-f"><summary>Detail selengkapnya</summary><div class="cms-more">
         ${sect(bal, co, label, 'Bertemu', cm(2), pctOf(2), 'g-bertemu')}
         ${sect(bal, co, label, 'Tidak bertemu', cm(3), pctOf(3), 'g-tidak')}
