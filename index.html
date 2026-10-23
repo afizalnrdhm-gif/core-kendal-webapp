@@ -962,7 +962,12 @@
   .cms-flag{display:flex;}
   .cms-warnbtn{font:inherit;font-size:13px !important;font-weight:700;color:var(--warn) !important;background:var(--warn-bg) !important;border-radius:99px !important;padding:7px 14px !important;}
   .cms-okmsg{font-size:13px;font-weight:700;color:var(--good);background:var(--good-bg);border-radius:99px;padding:7px 14px;}
-  .cms-more{display:flex;flex-direction:column;gap:12px;border-top:1px dashed var(--line-strong,var(--line));padding-top:14px;}
+  .cms-more{display:flex;flex-direction:column;gap:12px;padding-top:12px;}
+  /* Ringkas: rincian Bertemu/Risk code/Tidak terbentuk dilipat, kartu cuma tampilkan inti (actual, 2 progress, status DKH) */
+  details.cms-more-f{margin:2px 0 0;}
+  details.cms-more-f > summary{padding:4px 0;font-size:11.5px;font-weight:700;letter-spacing:.04em;color:var(--link);}
+  details.cms-more-f[open] > summary{margin-bottom:0;}
+  details.cms-more-f > summary::before{width:7px;height:7px;}
   .cms-sh{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:7px;font-size:12.5px;font-weight:800;color:var(--ink);}
   .cms-sh em{font-style:normal;font-weight:600;font-size:12px;color:var(--ink-soft);}
   .cms-pills{display:flex;flex-wrap:wrap;gap:7px;}
@@ -5292,12 +5297,12 @@ function renderCms(){
       <header class="cms-ch"><div><div class="cms-cn">${esc(label)}</div><div class="cms-sub">${isTotal ? 'Gabungan semua CO' : 'Kontrak di bucket ini'}</div></div><div class="cms-act"><b>${hit(bal, co, G[0].cols[0], label, act)}</b><span>kontrak actual</span></div></header>
       <div class="cms-progs">${bar('DKH terbentuk', ter, act, 'p-ter', hit(bal, co, terC, label, ter))}${bar('Sudah dikerjakan', dik, ter, 'p-dik', hit(bal, co, dikC, label, dik))}</div>
       <div class="cms-flag">${tdkBtn}</div>
-      <div class="cms-more">
+      <details class="fold cms-more-f"><summary>Detail selengkapnya</summary><div class="cms-more">
         ${sect(bal, co, label, 'Bertemu', cm(2), pctOf(2), 'g-bertemu')}
         ${sect(bal, co, label, 'Tidak bertemu', cm(3), pctOf(3), 'g-tidak')}
         ${sect(bal, co, label, 'Risk code', cm(4), '', 'g-risk')}
         ${sect(bal, co, label, 'Tidak terbentuk DKH', cm(5).filter(c => c.m !== 'ttl'), ttl > 0 ? ttl + ' kontrak · ' + pctOf(5) : '', 'g-tdk')}
-      </div></article>`;
+      </div></details></article>`;
   };
   const fe = D.urutan.fe.filter(c => D.items.some(it => it.co === c));
   const tbl = (b) => {
