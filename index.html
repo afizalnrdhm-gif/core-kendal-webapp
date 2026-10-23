@@ -1928,7 +1928,8 @@ function onDataLoaded(res){
   document.getElementById('navPanduan').classList.toggle('nav-hidden', IS_ADMIN || IS_DESKCALL);
   TD_DATA = null; TD_LOADING = false;
   const navTglBayar = document.getElementById('navTglBayar');
-  const canSeeTglBayar = IS_ADMIN || IS_DESKCALL || (ROLE_INFO && (ROLE_INFO.role === 'FE' || ROLE_INFO.role === 'MR'));
+  // Menu "Tgl Bayar Bulan Lalu" disembunyikan sementara dari semua role (diminta user).
+  const canSeeTglBayar = false; // IS_ADMIN || IS_DESKCALL || (ROLE_INFO && (ROLE_INFO.role === 'FE' || ROLE_INFO.role === 'MR'));
   navTglBayar.classList.toggle('nav-hidden', !canSeeTglBayar);
 
   if(!hasInitializedApp){
