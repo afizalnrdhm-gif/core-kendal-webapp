@@ -2611,7 +2611,7 @@ function renderUsulanAdmin(){
     }
     if(c.rekomendasi && c.rekomendasi.length){
       h += '<div class="ud-rek"><div class="ud-rek-t">Rekomendasi tambahan <span class="ud-sub">(utamakan yang sudah jatuh tempo dan belum pernah terbentuk DKH, lalu janji bayar dekat tanggal DKH, biasa bayar, SIPOK terbesar)'+(d.produktivitasAda?'':' <br><span class="ud-sub">Tab PRODUCTIVITY belum terbaca, jadi status "belum pernah terbentuk" belum bisa dipakai.</span>')+'</span></div><div class="ud-list">' + c.rekomendasi.map((x, i) =>
-        '<label class="ud-row"><input type="checkbox" data-rek="' + ci + '" data-no="' + esc(x.noKontrak) + '"' + ' onchange="this.closest(\'.ud-row\').classList.toggle(\'on\',this.checked)">' +
+        '<label class="ud-row"><input type="checkbox" data-rek="' + ci + '" data-no="' + esc(x.noKontrak) + '"' + ' onchange="this.closest(\'.ud-row\').classList.toggle(\'on\',this.checked);udHitungPilih(' + ci + ')">' +
         '<div class="ud-main"><b>' + esc(x.nama) + '</b><span class="mono">' + esc(x.noKontrak) + '</span><span class="ud-tags">' + udKali(x) + '</span><span class="ud-sub">' + esc(x.alasan) + (x.dpd !== null && !isNaN(x.dpd) ? ' · DPD ' + x.dpd : '') + '</span></div>' +
         '<div class="ud-side"><span class="mono">' + fmtRupiah(x.sipok) + '</span><span class="ud-pick"></span></div></label>').join('') + '</div>' +
         '<div class="ud-actions"><button class="btn" onclick="udPilihTeratas(' + ci + ',' + c.kurang + ')">Pilih ' + c.kurang + ' teratas</button> <button class="btn primary" onclick="udTambah(' + ci + ')">Tambah &amp; kirim ke Silvi</button></div></div>';
@@ -2689,8 +2689,10 @@ function udPesan(txt, bad, ci){
 function udHitungPilih(ci){
   const n = document.querySelectorAll('.ud-co input[data-co="' + ci + '"]:checked').length, b = document.getElementById('udBtnPilih' + ci);
   if(b) b.textContent = n ? 'Kirim ' + n + ' yang dipilih ke Silvi' : 'Kirim yang dipilih ke Silvi';
+  const nRek = document.querySelectorAll('input[data-rek="' + ci + '"]:checked').length;
+  const total = n + nRek;
   const s = document.getElementById('udSelCount' + ci);
-  if(s){ s.hidden = !n; s.textContent = n + ' dipilih'; }
+  if(s){ s.hidden = !total; s.textContent = total + ' dipilih'; }
 }
 function udPilihCO(i){ UD_CO_IDX = i; renderUsulanAdmin(); }
 function udAssign(list, aksi, ci){
@@ -2718,6 +2720,7 @@ function udSalin(ci){
 
 function udPilihTeratas(ci, n){
   document.querySelectorAll('input[data-rek="' + ci + '"]').forEach((i, idx) => { i.checked = idx < n; const r = i.closest('.ud-row'); if(r) r.classList.toggle('on', i.checked); });
+  udHitungPilih(ci);
 }
 function udTambah(ci){
   const c = UD_ADM.co[ci]; const m = document.getElementById('udMsg');
