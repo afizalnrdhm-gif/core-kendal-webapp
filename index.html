@@ -213,6 +213,7 @@
   /* Proyeksi Cabang: kartu kecil berisi toggle fleet + input Plan Sales */
   .pc-plansales-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-1);padding:16px;margin-bottom:18px;}
   .pc-plansales-card .field-group{max-width:360px;}
+  .pc-step-badge{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:99px;background:color-mix(in srgb, currentColor 22%, transparent);font-size:10.5px;font-weight:800;margin-left:4px;}
   /* Pengaruh Flow per Tipe Barang: tabel matriks ringkas, selalu tampil (tanpa <details>) */
   .rk-flowtipe{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-1);padding:14px 16px;}
   .rk-flowtipe-title{font-size:12px;font-weight:700;letter-spacing:.02em;color:var(--ink);margin-bottom:10px;}
@@ -3242,14 +3243,69 @@ function renderSimKontrakList_(){
 
 // ============================================================
 // PROYEKSI CABANG — simulasi berdiri sendiri (bukan Simulasi Rapor): cabang penuh, bukan per-CO.
-// Dua input digabung: (1) kontrak existing yang diproyeksikan Stay/BTC/Lunas (logic sama seperti
-// Simulasi Rapor), (2) Plan Sales — rencana pencairan yang BELUM golive (begitu golive beneran,
-// otomatis sudah muncul sendiri di KA HARIAN, jadi ini CUMA buat pipeline yang masih rencana).
-// Hasilnya Balance per bucket & Delq 30+ cabang, sebelum vs proyeksi.
+// Dua input digabung: (1) kontrak existing dipilih per KATEGORI (Flow NOOD, Flow 1-30, Flow 31-60,
+// BTC 1-30, BTC 31-60, Rollback 31-60, Lunas) — alurnya jalan tahap demi tahap lewat tab, tiap
+// kategori punya target bucket tetap sendiri, (2) Plan Sales — rencana pencairan yang BELUM golive
+// (begitu golive beneran, otomatis sudah muncul sendiri di KA HARIAN, jadi ini CUMA buat pipeline
+// yang masih rencana). Hasilnya Balance per bucket & Delq 30+ cabang, sebelum vs proyeksi.
 // ============================================================
 let PC_DATA = null;
 let PC_RESULT = null;
-let pcState = { search:'', limit:20, proyeksi: new Map(), planSales:'', includeFleet:false };
+let pcState = { search:'', limit:20, step:'flow_nood', proyeksi: new Map(), planSales:'', includeFleet:false };
+
+// Tiap kategori = satu tahap pemilihan kontrak dengan kandidat (filterBucket) & target bucket TETAP.
+// filterBucket null artinya kandidatnya SEMUA kontrak (dipakai buat Lunas).
+const PC_STEPS = [
+  { key:'flow_nood', label:'Flow NOOD', filterBucket:'NOOD', target:'P001_030', targetLabel:'Bucket 1-30', btnClass:'sim-proyeksi-stay',
+    desc:'Pilih kontrak di Bucket NOOD yang diproyeksikan TELAT dan pindah ke Bucket 1-30.' },
+  { key:'flow_130', label:'Flow 1-30', filterBucket:'P001_030', target:'P031_060', targetLabel:'Bucket 31-60', btnClass:'sim-proyeksi-stay',
+    desc:'Pilih kontrak di Bucket 1-30 yang diproyeksikan makin telat, pindah ke Bucket 31-60.' },
+  { key:'flow_3160', label:'Flow 31-60', filterBucket:'P031_060', target:'P061_090', targetLabel:'Bucket 61-90', btnClass:'sim-proyeksi-stay',
+    desc:'Pilih kontrak di Bucket 31-60 yang diproyeksikan makin telat, pindah ke Bucket 61-90.' },
+  { key:'btc_130', label:'BTC 1-30', filterBucket:'P001_030', target:'NOOD', targetLabel:'NOOD', btnClass:'sim-proyeksi-btc',
+    desc:'Pilih kontrak di Bucket 1-30 yang diproyeksikan ngejar SEMUA tunggakan, balik ke NOOD.' },
+  { key:'btc_3160', label:'BTC 31-60', filterBucket:'P031_060', target:'NOOD', targetLabel:'NOOD', btnClass:'sim-proyeksi-btc',
+    desc:'Pilih kontrak di Bucket 31-60 yang diproyeksikan ngejar SEMUA tunggakan, balik ke NOOD.' },
+  { key:'rollback_3160', label:'Rollback 31-60', filterBucket:'P031_060', target:'P001_030', targetLabel:'Bucket 1-30', btnClass:'sim-proyeksi-btc',
+    desc:'Pilih kontrak di Bucket 31-60 yang diproyeksikan membaik SEBAGIAN, balik ke Bucket 1-30 (belum sampai NOOD).' },
+  { key:'lunas', label:'Lunas', filterBucket:null, target:'LUNAS', targetLabel:'Lunas', btnClass:'sim-proyeksi-lunas',
+    desc:'Pilih kontrak (bucket manapun, belum lunas) yang diproyeksikan LUNAS total dan keluar dari buku piutang.' }
+];
+const PC_TARGET_LABEL = { NOOD:'NOOD', P001_030:'Bucket 1-30', P031_060:'Bucket 31-60', P061_090:'Bucket 61-90', LUNAS:'Lunas' };
+function pcStepByKey_(key){ return PC_STEPS.find(s => s.key === key) || PC_STEPS[0]; }
+function pcTargetLabel_(code){ return PC_TARGET_LABEL[code] || code; }
+
+// Jumlah kontrak yang sudah dipilih buat kategori ini (dicocokkan ke target DAN bucket kandidatnya,
+// biar gak ketuker sama kategori lain yang kebetulan targetnya sama tapi kandidatnya beda bucket).
+function pcCountForStep_(step){
+  if(!PC_DATA) return 0;
+  let n = 0;
+  pcState.proyeksi.forEach((target, noKontrak) => {
+    if(target !== step.target) return;
+    if(step.filterBucket){
+      const k = PC_DATA.kontrakList.find(x => x.noKontrak === noKontrak);
+      if(!k || k.bucketSekarang !== step.filterBucket) return;
+    }
+    n++;
+  });
+  return n;
+}
+function pcTabBtnHtml_(s){
+  const n = pcCountForStep_(s);
+  return `<button type="button" role="tab" data-step="${s.key}" class="${pcState.step===s.key?'on':''}" aria-selected="${pcState.step===s.key}">${esc(s.label)}${n?' <span class="pc-step-badge">'+n+'</span>':''}</button>`;
+}
+function pcPatchTabsAndCount_(){
+  const tabsBox = document.getElementById('pcStepTabs');
+  if(tabsBox){
+    tabsBox.querySelectorAll('button[data-step]').forEach(btn => {
+      const s = pcStepByKey_(btn.dataset.step);
+      const n = pcCountForStep_(s);
+      btn.innerHTML = esc(s.label) + (n ? ' <span class="pc-step-badge">'+n+'</span>' : '');
+    });
+  }
+  const totalEl = document.getElementById('pcTotalCount');
+  if(totalEl) totalEl.textContent = pcState.proyeksi.size;
+}
 
 function loadProyeksiCabang(){
   document.getElementById('wrap').innerHTML = `<div class="skeleton-row"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div><div class="skel tall"></div>`;
@@ -3259,7 +3315,7 @@ function loadProyeksiCabang(){
       if(!ok || body.error){ document.getElementById('wrap').innerHTML = '<div class="state-box error"><div class="err-icon">'+ic('alert')+'</div>'+esc((body&&body.error)||'Gagal memuat Proyeksi Cabang.')+'<br><br><button class="btn" onclick="loadProyeksiCabang()">Coba lagi</button></div>'; return; }
       PC_DATA = body;
       PC_RESULT = null;
-      pcState = { search:'', limit:20, proyeksi: new Map(), planSales:'', includeFleet:false };
+      pcState = { search:'', limit:20, step:'flow_nood', proyeksi: new Map(), planSales:'', includeFleet:false };
       renderProyeksiCabang();
       triggerFadeIn();
     })
@@ -3307,11 +3363,14 @@ function pcCompareCard_(label, before, after, dirUp){
   </div>`;
 }
 
-function getPCKontrakFiltered_(){
+function getPCStepKontrakFiltered_(step){
   const list = (PC_DATA && PC_DATA.kontrakList) || [];
-  if(!pcState.search.trim()) return list;
-  const q = pcState.search.trim().toLowerCase();
-  return list.filter(k => (k.namaKonsumen||'').toLowerCase().includes(q) || (k.noKontrak||'').toLowerCase().includes(q));
+  let filtered = step.filterBucket ? list.filter(k => k.bucketSekarang === step.filterBucket) : list;
+  if(pcState.search.trim()){
+    const q = pcState.search.trim().toLowerCase();
+    filtered = filtered.filter(k => (k.namaKonsumen||'').toLowerCase().includes(q) || (k.noKontrak||'').toLowerCase().includes(q));
+  }
+  return filtered;
 }
 
 function renderProyeksiCabang(){
@@ -3329,9 +3388,13 @@ function renderProyeksiCabang(){
     masih rencana. Nominal ini otomatis masuk Bucket NOOD dan ikut jadi pembagi (ENR), jadi efeknya Balance
     NOOD naik dan Balance 1-30/31-60/Delq 30+ ikut terdilusi turun, walau nominal macetnya sendiri gak
     berubah sama sekali.<br>
-    • <b>Pilih kontrak yang diproyeksikan</b> — logicnya sama seperti Simulasi Rapor: <b>Stay</b> (bayar
-    sebagian, berhenti di Bucket Awal sendiri), <b>BTC</b> (ngejar balik ke NOOD), <b>Lunas</b> (keluar total
-    dari buku). Bedanya di sini cabang penuh (semua CO sekaligus), bukan dibatasi ke satu metric rapor.
+    • <b>Pilih kontrak per kategori</b> — jalan tahap demi tahap lewat tab di bawah: <b>Flow NOOD</b> (kontrak
+    NOOD yang diproyeksikan telat ke 1-30), <b>Flow 1-30</b> &amp; <b>Flow 31-60</b> (makin telat ke bucket
+    berikutnya), <b>BTC 1-30</b> &amp; <b>BTC 31-60</b> (ngejar balik total ke NOOD), <b>Rollback 31-60</b>
+    (membaik sebagian, balik ke 1-30 belum sampai NOOD), lalu <b>Lunas</b> (keluar total dari buku). Satu
+    kontrak cuma bisa punya SATU proyeksi aktif — kalau dipilih lagi di kategori lain, proyeksinya pindah
+    ke situ. Setelah semua kategori yang relevan dipilih, klik <b>Hitung Proyeksi</b> (tombolnya selalu
+    kelihatan di atas tab, gak perlu ganti-ganti tab dulu).
   </div></details>`;
 
   html += `<div class="pc-plansales-card">
@@ -3356,7 +3419,7 @@ function renderProyeksiCabang(){
     </div>`;
   }
 
-  html += `<div class="panel-title">Pilih proyeksi tiap kontrak (Stay / BTC / Lunas)</div>`;
+  html += `<div class="panel-title">Pilih kontrak per kategori, lalu Hitung Proyeksi</div>`;
   if(!d.kontrakList || !d.kontrakList.length){
     html += `<div class="state-box">Gak ada kontrak yang relevan buat diproyeksikan saat ini.</div>`;
   } else {
@@ -3366,10 +3429,14 @@ function renderProyeksiCabang(){
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4C6272" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input id="pcSearchInput" type="text" placeholder="Cari nama konsumen atau no kontrak…" value="${esc(pcState.search)}">
       </div>
-      <button class="btn" id="pcClearBtn">Bersihkan pilihan</button>
+      <button class="btn" id="pcClearBtn">Bersihkan semua pilihan</button>
       <button class="btn primary" id="pcRunBtn">${ic('refresh')} Hitung Proyeksi</button>
     </div>
-    <div class="count-note" id="pcCountNote">${pcState.proyeksi.size} kontrak diproyeksikan berubah dari ${d.kontrakList.length} kontrak</div>
+    <div class="count-note"><span id="pcTotalCount">${pcState.proyeksi.size}</span> kontrak total dipilih dari semua kategori</div>
+    <div class="dash-tabs" id="pcStepTabs" role="tablist" aria-label="Kategori proyeksi kontrak">
+      ${PC_STEPS.map(s => pcTabBtnHtml_(s)).join('')}
+    </div>
+    <div class="sim-intro-body" id="pcStepDesc" style="margin:0 0 14px;">${esc(pcStepByKey_(pcState.step).desc)}</div>
     <div class="sim-kontrak-list" id="pcKontrakList"></div>`;
   }
 
@@ -3389,32 +3456,44 @@ function renderProyeksiCabang(){
     document.getElementById('pcSearchInput').addEventListener('input', e => { pcState.search = e.target.value; pcState.limit = 20; renderPCKontrakList_(); });
     document.getElementById('pcClearBtn').addEventListener('click', () => { pcState.proyeksi.clear(); PC_RESULT = null; renderProyeksiCabang(); });
     document.getElementById('pcRunBtn').addEventListener('click', runProyeksiCabang);
+    document.querySelectorAll('#pcStepTabs button[data-step]').forEach(b => b.addEventListener('click', () => {
+      if(b.dataset.step === pcState.step) return;
+      pcState.step = b.dataset.step;
+      pcState.limit = 20;
+      document.querySelectorAll('#pcStepTabs button[data-step]').forEach(x => {
+        const on = x.dataset.step === pcState.step;
+        x.classList.toggle('on', on);
+        x.setAttribute('aria-selected', on);
+      });
+      document.getElementById('pcStepDesc').textContent = pcStepByKey_(pcState.step).desc;
+      renderPCKontrakList_();
+    }));
   }
 }
 
 function renderPCKontrakList_(){
   const box = document.getElementById('pcKontrakList');
   if(!box) return;
-  const allRows = getPCKontrakFiltered_();
+  const step = pcStepByKey_(pcState.step);
+  const allRows = getPCStepKontrakFiltered_(step);
   const lim = pcState.limit || 20;
   const rows = allRows.slice(0, lim);
+  if(!allRows.length){ box.innerHTML = '<div class="state-box">Gak ada kontrak yang cocok buat kategori ini.</div>'; return; }
   box.innerHTML = rows.map(k => {
     const current = pcState.proyeksi.get(k.noKontrak) || '';
-    const showStayBtn = k.kriteriaAcct === 'FLOW';
-    const showBtcBtn = k.bucketAwal !== 'NOOD' && k.bucketSekarang !== 'NOOD';
+    const isActiveHere = current === step.target;
+    const elsewhereNote = (current && !isActiveHere) ? ' · sudah dipilih di kategori lain (→ ' + esc(pcTargetLabel_(current)) + ')' : '';
     const pemilikBadge = k.coAll ? `<span class="sim-owner-badge">${ic('user')} ${esc(k.coAll)}</span>` : '';
     const fleetBadge = k.fleet ? '<span class="sim-owner-badge">Fleet</span>' : '';
     return `
     <div class="sim-kontrak-item">
       <div class="sim-kontrak-info">
         <div class="sim-kontrak-name">${esc(k.namaKonsumen||'-')} <span class="sim-kontrak-kontrak">${esc(k.noKontrak)}</span>${k.kriteriaAcct ? ' <span class="sim-kriteria-badge sim-kriteria-'+esc(k.kriteriaAcct)+'">'+esc(k.kriteriaAcct)+'</span>' : ''}${pemilikBadge}${fleetBadge}</div>
-        <div class="sim-kontrak-meta">Bucket Awal ${fmtBucket(k.bucketAwal)} → Sekarang ${fmtBucket(k.bucketSekarang)}</div>
+        <div class="sim-kontrak-meta">Bucket Awal ${fmtBucket(k.bucketAwal)} → Sekarang ${fmtBucket(k.bucketSekarang)}${elsewhereNote}</div>
       </div>
       <div class="sim-kontrak-sipok">${fmtRupiah(k.sisaPiutang)}</div>
       <div class="sim-proyeksi-group">
-        ${showStayBtn ? `<button type="button" class="sim-proyeksi-btn sim-proyeksi-stay ${current==='stay'?'active':''}" data-nokontrak="${esc(k.noKontrak)}" data-val="stay">${current==='stay'?ic('check')+' ':''}Proyeksi Stay <span class="sim-proyeksi-target">→ ${fmtBucket(k.bucketAwal)}</span></button>` : ''}
-        ${showBtcBtn ? `<button type="button" class="sim-proyeksi-btn sim-proyeksi-btc ${current==='btc'?'active':''}" data-nokontrak="${esc(k.noKontrak)}" data-val="btc">${current==='btc'?ic('check')+' ':''}Proyeksi BTC <span class="sim-proyeksi-target">→ NOOD</span></button>` : ''}
-        <button type="button" class="sim-proyeksi-btn sim-proyeksi-lunas ${current==='lunas'?'active':''}" data-nokontrak="${esc(k.noKontrak)}" data-val="lunas">${current==='lunas'?ic('check')+' ':''}Proyeksi Lunas</button>
+        <button type="button" class="sim-proyeksi-btn ${step.btnClass} ${isActiveHere?'active':''}" data-nokontrak="${esc(k.noKontrak)}">${isActiveHere?ic('check')+' ':''}Pilih kontrak ini <span class="sim-proyeksi-target">→ ${esc(step.targetLabel)}</span></button>
       </div>
     </div>`;
   }).join('') + (allRows.length > rows.length ? `<div class="load-more"><button type="button" class="btn" id="pcMoreBtn">Tampilkan ${Math.min(20, allRows.length - rows.length)} lagi <span class="load-note">(${rows.length} dari ${allRows.length})</span></button></div>` : '');
@@ -3423,12 +3502,10 @@ function renderPCKontrakList_(){
   box.querySelectorAll('.sim-proyeksi-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const nk = btn.getAttribute('data-nokontrak');
-      const val = btn.getAttribute('data-val');
       const cur = pcState.proyeksi.get(nk) || '';
-      if(cur === val){ pcState.proyeksi.delete(nk); } else { pcState.proyeksi.set(nk, val); }
+      if(cur === step.target){ pcState.proyeksi.delete(nk); } else { pcState.proyeksi.set(nk, step.target); }
       renderPCKontrakList_();
-      const note = document.getElementById('pcCountNote');
-      if(note) note.textContent = pcState.proyeksi.size + ' kontrak diproyeksikan berubah dari ' + PC_DATA.kontrakList.length + ' kontrak';
+      pcPatchTabsAndCount_();
     });
   });
 }

@@ -1,7 +1,9 @@
 // Proyeksi Cabang — simulasi berdiri sendiri (bukan bagian dari Simulasi Rapor), cabang-wide (bukan per-CO).
 // Dua input digabung lalu dihitung ulang pakai mesin hitungKpi yang sama persis dipakai Ringkasan:
-//   1) Pergerakan kontrak existing (Stay/BTC/Lunas per kontrak — logic sama seperti Simulasi Rapor,
-//      cuma di sini scope-nya cabang penuh, bukan di-filter per metric role FE/MR/BCH).
+//   1) Pergerakan kontrak existing, dipilih per KATEGORI di UI (Flow NOOD, Flow 1-30, Flow 31-60,
+//      BTC 1-30, BTC 31-60, Rollback 31-60, Lunas) — tiap kategori punya bucket kandidat & target
+//      bucket tetap sendiri (lihat PC_STEPS di index.html), jadi di backend cukup terima noKontrak ->
+//      TARGET (kode bucket atau 'LUNAS') dan paksa BUCKET UPDATE-nya = TARGET itu (lihat terapkanProyeksi).
 //   2) Plan Sales — nominal rencana pencairan yang BELUM golive (bukan actual; begitu golive otomatis
 //      muncul sendiri di KA HARIAN). Nominal ini disuntikkan sebagai baris KA HARIAN sintetis di bucket
 //      NOOD, jadi otomatis kena hitung ke ENR (pembagi) & Balance NOOD (pembilang) lewat hitungKpi yang
@@ -67,39 +69,32 @@ function daftarKontrakCabang(masterRows, kaRows) {
   return list;
 }
 
-// Terapkan proyeksi stay/btc/lunas ke masterRows & kaRows. Definisi sama persis seperti
-// terapkanSimulasi di api/simulasi-rapor.js (bucketTargetSTAY di sana cuma balikin bucketAwal,
-// gak pernah pakai role/cfg, jadi aman dipakai ulang di sini tanpa versi role):
-//   stay  -> BUCKET UPDATE dipaksa = BUCKET AWAL kontrak itu (berhenti flow, piutang tetap ada).
-//   btc   -> BUCKET UPDATE dipaksa = NOOD (ngejar balik semua tunggakan, piutang tetap ada).
-//   lunas -> kontrak dibuang total dari masterRows & kaRows (keluar dari buku).
+// Terapkan proyeksi ke masterRows & kaRows. `proyeksi` di sini adalah noKontrak -> TARGET, di mana
+// TARGET adalah salah satu kode bucket (NOOD/P001_030/P031_060/P061_090 dst, lihat BUCKET_ORDER) atau
+// string 'LUNAS'. Ini dipilih lewat UI per-kategori (Flow NOOD, Flow 1-30, BTC 1-30, Rollback 31-60,
+// dst) yang masing-masing kategori sudah punya target bucket tetap sendiri — jadi di sini tinggal:
+//   TARGET bucket -> BUCKET UPDATE (masterRows & kaRows) dipaksa = TARGET itu (piutang tetap ada).
+//   'LUNAS'       -> kontrak dibuang total dari masterRows & kaRows (keluar dari buku).
 function terapkanProyeksi(masterRows, kaRows, proyeksi) {
-  const lunasSet = new Set(); const stayMap = {}; const btcMap = {};
+  const lunasSet = new Set(); const targetMap = {};
   Object.keys(proyeksi || {}).forEach(k => {
     const v = proyeksi[k];
-    if (v === 'lunas') lunasSet.add(k);
-    else if (v === 'stay') stayMap[k] = true;
-    else if (v === 'btc') btcMap[k] = true;
+    if (v === 'LUNAS') lunasSet.add(k);
+    else if (BUCKET_ORDER.indexOf(v) > -1) targetMap[k] = v;
   });
-  const bucketAwalByNo = {};
-  masterRows.forEach(m => { if (m['NO KONTRAK']) bucketAwalByNo[m['NO KONTRAK']] = m['BUCKET AWAL']; });
 
   const masterRows2 = masterRows
     .filter(m => !lunasSet.has(m['NO KONTRAK']))
     .map(m => {
       const nk = m['NO KONTRAK'];
-      if (stayMap[nk]) return Object.assign({}, m, { 'BUCKET UPDATE': m['BUCKET AWAL'] });
-      if (btcMap[nk]) return Object.assign({}, m, { 'BUCKET UPDATE': 'NOOD' });
-      return m;
+      return targetMap[nk] ? Object.assign({}, m, { 'BUCKET UPDATE': targetMap[nk] }) : m;
     });
 
   const kaRows2 = kaRows
     .filter(r => !lunasSet.has(r['NO KONTRAK']))
     .map(r => {
       const nk = r['NO KONTRAK'];
-      if (stayMap[nk]) return Object.assign({}, r, { 'BUCKET UPDATE': bucketAwalByNo[nk] || r['BUCKET UPDATE'] });
-      if (btcMap[nk]) return Object.assign({}, r, { 'BUCKET UPDATE': 'NOOD' });
-      return r;
+      return targetMap[nk] ? Object.assign({}, r, { 'BUCKET UPDATE': targetMap[nk] }) : r;
     });
 
   return { masterRows2, kaRows2 };
@@ -129,7 +124,7 @@ module.exports = async (req, res) => {
       const body = req.body || {};
       const proyeksiRaw = (body.proyeksi && typeof body.proyeksi === 'object' && !Array.isArray(body.proyeksi)) ? body.proyeksi : {};
       const proyeksi = {};
-      Object.keys(proyeksiRaw).forEach(k => { if (['stay', 'btc', 'lunas'].includes(proyeksiRaw[k])) proyeksi[k] = proyeksiRaw[k]; });
+      Object.keys(proyeksiRaw).forEach(k => { const v = proyeksiRaw[k]; if (v === 'LUNAS' || BUCKET_ORDER.indexOf(v) > -1) proyeksi[k] = v; });
       const includeFleet = !!body.includeFleet;
       const planSales = Math.max(0, Number(body.planSales) || 0);
 
