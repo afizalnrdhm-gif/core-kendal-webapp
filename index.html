@@ -187,6 +187,29 @@
   .grand-card .lbl{font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-soft);font-weight:700;}
   .grand-card .val{line-height:1.15;font-weight:800;margin-top:6px;letter-spacing:-.02em;color:var(--navy);font-variant-numeric:tabular-nums;}
 
+  /* ---------- Ringkasan: kartu KPI nominal + persen (Balance / Flow / BTC) ---------- */
+  .rk-kpi-wrap{display:flex;flex-direction:column;gap:26px;}
+  .rk-kpi-section-title{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:700;color:var(--ink);margin:0 0 12px 2px;}
+  .rk-kpi-section-title::before{content:'';width:3px;height:15px;border-radius:2px;background:var(--gold);flex:none;}
+  .rk-kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;}
+  .rk-kpi-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-1);position:relative;overflow:hidden;padding:16px 16px 14px 20px;}
+  .rk-kpi-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--gold);}
+  .rk-kpi-card .lbl{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);font-weight:700;margin-bottom:12px;}
+  .rk-kpi-stats{display:flex;flex-direction:column;gap:8px;}
+  .rk-kpi-stat{display:flex;align-items:baseline;justify-content:space-between;gap:10px;}
+  .rk-kpi-stat .cap{font-size:11px;color:var(--ink-soft);}
+  .rk-kpi-stat .val{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap;}
+  .rk-kpi-stat.pct .val{color:var(--navy);}
+  .rk-kpi-stat.pct.good .val{color:var(--good);}
+  .rk-kpi-stat.pct.warn .val{color:var(--warn);}
+  .rk-kpi-divider{height:1px;background:var(--line);}
+  .rk-kpi-sub{font-size:10.5px;color:var(--ink-soft);margin-top:10px;}
+  @media (max-width:900px){
+    .rk-kpi-grid{grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;}
+    .rk-kpi-card{padding:14px 14px 12px 18px;}
+    .rk-kpi-stat .val{font-size:13.5px;}
+  }
+
   /* ---------- Kartu status per bucket ---------- */
   .co-row, .role-row, .status-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-bottom:24px;}
   .status-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;cursor:pointer;transition:border-color .15s ease, box-shadow .15s ease;position:relative;box-shadow:var(--shadow-1);}
@@ -2373,8 +2396,7 @@ function switchView(view){
     buildSimulasiLayout();
     triggerFadeIn();
   } else if(view === 'ringkasan'){
-    renderRingkasanKosong_();
-    triggerFadeIn();
+    if(RINGKASAN_DATA){ renderRingkasanKpi_(); triggerFadeIn(); } else { loadRingkasan(); }
   } else if(view === 'targetdaily'){
     renderTargetDaily(); triggerFadeIn();
   } else if(view === 'dashboard'){
@@ -4259,7 +4281,7 @@ function loadRingkasan(){
   let dariCache = false;
   try {
     const c = JSON.parse(localStorage.getItem(kunci) || 'null');
-    if(c && c.d && c.d.nonfleet){ RINGKASAN_DATA = c.d; renderRingkasanView(); dariCache = true; }
+    if(c && c.d && c.d.nonfleet){ RINGKASAN_DATA = c.d; renderRingkasanKpi_(); dariCache = true; }
   } catch(e) {}
   if(!dariCache) document.getElementById('wrap').innerHTML = `<div class="skeleton-row"><div class="skel"></div><div class="skel"></div></div><div class="skel tall"></div>`;
   fetch('/api/dashboard', { headers: { Authorization: 'Bearer ' + ID_TOKEN } })
@@ -4268,7 +4290,7 @@ function loadRingkasan(){
       if(!ok){ if(dariCache) return; document.getElementById('wrap').innerHTML = '<div class="state-box error"><div class="err-icon">'+ic('alert')+'</div>'+esc(body.error||'Gagal memuat dashboard.')+'<br><br><button class="btn" onclick="loadRingkasan()">Coba lagi</button></div>'; return; }
       RINGKASAN_DATA = body;
       try { localStorage.setItem(kunci, JSON.stringify({ d: body, t: Date.now() })); } catch(e) {}
-      if(VIEW_MODE === 'ringkasan'){ renderRingkasanView(); if(!dariCache) triggerFadeIn(); }
+      if(VIEW_MODE === 'ringkasan'){ renderRingkasanKpi_(); if(!dariCache) triggerFadeIn(); }
     })
     .catch(err => { if(dariCache) return; document.getElementById('wrap').innerHTML = '<div class="state-box error"><div class="err-icon">'+ic('alert')+'</div>'+esc(pesanErr(err))+'</div>'; });
 }
@@ -4370,10 +4392,49 @@ function bindTrenToggle(){
 }
 
 
-// Dashboard dikosongkan dulu (Rencana 3) atas permintaan head — isi lama (renderRingkasanView dkk di bawah)
-// dibiarkan utuh, tinggal dipanggil lagi nanti kalau sudah ada arahan tampilan barunya.
-function renderRingkasanKosong_(){
-  document.getElementById('wrap').innerHTML = '<div class="state-box">Dashboard ini sedang dikosongkan untuk dirancang ulang. Belum ada konten.</div>';
+// Ringkasan v1 (tahap awal, atas arahan head): 8 kartu KPI — Balance per bucket (NOOD/1-30/31-60)
+// dan Flow & BTC (Flow NOOD/1-30/31-60, Btc 01-30/31-60), tiap kartu tampilkan nominal & persen.
+// Dashboard lama yang lebih lengkap (renderRingkasanView dkk di bawah, tab actual/produktivitas/dll)
+// dibiarkan utuh untuk dipakai lagi nanti kalau arahan tampilannya berkembang.
+const RK_BAL_LABEL = { NOOD: 'Balance NOOD', P001_030: 'Balance 1–30', P031_060: 'Balance 31–60' };
+function rkKpiCard_(label, amount, count, pctValue, pctCaption, pctClass, subSuffix){
+  return `<div class="rk-kpi-card">
+    <div class="lbl">${esc(label)}</div>
+    <div class="rk-kpi-stats">
+      <div class="rk-kpi-stat"><span class="cap">Nominal</span><span class="val">${fmtRupiah(amount)}</span></div>
+      <div class="rk-kpi-divider"></div>
+      <div class="rk-kpi-stat pct ${pctClass || ''}"><span class="cap">${esc(pctCaption)}</span><span class="val">${fmtDec(pctValue,1)}%</span></div>
+    </div>
+    <div class="rk-kpi-sub">${count.toLocaleString('id-ID')} kontrak${subSuffix ? ' ' + esc(subSuffix) : ''}</div>
+  </div>`;
+}
+function renderRingkasanKpi_(){
+  if(!RINGKASAN_DATA){ document.getElementById('wrap').innerHTML = '<div class="state-box">Memuat ringkasan…</div>'; return; }
+  const d = RINGKASAN_DATA[RINGKASAN_FLEET_MODE];
+  if(!d || !d.perBucket || !d.flowBtc){
+    document.getElementById('wrap').innerHTML = '<div class="state-box error"><div class="err-icon">'+ic('alert')+'</div>Data ringkasan tidak lengkap. Coba muat ulang.</div>';
+    return;
+  }
+  const balanceCards = d.perBucket
+    .filter(b => RK_BAL_LABEL[b.kunci])
+    .map(b => rkKpiCard_(RK_BAL_LABEL[b.kunci], b.amount, b.count, b.pct, '% dari total', '', null))
+    .join('');
+  const flowCards = d.flowBtc.map(r => {
+    const isBtc = /^Btc/i.test(r.label);
+    return rkKpiCard_(r.label, r.amount, r.count, r.pct, isBtc ? '% kembali' : '% pindah', isBtc ? 'good' : 'warn', isBtc ? 'balik NOOD' : 'pindah bucket');
+  }).join('');
+  document.getElementById('wrap').innerHTML = `
+    <div class="rk-report-header"><div class="rk-report-title">${ic('chart')} Ringkasan</div><div class="rk-report-date">Update per: ${esc(fmtDate(RINGKASAN_DATA.generatedAt))}</div></div>
+    <div class="rk-kpi-wrap">
+      <div class="rk-kpi-section">
+        <div class="rk-kpi-section-title">Balance per Bucket</div>
+        <div class="rk-kpi-grid">${balanceCards}</div>
+      </div>
+      <div class="rk-kpi-section">
+        <div class="rk-kpi-section-title">Flow &amp; BTC (Back to Current)</div>
+        <div class="rk-kpi-grid">${flowCards}</div>
+      </div>
+    </div>`;
 }
 let DASH_TAB = 'actual', DASH_SET = 'NOOD', DASH_FLEET = false;
 function renderRingkasanView(){
