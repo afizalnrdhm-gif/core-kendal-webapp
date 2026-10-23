@@ -3257,23 +3257,24 @@ let pcState = { search:'', limit:20, step:'flow_nood', proyeksi: new Map(), plan
 // filterBucket null artinya kandidatnya SEMUA kontrak (dipakai buat Lunas).
 // filterOn menentukan field mana yang dicocokkan ke filterBucket:
 //  'awal'     -> Bucket Awal (dipakai kategori Flow — definisinya PERSIS sama seperti flowStat()
-//                di api/_kpi.js: basis-nya kontrak dengan BUCKET AWAL = bucket itu, bukan posisi
-//                sekarang). requireUnmoved:true nambahin syarat kontraknya BELUM pindah bulan ini
-//                (Bucket Sekarang masih sama persis dengan Bucket Awal) DAN belum ada pembayaran sama
-//                sekali bulan ini (lihat pcSudahBayar_, berbasis field STATUS BAYAR — bukan KRITERIA
-//                ACCT, karena STAY di KRITERIA ACCT bisa aja artinya udah bayar tapi gak cukup buat
-//                pindah bucket). Yang udah pindah bucket ATAU udah ada pembayaran berarti udah
-//                "realisasi"/kehitung bulan ini, bukan kandidat proyeksi Flow lagi.
+//                di api/_kpi.js: basis-nya kontrak dengan BUCKET AWAL = bucket itu). requireFlowed:true
+//                nambahin syarat kontraknya SUDAH pindah TEPAT satu bucket ke target (Bucket Sekarang
+//                === target) — itu artinya kontrak itu KRITERIA ACCT=FLOW/STATUS BAYAR=BELUM BAYAR di
+//                data (sudah dicek langsung ke Sheet MASTER: FLOW selalu = sudah pindah satu bucket,
+//                STAY selalu = belum pindah sama sekali & SUDAH BAYAR). Jadi kandidat Flow itu kontrak
+//                yang SUDAH flow bulan ini tapi BELUM realisasi (belum balik ke Bucket Awal) — milih di
+//                sini mengunci kontrak itu tetap terhitung di bucket yang dia tempatin sekarang (target)
+//                saat proyeksi dihitung, bukan dianggap otomatis realisasi/balik ke Bucket Awal.
 //  'sekarang' -> Bucket Sekarang/KA HARIAN (dipakai BTC & Rollback — di situ yang diubah memang
 //                posisi SEKARANG kontrak, apapun Bucket Awal-nya, karena Balance/Delq yang dihitung
 //                Proyeksi Cabang basisnya posisi sekarang, bukan Bucket Awal).
 const PC_STEPS = [
-  { key:'flow_nood', label:'Flow NOOD', filterOn:'awal', filterBucket:'NOOD', requireUnmoved:true, target:'P001_030', targetLabel:'Bucket 1-30', btnClass:'sim-proyeksi-stay',
-    desc:'Pilih kontrak dengan Bucket Awal NOOD yang BELUM BAYAR sama sekali bulan ini (masih nunggak di NOOD, bukan sekadar belum pindah bucket) dan diproyeksikan TELAT, pindah ke Bucket 1-30.' },
-  { key:'flow_130', label:'Flow 1-30', filterOn:'awal', filterBucket:'P001_030', requireUnmoved:true, target:'P031_060', targetLabel:'Bucket 31-60', btnClass:'sim-proyeksi-stay',
-    desc:'Pilih kontrak dengan Bucket Awal 1-30 yang BELUM BAYAR sama sekali bulan ini (masih nunggak di 1-30, bukan sekadar belum pindah bucket) dan diproyeksikan makin telat, pindah ke Bucket 31-60.' },
-  { key:'flow_3160', label:'Flow 31-60', filterOn:'awal', filterBucket:'P031_060', requireUnmoved:true, target:'P061_090', targetLabel:'Bucket 61-90', btnClass:'sim-proyeksi-stay',
-    desc:'Pilih kontrak dengan Bucket Awal 31-60 yang BELUM BAYAR sama sekali bulan ini (masih nunggak di 31-60, bukan sekadar belum pindah bucket) dan diproyeksikan makin telat, pindah ke Bucket 61-90.' },
+  { key:'flow_nood', label:'Flow NOOD', filterOn:'awal', filterBucket:'NOOD', requireFlowed:true, target:'P001_030', targetLabel:'Bucket 1-30', btnClass:'sim-proyeksi-stay',
+    desc:'Pilih kontrak dengan Bucket Awal NOOD yang SUDAH pindah ke Bucket 1-30 bulan ini (belum realisasi/belum balik ke NOOD) dan diproyeksikan TETAP di Bucket 1-30 (gak realisasi).' },
+  { key:'flow_130', label:'Flow 1-30', filterOn:'awal', filterBucket:'P001_030', requireFlowed:true, target:'P031_060', targetLabel:'Bucket 31-60', btnClass:'sim-proyeksi-stay',
+    desc:'Pilih kontrak dengan Bucket Awal 1-30 yang SUDAH pindah ke Bucket 31-60 bulan ini (belum realisasi/belum balik ke 1-30) dan diproyeksikan TETAP di Bucket 31-60 (gak realisasi).' },
+  { key:'flow_3160', label:'Flow 31-60', filterOn:'awal', filterBucket:'P031_060', requireFlowed:true, target:'P061_090', targetLabel:'Bucket 61-90', btnClass:'sim-proyeksi-stay',
+    desc:'Pilih kontrak dengan Bucket Awal 31-60 yang SUDAH pindah ke Bucket 61-90 bulan ini (belum realisasi/belum balik ke 31-60) dan diproyeksikan TETAP di Bucket 61-90 (gak realisasi).' },
   { key:'btc_130', label:'BTC 1-30', filterOn:'sekarang', filterBucket:'P001_030', target:'NOOD', targetLabel:'NOOD', btnClass:'sim-proyeksi-btc',
     desc:'Pilih kontrak yang SEKARANG di Bucket 1-30 dan diproyeksikan ngejar SEMUA tunggakan, balik ke NOOD.' },
   { key:'btc_3160', label:'BTC 31-60', filterOn:'sekarang', filterBucket:'P031_060', target:'NOOD', targetLabel:'NOOD', btnClass:'sim-proyeksi-btc',
@@ -3299,7 +3300,7 @@ function pcCountForStep_(step){
       if(!k) return;
       const bucketVal = step.filterOn === 'awal' ? k.bucketAwal : k.bucketSekarang;
       if(bucketVal !== step.filterBucket) return;
-      if(step.requireUnmoved && k.bucketSekarang !== k.bucketAwal) return;
+      if(step.requireFlowed && k.bucketSekarang !== step.target) return;
     }
     n++;
   });
@@ -3378,23 +3379,19 @@ function pcCompareCard_(label, before, after, dirUp){
   </div>`;
 }
 
-// STATUS BAYAR adalah sinyal ASLI sudah/belum ada pembayaran bulan ini — beda sama KRITERIA ACCT
-// (STAY di KRITERIA ACCT cuma berarti "belum pindah bucket", bisa aja itu KARENA udah bayar sebagian
-// jadi tertahan di bucket yang sama; itu BUKAN "belum bayar"). Pattern sama kaya isPaidRow() di tempat
-// lain di file ini.
-function pcSudahBayar_(k){
-  const u = (k.statusBayar || '').toString().toUpperCase();
-  return u.includes('LUNAS') || u.includes('SUDAH');
-}
+// Dicek langsung ke data MASTER asli: KRITERIA ACCT=STAY SELALU berbarengan dengan STATUS BAYAR=SUDAH
+// BAYAR dan Bucket Sekarang===Bucket Awal (belum pindah sama sekali); KRITERIA ACCT=FLOW SELALU
+// berbarengan dengan STATUS BAYAR=BELUM BAYAR dan Bucket Sekarang pindah TEPAT satu bucket dari Bucket
+// Awal. Jadi cukup bandingkan bucket (bucketSekarang vs target) — gak perlu field lain lagi.
 function getPCStepKontrakFiltered_(step){
   const list = (PC_DATA && PC_DATA.kontrakList) || [];
   let filtered = step.filterBucket
     ? list.filter(k => (step.filterOn === 'awal' ? k.bucketAwal : k.bucketSekarang) === step.filterBucket)
     : list;
-  // Kategori Flow: kandidatnya cuma kontrak yang BELUM bayar bulan ini (bukan sekadar "belum pindah
-  // bucket" — kontrak yang statusnya udah sudah-bayar/lunas bulan ini TIDAK akan flow, jadi gak usah
-  // ditawarkan sebagai kandidat proyeksi flow, meskipun secara bucket dia masih "unmoved").
-  if(step.requireUnmoved) filtered = filtered.filter(k => k.bucketSekarang === k.bucketAwal && !pcSudahBayar_(k));
+  // Kategori Flow: kandidatnya kontrak yang SUDAH pindah TEPAT satu bucket ke target (udah flow bulan
+  // ini, belum realisasi/belum balik ke Bucket Awal) — bukan yang masih diam di Bucket Awal (itu STAY,
+  // udah bayar, bukan kandidat proyeksi flow).
+  if(step.requireFlowed) filtered = filtered.filter(k => k.bucketSekarang === step.target);
   if(pcState.search.trim()){
     const q = pcState.search.trim().toLowerCase();
     filtered = filtered.filter(k => (k.namaKonsumen||'').toLowerCase().includes(q) || (k.noKontrak||'').toLowerCase().includes(q));
