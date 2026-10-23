@@ -188,6 +188,7 @@
   .grand-card .val{line-height:1.15;font-weight:800;margin-top:6px;letter-spacing:-.02em;color:var(--navy);font-variant-numeric:tabular-nums;}
 
   /* ---------- Ringkasan: kartu KPI nominal + persen (Balance / Flow / BTC) ---------- */
+  .rk-fleet-toggle{margin:14px 0 22px;}
   .rk-kpi-wrap{display:flex;flex-direction:column;gap:26px;}
   .rk-kpi-section-title{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:700;color:var(--ink);margin:0 0 12px 2px;}
   .rk-kpi-section-title::before{content:'';width:3px;height:15px;border-radius:2px;background:var(--gold);flex:none;}
@@ -4408,6 +4409,19 @@ function rkKpiCard_(label, amount, count, pctValue, pctCaption, pctClass, subSuf
     <div class="rk-kpi-sub">${count.toLocaleString('id-ID')} kontrak${subSuffix ? ' ' + esc(subSuffix) : ''}</div>
   </div>`;
 }
+function rkFleetToggle_(){
+  return `<div class="pill-toggle rk-fleet-toggle" id="rkFleetToggle" role="group" aria-label="Saring fleet">
+    <button type="button" data-mode="nonfleet" class="${RINGKASAN_FLEET_MODE === 'nonfleet' ? 'active' : ''}">Non-Fleet</button>
+    <button type="button" data-mode="all" class="${RINGKASAN_FLEET_MODE === 'all' ? 'active' : ''}">Semua (+Fleet)</button>
+  </div>`;
+}
+function bindRkFleetToggle_(){
+  document.querySelectorAll('#rkFleetToggle button').forEach(b => b.addEventListener('click', () => {
+    if(b.dataset.mode === RINGKASAN_FLEET_MODE) return;
+    RINGKASAN_FLEET_MODE = b.dataset.mode;
+    renderRingkasanKpi_();
+  }));
+}
 function renderRingkasanKpi_(){
   if(!RINGKASAN_DATA){ document.getElementById('wrap').innerHTML = '<div class="state-box">Memuat ringkasan…</div>'; return; }
   const d = RINGKASAN_DATA[RINGKASAN_FLEET_MODE];
@@ -4423,8 +4437,19 @@ function renderRingkasanKpi_(){
     const isBtc = /^Btc/i.test(r.label);
     return rkKpiCard_(r.label, r.amount, r.count, r.pct, isBtc ? '% kembali' : '% pindah', isBtc ? 'good' : 'warn', isBtc ? 'balik NOOD' : 'pindah bucket');
   }).join('');
+  // Pengaruh Flow per tipe barang: dibungkus <details> (tertutup default) biar tidak memenuhi tempat,
+  // plus toggle Fleet/Non-Fleet di atas supaya pengaruh fleet bisa dicek terpisah tanpa bikin halaman penuh.
+  const flowTipeBlocks = Object.keys(d.flowByTipe || {})
+    .map(key => {
+      const fb = d.flowByTipe[key];
+      if(!fb || !fb.rows.length) return '';
+      return barListSection(key + ' <small>(' + fb.flowCount.toLocaleString('id-ID') + ' kontrak pindah · ' + fmtRupiah(fb.flowAmount) + ')</small>', fb.rows, { gold: true });
+    })
+    .filter(Boolean)
+    .join('');
   document.getElementById('wrap').innerHTML = `
     <div class="rk-report-header"><div class="rk-report-title">${ic('chart')} Ringkasan</div><div class="rk-report-date">Update per: ${esc(fmtDate(RINGKASAN_DATA.generatedAt))}</div></div>
+    ${rkFleetToggle_()}
     <div class="rk-kpi-wrap">
       <div class="rk-kpi-section">
         <div class="rk-kpi-section-title">Balance per Bucket</div>
@@ -4434,7 +4459,12 @@ function renderRingkasanKpi_(){
         <div class="rk-kpi-section-title">Flow &amp; BTC (Back to Current)</div>
         <div class="rk-kpi-grid">${flowCards}</div>
       </div>
+      ${flowTipeBlocks ? `<details class="fold rk-flowtipe">
+        <summary>Pengaruh Flow per Tipe Barang <small>lihat jenis kendaraan yang paling menyumbang flow</small></summary>
+        ${flowTipeBlocks}
+      </details>` : ''}
     </div>`;
+  bindRkFleetToggle_();
 }
 let DASH_TAB = 'actual', DASH_SET = 'NOOD', DASH_FLEET = false;
 function renderRingkasanView(){

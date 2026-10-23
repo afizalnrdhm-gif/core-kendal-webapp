@@ -31,6 +31,24 @@ test('helper bucketIndex dan sipokOf', () => {
   assert.strictEqual(sipokOf({ SIPOK: '1,5' }), 0);
 });
 
+test('hitungKpi: flowByTipe pecah Flow NOOD per TYPE BARANG, urut amount terbesar', () => {
+  const masterTipe = [
+    { 'BUCKET AWAL': 'NOOD', 'BUCKET UPDATE': 'P001_030', SIPOK: 300, 'FLEET/NON FLEET': 'NON FLEET', 'TYPE BARANG': 'motor' },
+    { 'BUCKET AWAL': 'NOOD', 'BUCKET UPDATE': 'P001_030', SIPOK: 100, 'FLEET/NON FLEET': 'NON FLEET', 'TYPE BARANG': 'Motor' },
+    { 'BUCKET AWAL': 'NOOD', 'BUCKET UPDATE': 'P001_030', SIPOK: 150, 'FLEET/NON FLEET': 'NON FLEET', 'TYPE BARANG': 'mobil' },
+    { 'BUCKET AWAL': 'NOOD', 'BUCKET UPDATE': 'P001_030', SIPOK: 200, 'FLEET/NON FLEET': 'FLEET', 'TYPE BARANG': 'mobil' },
+    { 'BUCKET AWAL': 'NOOD', 'BUCKET UPDATE': 'NOOD', SIPOK: 999, 'FLEET/NON FLEET': 'NON FLEET', 'TYPE BARANG': 'mobil' },
+    { 'BUCKET AWAL': 'NOOD', 'BUCKET UPDATE': 'P001_030', SIPOK: 50, 'FLEET/NON FLEET': 'NON FLEET' }
+  ];
+  const fb = hitungKpi(masterTipe, [], false).flowByTipe['Flow NOOD'];
+  assert.strictEqual(fb.flowAmount, 600); // 300+100+150+50, fleet & yang tetap NOOD dibuang
+  assert.strictEqual(fb.flowCount, 4);
+  assert.deepStrictEqual(fb.rows[0], { label: 'MOTOR', amount: 400, count: 2, pct: 400 / 600 * 100 });
+  assert.deepStrictEqual(fb.rows[1], { label: 'MOBIL', amount: 150, count: 1, pct: 150 / 600 * 100 });
+  assert.deepStrictEqual(fb.rows[2], { label: '(Tidak diketahui)', amount: 50, count: 1, pct: 50 / 600 * 100 });
+  assert.strictEqual(hitungKpi(masterTipe, [], true).flowByTipe['Flow NOOD'].flowAmount, 800); // termasuk fleet (mobil +200)
+});
+
 test('isFleet seragam: " Fleet " dianggap fleet', () => {
   const { isFleet } = require('../api/_kpi');
   assert.strictEqual(isFleet({ 'FLEET/NON FLEET': ' Fleet ' }), true);
