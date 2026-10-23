@@ -1363,9 +1363,14 @@
   /* Cari & filter nempel di bawah header (dipakai di semua halaman tabel) biar tidak perlu
      scroll balik ke atas tiap mau cari kontrak — ini langsung menjawab masukan "filter taruh di atas".
      Background dibuat solid (bukan tembus pandang) + bayangan tipis di bawahnya supaya saat discroll
-     terlihat jelas "nempel" rapi di atas, bukan seperti transparan menembus kartu data di baliknya. */
-  .controls{position:sticky;top:68px;z-index:8;background:var(--bg);padding:10px 0 14px;margin:0 0 4px;box-shadow:0 10px 18px -14px rgba(10,20,30,.3);}
-  @media (max-width:900px){ .controls{top:72px;} }
+     terlihat jelas "nempel" rapi di atas, bukan seperti transparan menembus kartu data di baliknya.
+     Catatan penting: top bar biru di HP otomatis sembunyi saat gulir ke bawah (lihat .mobile-topbar.m-hide
+     di script bawah), tapi jarak sticky ini (68/72px) awalnya dihitung seolah-olah top bar itu SELALU ada.
+     Begitu top bar hilang, celah itu jadi "bolong" dan menampakkan ekor kartu yang lagi discroll di
+     baliknya — itu sebabnya terasa tembus. Class .ctl-top0 (ditambah/dilepas bareng .m-hide lewat JS)
+     menutup celah itu dengan menggeser kotak ini balik ke top:0 persis saat top bar ikut hilang. */
+  .controls{position:sticky;top:68px;z-index:8;background:var(--bg);padding:10px 0 14px;margin:0 0 4px;box-shadow:0 10px 18px -14px rgba(10,20,30,.3);transition:top .25s ease;}
+  @media (max-width:900px){ .controls{top:72px;} .controls.ctl-top0{top:0;} }
 
   /* =====================================================================
      V9 — STRUKTUR NAVIGASI & TRANSISI: sidebar bisa diciutkan, menu
@@ -5751,6 +5756,11 @@ document.getElementById('overlay').onclick = document.getElementById('panelClose
           if(y > lastY + 8 && y > 140) tb.classList.add('m-hide');
           else if(y < lastY - 6 || y < 60) tb.classList.remove('m-hide');
         } else tb.classList.remove('m-hide');
+        // Kotak cari/filter (.controls) sticky-nya ngasih jarak dari atas seolah top bar selalu ada.
+        // Begitu top bar ikut hilang (m-hide), geser .controls balik ke top:0 juga, biar tidak ada
+        // celah kosong yang menampakkan kartu data di baliknya — lihat catatan di CSS .controls.
+        const ctl = document.querySelector('#wrap .controls');
+        if(ctl) ctl.classList.toggle('ctl-top0', tb.classList.contains('m-hide'));
       }
       lastY = y;
     });
