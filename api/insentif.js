@@ -109,7 +109,7 @@ function hitungFE(masterList, petaKA, configRows) {
     const nilaiFlowNoOD = tieringFlowNoOD(flowNoODPct);
     const totalNilai = nilaiBalance + nilaiFlowEver + nilaiFlowNoOD;
     const kategori = kategoriRapor(totalNilai);
-    return { namaCO, role: 'FE', balancePct, flowEverPct, flowNoODPct, totalNilai, kategori, insentif: insentifRapor(kategori), totalAwal, flowEverEscaped };
+    return { namaCO, role: 'FE', balancePct, flowEverPct, flowNoODPct, nilaiBalance, nilaiFlowEver, nilaiFlowNoOD, totalNilai, kategori, insentif: insentifRapor(kategori), totalAwal, flowEverEscaped };
   });
 }
 
@@ -151,7 +151,7 @@ function hitungMR(masterList, petaKA, configRows) {
     const nilaiFlow = tieringFlow01_30(flowPct);
     const totalNilai = nilaiBalance + nilaiFlowEver + nilaiFlow;
     const kategori = kategoriRapor(totalNilai);
-    return { namaCO, role: 'MR', balancePct, flowEverPct, flowPct, totalNilai, kategori, insentif: insentifRapor(kategori), totalAwal, flowEverEscaped };
+    return { namaCO, role: 'MR', balancePct, flowEverPct, flowPct, nilaiBalance, nilaiFlowEver, nilaiFlow, totalNilai, kategori, insentif: insentifRapor(kategori), totalAwal, flowEverEscaped };
   });
 }
 
@@ -188,7 +188,7 @@ function hitungBCH(masterList, petaKA, configRows) {
   const nilaiBalance = tieringBalance1_60_BCH(balancePct);
   const totalNilai = nilaiFlowEver + nilaiFlowForward + nilaiBalance;
   const kategori = kategoriRapor(totalNilai);
-  return { namaCO, role: 'BCH', flowEverPct, flowForwardPct, balancePct, totalNilai, kategori, insentif: insentifRaporBCH(kategori), totalAwal, flowEverEscaped };
+  return { namaCO, role: 'BCH', flowEverPct, flowForwardPct, balancePct, nilaiFlowEver, nilaiFlowForward, nilaiBalance, totalNilai, kategori, insentif: insentifRaporBCH(kategori), totalAwal, flowEverEscaped };
 }
 
 // ============================================================
