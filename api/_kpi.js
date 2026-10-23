@@ -11,24 +11,31 @@ function isFleet(row) { return String(row && row['FLEET/NON FLEET'] != null ? ro
 function sisaOf(k) { return typeof k['SISA PIUTANG'] === 'number' && isFinite(k['SISA PIUTANG']) ? k['SISA PIUTANG'] : 0; }
 function tipeBarangOf(m) { return String(m && m['TYPE BARANG'] != null ? m['TYPE BARANG'] : '').trim().toUpperCase() || '(Tidak diketahui)'; }
 
-// Pecah satu transisi Flow (SIPOK bucket awal `asal` yang BUCKET UPDATE-nya sudah `target`) per TYPE BARANG,
-// supaya kelihatan jenis kendaraan apa yang paling menyumbang pergeseran bucket itu.
+// Pecah pemberat satu angka Flow (mis. Flow NOOD 21,0%) per TYPE BARANG: dari seluruh SIPOK bucket awal
+// `asal` (basis skala PERSIS sama seperti flowStat di bawah — totalAsal, bukan cuma yang flow), berapa
+// persen disumbang tiap tipe barang yang sudah pindah ke `target`. Jumlah pct semua baris = flowPct =
+// angka Flow yang tampil di kartu KPI, jadi langsung kelihatan mobil/motor masing-masing "nyumbang" berapa
+// persen dari pelebaran itu — bukan sekadar porsi di antara yang sudah flow (yang selalu jumlah 100%).
 function flowByTipe_(masterRows, asal, target, includeFleet) {
   const passFleet = (row) => includeFleet || !isFleet(row);
+  let totalAsal = 0;
   const perTipe = {};
   let flowAmount = 0, flowCount = 0;
   (masterRows || []).forEach(m => {
-    if (!passFleet(m) || m['BUCKET AWAL'] !== asal || m['BUCKET UPDATE'] !== target) return;
+    if (!passFleet(m) || m['BUCKET AWAL'] !== asal) return;
     const sipok = sipokOf(m);
-    const tipe = tipeBarangOf(m);
-    if (!perTipe[tipe]) perTipe[tipe] = { amount: 0, count: 0 };
-    perTipe[tipe].amount += sipok; perTipe[tipe].count += 1;
-    flowAmount += sipok; flowCount += 1;
+    totalAsal += sipok;
+    if (m['BUCKET UPDATE'] === target) {
+      const tipe = tipeBarangOf(m);
+      if (!perTipe[tipe]) perTipe[tipe] = { amount: 0, count: 0 };
+      perTipe[tipe].amount += sipok; perTipe[tipe].count += 1;
+      flowAmount += sipok; flowCount += 1;
+    }
   });
   const rows = Object.keys(perTipe)
-    .map(tipe => ({ label: tipe, amount: perTipe[tipe].amount, count: perTipe[tipe].count, pct: flowAmount > 0 ? perTipe[tipe].amount / flowAmount * 100 : 0 }))
+    .map(tipe => ({ label: tipe, amount: perTipe[tipe].amount, count: perTipe[tipe].count, pct: totalAsal > 0 ? perTipe[tipe].amount / totalAsal * 100 : 0 }))
     .sort((a, b) => b.amount - a.amount);
-  return { flowAmount, flowCount, rows };
+  return { flowAmount, flowCount, totalAsal, flowPct: totalAsal > 0 ? flowAmount / totalAsal * 100 : 0, rows };
 }
 
 function hitungKpi(masterRows, kaRows, includeFleet) {

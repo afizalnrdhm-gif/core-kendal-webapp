@@ -4439,11 +4439,15 @@ function renderRingkasanKpi_(){
   }).join('');
   // Pengaruh Flow per tipe barang: dibungkus <details> (tertutup default) biar tidak memenuhi tempat,
   // plus toggle Fleet/Non-Fleet di atas supaya pengaruh fleet bisa dicek terpisah tanpa bikin halaman penuh.
+  // Pct per baris = kontribusi tipe itu ke ANGKA FLOW keseluruhan (basis sama seperti kartu KPI di atas),
+  // jadi kalau dijumlah semua baris, hasilnya = persen Flow yang tampil di kartu — bukan sekadar porsi
+  // di antara yang sudah pindah (yang pasti selalu 100%).
   const flowTipeBlocks = Object.keys(d.flowByTipe || {})
     .map(key => {
       const fb = d.flowByTipe[key];
       if(!fb || !fb.rows.length) return '';
-      return barListSection(key + ' <small>(' + fb.flowCount.toLocaleString('id-ID') + ' kontrak pindah · ' + fmtRupiah(fb.flowAmount) + ')</small>', fb.rows, { gold: true });
+      const judul = key + ' <small>— pemberat ' + fmtDec(fb.flowPct,1) + '% dibedah per tipe barang (' + fb.flowCount.toLocaleString('id-ID') + ' kontrak · ' + fmtRupiah(fb.flowAmount) + ')</small>';
+      return barListSection(judul, fb.rows, { gold: true });
     })
     .filter(Boolean)
     .join('');
