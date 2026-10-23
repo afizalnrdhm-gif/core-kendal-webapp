@@ -4454,7 +4454,7 @@ function rkKpiCard_(label, amount, count, pctValue, pctCaption, pctClass, subSuf
     <div class="rk-kpi-stats">
       <div class="rk-kpi-stat"><span class="cap">Nominal</span><span class="val">${fmtRupiah(amount)}</span></div>
       <div class="rk-kpi-divider"></div>
-      <div class="rk-kpi-stat pct ${pctClass || ''}"><span class="cap">${esc(pctCaption)}</span><span class="val">${fmtDec(pctValue,1)}%</span></div>
+      <div class="rk-kpi-stat pct ${pctClass || ''}"><span class="cap">${esc(pctCaption)}</span><span class="val">${fmtDec(pctValue,2)}%</span></div>
     </div>
     <div class="rk-kpi-sub">${count.toLocaleString('id-ID')} kontrak${subSuffix ? ' ' + esc(subSuffix) : ''}</div>
   </div>`;
