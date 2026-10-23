@@ -57,6 +57,11 @@ function daftarKontrakCabang(masterRows, kaRows) {
       bucketSekarang,
       sisaPiutang: ka && typeof ka['SISA PIUTANG'] === 'number' ? ka['SISA PIUTANG'] : sipokOf(m),
       kriteriaAcct: m['KRITERIA ACCT'] || null,
+      // STATUS BAYAR beda sama KRITERIA ACCT: KRITERIA ACCT cuma soal pindah bucket apa nggak (STAY
+      // bisa aja artinya belum pindah TAPI udah ada pembayaran bulan ini — makanya dia "tertahan" di
+      // bucket yang sama). Field ini yang jadi sinyal asli belum/sudah ada pembayaran, dipakai buat
+      // nyaring kandidat Flow (lihat getPCStepKontrakFiltered_ & pcSudahBayar_ di index.html).
+      statusBayar: m['STATUS BAYAR'] || null,
       coAll: m['CO ALL'] || null,
       fleet: isFleet(m)
     });
