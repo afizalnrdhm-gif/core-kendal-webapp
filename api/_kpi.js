@@ -9,6 +9,27 @@ function bucketIndex(b) { return BUCKET_ORDER.indexOf(String(b == null ? '' : b)
 function sipokOf(m) { return typeof m['SIPOK'] === 'number' && isFinite(m['SIPOK']) ? m['SIPOK'] : 0; }
 function isFleet(row) { return String(row && row['FLEET/NON FLEET'] != null ? row['FLEET/NON FLEET'] : '').trim().toUpperCase() === 'FLEET'; }
 function sisaOf(k) { return typeof k['SISA PIUTANG'] === 'number' && isFinite(k['SISA PIUTANG']) ? k['SISA PIUTANG'] : 0; }
+function tipeBarangOf(m) { return String(m && m['TYPE BARANG'] != null ? m['TYPE BARANG'] : '').trim().toUpperCase() || '(Tidak diketahui)'; }
+
+// Pecah satu transisi Flow (SIPOK bucket awal `asal` yang BUCKET UPDATE-nya sudah `target`) per TYPE BARANG,
+// supaya kelihatan jenis kendaraan apa yang paling menyumbang pergeseran bucket itu.
+function flowByTipe_(masterRows, asal, target, includeFleet) {
+  const passFleet = (row) => includeFleet || !isFleet(row);
+  const perTipe = {};
+  let flowAmount = 0, flowCount = 0;
+  (masterRows || []).forEach(m => {
+    if (!passFleet(m) || m['BUCKET AWAL'] !== asal || m['BUCKET UPDATE'] !== target) return;
+    const sipok = sipokOf(m);
+    const tipe = tipeBarangOf(m);
+    if (!perTipe[tipe]) perTipe[tipe] = { amount: 0, count: 0 };
+    perTipe[tipe].amount += sipok; perTipe[tipe].count += 1;
+    flowAmount += sipok; flowCount += 1;
+  });
+  const rows = Object.keys(perTipe)
+    .map(tipe => ({ label: tipe, amount: perTipe[tipe].amount, count: perTipe[tipe].count, pct: flowAmount > 0 ? perTipe[tipe].amount / flowAmount * 100 : 0 }))
+    .sort((a, b) => b.amount - a.amount);
+  return { flowAmount, flowCount, rows };
+}
 
 function hitungKpi(masterRows, kaRows, includeFleet) {
   const passFleet = (row) => includeFleet || !isFleet(row);
@@ -50,7 +71,12 @@ function hitungKpi(masterRows, kaRows, includeFleet) {
     { label: 'Btc 01-30', ...flowStat('P001_030', 'NOOD') },
     { label: 'Btc 31-60', ...flowStat('P031_060', 'NOOD') }
   ];
-  return { enr, enrCount, perBucket, cumulative, flowBtc };
+  const flowByTipe = {
+    'Flow NOOD': flowByTipe_(masterRows, 'NOOD', 'P001_030', includeFleet),
+    'Flow 1-30': flowByTipe_(masterRows, 'P001_030', 'P031_060', includeFleet),
+    'Flow 31-60': flowByTipe_(masterRows, 'P031_060', 'P061_090', includeFleet)
+  };
+  return { enr, enrCount, perBucket, cumulative, flowBtc, flowByTipe };
 }
 
 // Flow "lebar": kontrak bucket awal `awal` yang BUCKET UPDATE-nya lebih buruk (bucket mana pun). Dasar penyelesaian = 100 - pct.
