@@ -418,17 +418,20 @@
   .ins-total-card .ins-metric .mlabel{color:var(--hero-soft);}
   .ins-total-card .ins-metric .mval{color:#fff;}
   @media (max-width:680px){
-    .ins-row{grid-template-columns:1fr 1fr;gap:10px;}
-    .ins-card{padding:12px 13px;}
-    .ins-card .ihead{flex-direction:column;align-items:flex-start;gap:6px;margin-bottom:8px;}
-    .ins-card .iname{font-size:13px;}
-    .ins-card .irole{font-size:11px;}
-    .kategori-pill{font-size:9.5px;padding:2px 7px;}
-    .ins-nilai{font-size:19px;margin:6px 0 2px;}
-    .ins-insentif{font-size:13px;}
-    .ins-metric{font-size:11px;padding:6px 0;}
-    .ins-metric .mval{display:flex;flex-direction:column;align-items:flex-end;gap:1px;font-size:11px;}
-    .ins-metric .mval .mpoin{margin-left:0;font-size:9.5px;}
+    /* Cuma Achievement Harian (FE/MR/BCH) yang dipadatkan jadi grid 2 kolom;
+       kartu lain (Insentif Penyelesaian, Total Insentif) tetap 1 kolom penuh
+       karena isinya lebih panjang (daftar rekomendasi, dll). */
+    .ins-row-achv{grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;}
+    .ins-card-achv{padding:12px 13px;}
+    .ins-card-achv .ihead{flex-direction:column;align-items:flex-start;gap:6px;margin-bottom:8px;}
+    .ins-card-achv .iname{font-size:13px;}
+    .ins-card-achv .irole{font-size:11px;}
+    .ins-card-achv .kategori-pill{font-size:9.5px;padding:2px 7px;}
+    .ins-card-achv .ins-nilai{font-size:19px;margin:6px 0 2px;}
+    .ins-card-achv .ins-insentif{font-size:13px;}
+    .ins-card-achv .ins-metric{font-size:11px;padding:6px 0;}
+    .ins-card-achv .ins-metric .mval{display:flex;flex-direction:column;align-items:flex-end;gap:1px;font-size:11px;}
+    .ins-card-achv .ins-metric .mval .mpoin{margin-left:0;font-size:9.5px;}
   }
   .ins-total-card .ins-nilai{color:#fff;}
   .ins-total-card .ins-insentif{color:#8FE3B6;}
@@ -2805,7 +2808,7 @@ function mvalPoin_(poin){ return typeof poin === 'number' ? `<span class="mpoin"
 function achievementCard(h, extraLabel, extraKey){
   const extraNilaiKey = nilaiKeyFor_(extraKey);
   return `
-  <div class="ins-card">
+  <div class="ins-card ins-card-achv">
     <div class="ihead">
       <div><div class="iname">${esc(h.namaCO)}</div><div class="irole">${esc(h.role)}</div></div>
       <span class="kategori-pill ${katClass(h.kategori)}">${h.kategori}</span>
@@ -2858,10 +2861,10 @@ function renderInsentifView(){
   let html = '';
 
   if(d.isAdmin){
-    html += `<div class="ins-section"><h2>Achievement Harian — Front End (FE)</h2><div class="ins-row">${d.achievement.FE.map(h=>achievementCard(h,'Flow No OD','flowNoODPct')).join('')}</div></div>`;
-    html += `<div class="ins-section"><h2>Achievement Harian — Mid Range (MR)</h2><div class="ins-row">${d.achievement.MR.map(h=>achievementCard(h,'Flow 1-30','flowPct')).join('')}</div></div>`;
+    html += `<div class="ins-section"><h2>Achievement Harian — Front End (FE)</h2><div class="ins-row ins-row-achv">${d.achievement.FE.map(h=>achievementCard(h,'Flow No OD','flowNoODPct')).join('')}</div></div>`;
+    html += `<div class="ins-section"><h2>Achievement Harian — Mid Range (MR)</h2><div class="ins-row ins-row-achv">${d.achievement.MR.map(h=>achievementCard(h,'Flow 1-30','flowPct')).join('')}</div></div>`;
     if(d.achievement.BCH){
-      html += `<div class="ins-section"><h2>Achievement Harian — Branch Collection Head (BCH)</h2><div class="ins-row">${achievementCard(d.achievement.BCH,'Flow Forward 31-60','flowForwardPct')}</div></div>`;
+      html += `<div class="ins-section"><h2>Achievement Harian — Branch Collection Head (BCH)</h2><div class="ins-row ins-row-achv">${achievementCard(d.achievement.BCH,'Flow Forward 31-60','flowForwardPct')}</div></div>`;
     }
     html += `<div class="ins-section"><h2>Insentif Penyelesaian — Minggu ${d.minggu}</h2><div class="ins-row">${d.penyelesaian.map(p=>penyelesaianCard(p)).join('')}</div></div>`;
     if(d.totalInsentif && d.totalInsentif.length){
