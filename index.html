@@ -3256,12 +3256,12 @@ let pcState = { search:'', limit:20, step:'flow_nood', proyeksi: new Map(), plan
 // Tiap kategori = satu tahap pemilihan kontrak dengan kandidat (filterBucket) & target bucket TETAP.
 // filterBucket null artinya kandidatnya SEMUA kontrak (dipakai buat Lunas).
 const PC_STEPS = [
-  { key:'flow_nood', label:'Flow NOOD', filterBucket:'NOOD', target:'P001_030', targetLabel:'Bucket 1-30', btnClass:'sim-proyeksi-stay',
-    desc:'Pilih kontrak di Bucket NOOD yang diproyeksikan TELAT dan pindah ke Bucket 1-30.' },
-  { key:'flow_130', label:'Flow 1-30', filterBucket:'P001_030', target:'P031_060', targetLabel:'Bucket 31-60', btnClass:'sim-proyeksi-stay',
-    desc:'Pilih kontrak di Bucket 1-30 yang diproyeksikan makin telat, pindah ke Bucket 31-60.' },
-  { key:'flow_3160', label:'Flow 31-60', filterBucket:'P031_060', target:'P061_090', targetLabel:'Bucket 61-90', btnClass:'sim-proyeksi-stay',
-    desc:'Pilih kontrak di Bucket 31-60 yang diproyeksikan makin telat, pindah ke Bucket 61-90.' },
+  { key:'flow_nood', label:'Flow NOOD', filterBucket:'NOOD', requireFlow:true, target:'P001_030', targetLabel:'Bucket 1-30', btnClass:'sim-proyeksi-stay',
+    desc:'Pilih kontrak di Bucket NOOD yang BELUM realisasi (masih FLOW) dan diproyeksikan TELAT pindah ke Bucket 1-30. Kontrak yang sudah bayar/STAY gak ditampilkan — itu bukan kandidat flow.' },
+  { key:'flow_130', label:'Flow 1-30', filterBucket:'P001_030', requireFlow:true, target:'P031_060', targetLabel:'Bucket 31-60', btnClass:'sim-proyeksi-stay',
+    desc:'Pilih kontrak di Bucket 1-30 yang BELUM realisasi (masih FLOW) dan diproyeksikan makin telat, pindah ke Bucket 31-60. Kontrak yang sudah bayar/STAY gak ditampilkan.' },
+  { key:'flow_3160', label:'Flow 31-60', filterBucket:'P031_060', requireFlow:true, target:'P061_090', targetLabel:'Bucket 61-90', btnClass:'sim-proyeksi-stay',
+    desc:'Pilih kontrak di Bucket 31-60 yang BELUM realisasi (masih FLOW) dan diproyeksikan makin telat, pindah ke Bucket 61-90. Kontrak yang sudah bayar/STAY gak ditampilkan.' },
   { key:'btc_130', label:'BTC 1-30', filterBucket:'P001_030', target:'NOOD', targetLabel:'NOOD', btnClass:'sim-proyeksi-btc',
     desc:'Pilih kontrak di Bucket 1-30 yang diproyeksikan ngejar SEMUA tunggakan, balik ke NOOD.' },
   { key:'btc_3160', label:'BTC 31-60', filterBucket:'P031_060', target:'NOOD', targetLabel:'NOOD', btnClass:'sim-proyeksi-btc',
@@ -3366,6 +3366,9 @@ function pcCompareCard_(label, before, after, dirUp){
 function getPCStepKontrakFiltered_(step){
   const list = (PC_DATA && PC_DATA.kontrakList) || [];
   let filtered = step.filterBucket ? list.filter(k => k.bucketSekarang === step.filterBucket) : list;
+  // Kategori Flow (belum realisasi) cuma relevan buat kontrak yang MASIH aktif flow (Kriteria Acct
+  // = FLOW) — kontrak yang udah bayar/STAY (berhenti flow) bukan kandidat "diproyeksikan telat".
+  if(step.requireFlow) filtered = filtered.filter(k => k.kriteriaAcct === 'FLOW');
   if(pcState.search.trim()){
     const q = pcState.search.trim().toLowerCase();
     filtered = filtered.filter(k => (k.namaKonsumen||'').toLowerCase().includes(q) || (k.noKontrak||'').toLowerCase().includes(q));
