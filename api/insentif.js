@@ -215,7 +215,9 @@ const TABEL_BATAS = {
 
 function hitungPenyelesaianSemua(masterList, configRows) {
   const minggu = getMingguSekarang();
-  return configRows.map(cfg => {
+  // Hanya role dengan target insentif penyelesaian (FE/MR/BCH). Role lain (mis. DESKCALL) tidak
+  // punya tabel/target sendiri dan tidak seharusnya tampil di kartu Insentif Penyelesaian.
+  return configRows.filter(cfg => ['FE', 'MR', 'BCH'].includes(cfg['ROLE'])).map(cfg => {
     const role = cfg['ROLE'];
     const namaCO = cfg['NAMA_CO'];
     const bucketSet = (cfg['BUCKET_PENYELESAIAN'] || '').split(',').map(s => s.trim());
