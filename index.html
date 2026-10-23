@@ -3255,20 +3255,29 @@ let pcState = { search:'', limit:20, step:'flow_nood', proyeksi: new Map(), plan
 
 // Tiap kategori = satu tahap pemilihan kontrak dengan kandidat (filterBucket) & target bucket TETAP.
 // filterBucket null artinya kandidatnya SEMUA kontrak (dipakai buat Lunas).
+// filterOn menentukan field mana yang dicocokkan ke filterBucket:
+//  'awal'     -> Bucket Awal (dipakai kategori Flow — definisinya PERSIS sama seperti flowStat()
+//                di api/_kpi.js: basis-nya kontrak dengan BUCKET AWAL = bucket itu, bukan posisi
+//                sekarang). requireUnmoved:true nambahin syarat kontraknya BELUM pindah bulan ini
+//                (Bucket Sekarang masih sama persis dengan Bucket Awal) — yang udah kadung pindah
+//                berarti udah "realisasi"/kehitung, bukan kandidat proyeksi lagi.
+//  'sekarang' -> Bucket Sekarang/KA HARIAN (dipakai BTC & Rollback — di situ yang diubah memang
+//                posisi SEKARANG kontrak, apapun Bucket Awal-nya, karena Balance/Delq yang dihitung
+//                Proyeksi Cabang basisnya posisi sekarang, bukan Bucket Awal).
 const PC_STEPS = [
-  { key:'flow_nood', label:'Flow NOOD', filterBucket:'NOOD', requireFlow:true, target:'P001_030', targetLabel:'Bucket 1-30', btnClass:'sim-proyeksi-stay',
-    desc:'Pilih kontrak di Bucket NOOD yang BELUM realisasi (masih FLOW) dan diproyeksikan TELAT pindah ke Bucket 1-30. Kontrak yang sudah bayar/STAY gak ditampilkan — itu bukan kandidat flow.' },
-  { key:'flow_130', label:'Flow 1-30', filterBucket:'P001_030', requireFlow:true, target:'P031_060', targetLabel:'Bucket 31-60', btnClass:'sim-proyeksi-stay',
-    desc:'Pilih kontrak di Bucket 1-30 yang BELUM realisasi (masih FLOW) dan diproyeksikan makin telat, pindah ke Bucket 31-60. Kontrak yang sudah bayar/STAY gak ditampilkan.' },
-  { key:'flow_3160', label:'Flow 31-60', filterBucket:'P031_060', requireFlow:true, target:'P061_090', targetLabel:'Bucket 61-90', btnClass:'sim-proyeksi-stay',
-    desc:'Pilih kontrak di Bucket 31-60 yang BELUM realisasi (masih FLOW) dan diproyeksikan makin telat, pindah ke Bucket 61-90. Kontrak yang sudah bayar/STAY gak ditampilkan.' },
-  { key:'btc_130', label:'BTC 1-30', filterBucket:'P001_030', target:'NOOD', targetLabel:'NOOD', btnClass:'sim-proyeksi-btc',
-    desc:'Pilih kontrak di Bucket 1-30 yang diproyeksikan ngejar SEMUA tunggakan, balik ke NOOD.' },
-  { key:'btc_3160', label:'BTC 31-60', filterBucket:'P031_060', target:'NOOD', targetLabel:'NOOD', btnClass:'sim-proyeksi-btc',
-    desc:'Pilih kontrak di Bucket 31-60 yang diproyeksikan ngejar SEMUA tunggakan, balik ke NOOD.' },
-  { key:'rollback_3160', label:'Rollback 31-60', filterBucket:'P031_060', target:'P001_030', targetLabel:'Bucket 1-30', btnClass:'sim-proyeksi-btc',
-    desc:'Pilih kontrak di Bucket 31-60 yang diproyeksikan membaik SEBAGIAN, balik ke Bucket 1-30 (belum sampai NOOD).' },
-  { key:'lunas', label:'Lunas', filterBucket:null, target:'LUNAS', targetLabel:'Lunas', btnClass:'sim-proyeksi-lunas',
+  { key:'flow_nood', label:'Flow NOOD', filterOn:'awal', filterBucket:'NOOD', requireUnmoved:true, target:'P001_030', targetLabel:'Bucket 1-30', btnClass:'sim-proyeksi-stay',
+    desc:'Pilih kontrak dengan Bucket Awal NOOD yang BELUM bayar/pindah bulan ini (masih nunggak di NOOD) dan diproyeksikan TELAT, pindah ke Bucket 1-30.' },
+  { key:'flow_130', label:'Flow 1-30', filterOn:'awal', filterBucket:'P001_030', requireUnmoved:true, target:'P031_060', targetLabel:'Bucket 31-60', btnClass:'sim-proyeksi-stay',
+    desc:'Pilih kontrak dengan Bucket Awal 1-30 yang BELUM bayar/pindah bulan ini (masih nunggak di 1-30) dan diproyeksikan makin telat, pindah ke Bucket 31-60.' },
+  { key:'flow_3160', label:'Flow 31-60', filterOn:'awal', filterBucket:'P031_060', requireUnmoved:true, target:'P061_090', targetLabel:'Bucket 61-90', btnClass:'sim-proyeksi-stay',
+    desc:'Pilih kontrak dengan Bucket Awal 31-60 yang BELUM bayar/pindah bulan ini (masih nunggak di 31-60) dan diproyeksikan makin telat, pindah ke Bucket 61-90.' },
+  { key:'btc_130', label:'BTC 1-30', filterOn:'sekarang', filterBucket:'P001_030', target:'NOOD', targetLabel:'NOOD', btnClass:'sim-proyeksi-btc',
+    desc:'Pilih kontrak yang SEKARANG di Bucket 1-30 dan diproyeksikan ngejar SEMUA tunggakan, balik ke NOOD.' },
+  { key:'btc_3160', label:'BTC 31-60', filterOn:'sekarang', filterBucket:'P031_060', target:'NOOD', targetLabel:'NOOD', btnClass:'sim-proyeksi-btc',
+    desc:'Pilih kontrak yang SEKARANG di Bucket 31-60 dan diproyeksikan ngejar SEMUA tunggakan, balik ke NOOD.' },
+  { key:'rollback_3160', label:'Rollback 31-60', filterOn:'sekarang', filterBucket:'P031_060', target:'P001_030', targetLabel:'Bucket 1-30', btnClass:'sim-proyeksi-btc',
+    desc:'Pilih kontrak yang SEKARANG di Bucket 31-60 dan diproyeksikan membaik SEBAGIAN, balik ke Bucket 1-30 (belum sampai NOOD).' },
+  { key:'lunas', label:'Lunas', filterOn:null, filterBucket:null, target:'LUNAS', targetLabel:'Lunas', btnClass:'sim-proyeksi-lunas',
     desc:'Pilih kontrak (bucket manapun, belum lunas) yang diproyeksikan LUNAS total dan keluar dari buku piutang.' }
 ];
 const PC_TARGET_LABEL = { NOOD:'NOOD', P001_030:'Bucket 1-30', P031_060:'Bucket 31-60', P061_090:'Bucket 61-90', LUNAS:'Lunas' };
@@ -3284,7 +3293,10 @@ function pcCountForStep_(step){
     if(target !== step.target) return;
     if(step.filterBucket){
       const k = PC_DATA.kontrakList.find(x => x.noKontrak === noKontrak);
-      if(!k || k.bucketSekarang !== step.filterBucket) return;
+      if(!k) return;
+      const bucketVal = step.filterOn === 'awal' ? k.bucketAwal : k.bucketSekarang;
+      if(bucketVal !== step.filterBucket) return;
+      if(step.requireUnmoved && k.bucketSekarang !== k.bucketAwal) return;
     }
     n++;
   });
@@ -3365,10 +3377,13 @@ function pcCompareCard_(label, before, after, dirUp){
 
 function getPCStepKontrakFiltered_(step){
   const list = (PC_DATA && PC_DATA.kontrakList) || [];
-  let filtered = step.filterBucket ? list.filter(k => k.bucketSekarang === step.filterBucket) : list;
-  // Kategori Flow (belum realisasi) cuma relevan buat kontrak yang MASIH aktif flow (Kriteria Acct
-  // = FLOW) — kontrak yang udah bayar/STAY (berhenti flow) bukan kandidat "diproyeksikan telat".
-  if(step.requireFlow) filtered = filtered.filter(k => k.kriteriaAcct === 'FLOW');
+  let filtered = step.filterBucket
+    ? list.filter(k => (step.filterOn === 'awal' ? k.bucketAwal : k.bucketSekarang) === step.filterBucket)
+    : list;
+  // Kategori Flow: kandidatnya cuma kontrak yang BELUM pindah bulan ini (Bucket Sekarang masih sama
+  // persis dengan Bucket Awal) — yang udah kadung pindah berarti udah "realisasi"/sudah kehitung di
+  // KPI Flow, bukan kandidat proyeksi tambahan lagi.
+  if(step.requireUnmoved) filtered = filtered.filter(k => k.bucketSekarang === k.bucketAwal);
   if(pcState.search.trim()){
     const q = pcState.search.trim().toLowerCase();
     filtered = filtered.filter(k => (k.namaKonsumen||'').toLowerCase().includes(q) || (k.noKontrak||'').toLowerCase().includes(q));
@@ -3391,13 +3406,15 @@ function renderProyeksiCabang(){
     masih rencana. Nominal ini otomatis masuk Bucket NOOD dan ikut jadi pembagi (ENR), jadi efeknya Balance
     NOOD naik dan Balance 1-30/31-60/Delq 30+ ikut terdilusi turun, walau nominal macetnya sendiri gak
     berubah sama sekali.<br>
-    • <b>Pilih kontrak per kategori</b> — jalan tahap demi tahap lewat tab di bawah: <b>Flow NOOD</b> (kontrak
-    NOOD yang diproyeksikan telat ke 1-30), <b>Flow 1-30</b> &amp; <b>Flow 31-60</b> (makin telat ke bucket
-    berikutnya), <b>BTC 1-30</b> &amp; <b>BTC 31-60</b> (ngejar balik total ke NOOD), <b>Rollback 31-60</b>
-    (membaik sebagian, balik ke 1-30 belum sampai NOOD), lalu <b>Lunas</b> (keluar total dari buku). Satu
-    kontrak cuma bisa punya SATU proyeksi aktif — kalau dipilih lagi di kategori lain, proyeksinya pindah
-    ke situ. Setelah semua kategori yang relevan dipilih, klik <b>Hitung Proyeksi</b> (tombolnya selalu
-    kelihatan di atas tab, gak perlu ganti-ganti tab dulu).
+    • <b>Pilih kontrak per kategori</b> — jalan tahap demi tahap lewat tab di bawah. <b>Flow NOOD/1-30/31-60</b>
+    basisnya <u>Bucket Awal</u> (persis seperti rumus Flow di Ringkasan): kontrak yang mulai bulan ini di
+    bucket itu dan BELUM pindah sama sekali (belum bayar), diproyeksikan bakal telat pindah ke bucket
+    berikutnya. <b>BTC 1-30/31-60</b> &amp; <b>Rollback 31-60</b> basisnya posisi <u>Sekarang</u>: kontrak
+    yang sekarang ada di bucket itu (apapun Bucket Awal-nya) diproyeksikan membaik — BTC balik total ke
+    NOOD, Rollback cuma balik satu tingkat ke 1-30. Lalu <b>Lunas</b> (kontrak bucket manapun, keluar total
+    dari buku). Satu kontrak cuma bisa punya SATU proyeksi aktif — kalau dipilih lagi di kategori lain,
+    proyeksinya pindah ke situ. Setelah semua kategori yang relevan dipilih, klik <b>Hitung Proyeksi</b>
+    (tombolnya selalu kelihatan di atas tab, gak perlu ganti-ganti tab dulu).
   </div></details>`;
 
   html += `<div class="pc-plansales-card">
