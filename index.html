@@ -4354,13 +4354,13 @@ function flowTipeTable_(d){
   const cellHtml = (k, tipe) => {
     const r = d.flowByTipe[k].rows.find(x => x.label === tipe);
     if(!r) return '<td><span class="rk-ft-cell rk-ft-empty">-</span></td>';
-    return `<td><span class="rk-ft-cell"><span class="rk-ft-pct">${fmtDec(r.pct,1)}%</span><span class="rk-ft-amt">${tdRp(r.amount)}</span></span></td>`;
+    return `<td><span class="rk-ft-cell"><span class="rk-ft-pct">${fmtDec(r.pct,2)}%</span><span class="rk-ft-amt">${tdRp(r.amount)}</span></span></td>`;
   };
   const head = `<tr><th>Tipe Barang</th>${keys.map(k => `<th>${esc(RK_FLOWTIPE_LABEL[k] || k)}</th>`).join('')}</tr>`;
   const body = tipeList.map(tipe => `<tr><td>${esc(tipe)}</td>${keys.map(k => cellHtml(k, tipe)).join('')}</tr>`).join('');
   const total = `<tr class="rk-ft-total"><td>Total Flow</td>${keys.map(k => {
     const fb = d.flowByTipe[k];
-    return `<td><span class="rk-ft-cell"><span class="rk-ft-pct">${fmtDec(fb.flowPct,1)}%</span><span class="rk-ft-amt">${tdRp(fb.flowAmount)}</span></span></td>`;
+    return `<td><span class="rk-ft-cell"><span class="rk-ft-pct">${fmtDec(fb.flowPct,2)}%</span><span class="rk-ft-amt">${tdRp(fb.flowAmount)}</span></span></td>`;
   }).join('')}</tr>`;
   return `
   <div class="rk-flowtipe">
