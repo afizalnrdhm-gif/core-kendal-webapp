@@ -210,6 +210,28 @@
     .rk-kpi-card{padding:14px 14px 12px 18px;}
     .rk-kpi-stat .val{font-size:13.5px;}
   }
+  /* Pengaruh Flow per Tipe Barang: tabel matriks ringkas, selalu tampil (tanpa <details>) */
+  .rk-flowtipe{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-1);padding:14px 16px;}
+  .rk-flowtipe-title{font-size:12px;font-weight:700;letter-spacing:.02em;color:var(--ink);margin-bottom:10px;}
+  .rk-flowtipe-title small{font-size:11px;font-weight:500;color:var(--ink-soft);margin-left:6px;}
+  .rk-flowtipe-scroll{overflow-x:auto;}
+  .rk-flowtipe-table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  .rk-flowtipe-table th,.rk-flowtipe-table td{padding:7px 10px;text-align:center;white-space:nowrap;}
+  .rk-flowtipe-table th:first-child,.rk-flowtipe-table td:first-child{text-align:left;white-space:normal;}
+  .rk-flowtipe-table thead th{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);font-weight:700;border-bottom:1px solid var(--line);}
+  .rk-flowtipe-table tbody td:first-child{font-weight:700;color:var(--ink);}
+  .rk-flowtipe-table tbody tr+tr td{border-top:1px solid color-mix(in srgb, var(--line) 60%, transparent);}
+  .rk-ft-cell{display:flex;flex-direction:column;align-items:center;line-height:1.3;}
+  .rk-ft-pct{font-family:var(--mono);font-weight:700;color:var(--navy);font-variant-numeric:tabular-nums;}
+  .rk-ft-amt{font-size:10px;color:var(--ink-soft);font-variant-numeric:tabular-nums;}
+  .rk-ft-empty{color:var(--ink-soft);opacity:.5;}
+  .rk-flowtipe-table tr.rk-ft-total td{padding-top:9px;border-top:1px solid var(--line);}
+  .rk-flowtipe-table tr.rk-ft-total td:first-child{color:var(--ink-soft);font-weight:700;}
+  .rk-flowtipe-table tr.rk-ft-total .rk-ft-pct{color:var(--gold-dark,var(--navy));}
+  @media (max-width:900px){
+    .rk-flowtipe-table{font-size:11.5px;}
+    .rk-flowtipe-table th,.rk-flowtipe-table td{padding:6px 7px;}
+  }
 
   /* ---------- Kartu status per bucket ---------- */
   .co-row, .role-row, .status-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-bottom:24px;}
@@ -4319,6 +4341,34 @@ function barListSection(title, rows, opts){
   </div>`;
 }
 
+// Pengaruh Flow per Tipe Barang: satu tabel ringkas (baris = tipe barang, kolom = tiap Flow),
+// bukan 3 blok bar-list yang makan tempat. Selalu tampil (tanpa <details>). tdRp (abbreviated
+// rupiah, mis. "Rp1,2 M") dideklarasikan sebagai function statement jadi sudah bisa dipakai di sini.
+const RK_FLOWTIPE_LABEL = { 'Flow NOOD':'NOOD → 1-30', 'Flow 1-30':'1-30 → 31-60', 'Flow 31-60':'31-60 → 61-90' };
+function flowTipeTable_(d){
+  const keys = Object.keys(d.flowByTipe || {}).filter(k => d.flowByTipe[k] && d.flowByTipe[k].rows.length);
+  if(!keys.length) return '';
+  const totals = {};
+  keys.forEach(k => d.flowByTipe[k].rows.forEach(r => { totals[r.label] = (totals[r.label] || 0) + r.amount; }));
+  const tipeList = Object.keys(totals).sort((a,b) => totals[b] - totals[a]);
+  const cellHtml = (k, tipe) => {
+    const r = d.flowByTipe[k].rows.find(x => x.label === tipe);
+    if(!r) return '<td><span class="rk-ft-cell rk-ft-empty">-</span></td>';
+    return `<td><span class="rk-ft-cell"><span class="rk-ft-pct">${fmtDec(r.pct,1)}%</span><span class="rk-ft-amt">${tdRp(r.amount)}</span></span></td>`;
+  };
+  const head = `<tr><th>Tipe Barang</th>${keys.map(k => `<th>${esc(RK_FLOWTIPE_LABEL[k] || k)}</th>`).join('')}</tr>`;
+  const body = tipeList.map(tipe => `<tr><td>${esc(tipe)}</td>${keys.map(k => cellHtml(k, tipe)).join('')}</tr>`).join('');
+  const total = `<tr class="rk-ft-total"><td>Total Flow</td>${keys.map(k => {
+    const fb = d.flowByTipe[k];
+    return `<td><span class="rk-ft-cell"><span class="rk-ft-pct">${fmtDec(fb.flowPct,1)}%</span><span class="rk-ft-amt">${tdRp(fb.flowAmount)}</span></span></td>`;
+  }).join('')}</tr>`;
+  return `
+  <div class="rk-flowtipe">
+    <div class="rk-flowtipe-title">Pengaruh Flow per Tipe Barang<small>jenis kendaraan yang paling menyumbang flow</small></div>
+    <div class="rk-flowtipe-scroll"><table class="rk-flowtipe-table"><thead>${head}</thead><tbody>${body}${total}</tbody></table></div>
+  </div>`;
+}
+
 // ---------- Tren penyelesaian mingguan (admin) ----------
 let TREN_DATA = null, TREN_MONTH = 'cur';
 function trenShell(inner){ return '<div class="rk-report-header"><div class="rk-report-title">' + ic('chart') + ' Tren penyelesaian mingguan</div></div>' + inner; }
@@ -4437,20 +4487,11 @@ function renderRingkasanKpi_(){
     const isBtc = /^Btc/i.test(r.label);
     return rkKpiCard_(r.label, r.amount, r.count, r.pct, isBtc ? '% kembali' : '% pindah', isBtc ? 'good' : 'warn', isBtc ? 'balik NOOD' : 'pindah bucket');
   }).join('');
-  // Pengaruh Flow per tipe barang: dibungkus <details> (tertutup default) biar tidak memenuhi tempat,
-  // plus toggle Fleet/Non-Fleet di atas supaya pengaruh fleet bisa dicek terpisah tanpa bikin halaman penuh.
-  // Pct per baris = kontribusi tipe itu ke ANGKA FLOW keseluruhan (basis sama seperti kartu KPI di atas),
-  // jadi kalau dijumlah semua baris, hasilnya = persen Flow yang tampil di kartu — bukan sekadar porsi
-  // di antara yang sudah pindah (yang pasti selalu 100%).
-  const flowTipeBlocks = Object.keys(d.flowByTipe || {})
-    .map(key => {
-      const fb = d.flowByTipe[key];
-      if(!fb || !fb.rows.length) return '';
-      const judul = key + ' <small>— pemberat ' + fmtDec(fb.flowPct,1) + '% dibedah per tipe barang (' + fb.flowCount.toLocaleString('id-ID') + ' kontrak · ' + fmtRupiah(fb.flowAmount) + ')</small>';
-      return barListSection(judul, fb.rows, { gold: true });
-    })
-    .filter(Boolean)
-    .join('');
+  // Pengaruh Flow per tipe barang: tabel matriks ringkas, selalu tampil (tidak disembunyikan di <details>).
+  // Pct per sel = kontribusi tipe itu ke ANGKA FLOW keseluruhan (basis sama seperti kartu KPI di atas),
+  // jadi kalau dijumlah semua baris per kolom, hasilnya = persen Flow yang tampil di kartu — bukan sekadar
+  // porsi di antara yang sudah pindah (yang pasti selalu 100%).
+  const flowTipeTable = flowTipeTable_(d);
   document.getElementById('wrap').innerHTML = `
     <div class="rk-report-header"><div class="rk-report-title">${ic('chart')} Ringkasan</div><div class="rk-report-date">Update per: ${esc(fmtDate(RINGKASAN_DATA.generatedAt))}</div></div>
     ${rkFleetToggle_()}
@@ -4463,10 +4504,7 @@ function renderRingkasanKpi_(){
         <div class="rk-kpi-section-title">Flow &amp; BTC (Back to Current)</div>
         <div class="rk-kpi-grid">${flowCards}</div>
       </div>
-      ${flowTipeBlocks ? `<details class="fold rk-flowtipe">
-        <summary>Pengaruh Flow per Tipe Barang <small>lihat jenis kendaraan yang paling menyumbang flow</small></summary>
-        ${flowTipeBlocks}
-      </details>` : ''}
+      ${flowTipeTable}
     </div>`;
   bindRkFleetToggle_();
 }
