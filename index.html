@@ -3437,12 +3437,16 @@ function renderProyeksiCabang(){
     const r = PC_RESULT;
     const delq = (kpi) => (kpi.cumulative || []).find(c => c.label === '30+ (Delq)') || {amount:0,pct:0};
     const bal = (kpi, kunci) => (kpi.perBucket || []).find(b => b.kunci === kunci) || {amount:0,pct:0};
+    const flow = (kpi, label) => (kpi.flowBtc || []).find(f => f.label === label) || {amount:0,pct:0};
     html += `<div class="ins-section"><h2>Hasil Proyeksi (${r.jumlahKontrakDipilih} kontrak dipilih${r.planSales ? ' · Plan Sales ' + fmtRupiah(r.planSales) : ''})</h2>
       <div class="rk-kpi-grid">
         ${pcCompareCard_('Balance NOOD', bal(r.original,'NOOD'), bal(r.proyeksi,'NOOD'), true)}
         ${pcCompareCard_('Balance 1-30', bal(r.original,'P001_030'), bal(r.proyeksi,'P001_030'), false)}
         ${pcCompareCard_('Balance 31-60', bal(r.original,'P031_060'), bal(r.proyeksi,'P031_060'), false)}
         ${pcCompareCard_('Delq 30+', delq(r.original), delq(r.proyeksi), false)}
+        ${pcCompareCard_('Flow NOOD', flow(r.original,'Flow NOOD'), flow(r.proyeksi,'Flow NOOD'), false)}
+        ${pcCompareCard_('Flow 1-30', flow(r.original,'Flow 1-30'), flow(r.proyeksi,'Flow 1-30'), false)}
+        ${pcCompareCard_('Flow 31-60', flow(r.original,'Flow 31-60'), flow(r.proyeksi,'Flow 31-60'), false)}
       </div>
     </div>`;
   }
