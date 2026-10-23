@@ -5072,7 +5072,18 @@ function getFiltered(skipJanji){
     const q = state.search.trim().toLowerCase();
     rows = rows.filter(r => (r['NAMA KONSUMEN']||'').toLowerCase().includes(q) || (r['NO KONTRAK']||'').toLowerCase().includes(q) || (r['NOPOL']||'').toLowerCase().includes(q));
   }
-  if(state.sortKey){
+  if(state.sortKey === 'JATUH TEMPO'){
+    // Diurutkan per CO (urutan tetap Rahul/Izza/Sigit/Remedial dst) dulu, baru di dalam tiap CO dari jatuh tempo paling lama (paling awal) ke yang terbaru.
+    const CO_ORD = Object.keys(CO_META), ordOf = c => { const i = CO_ORD.indexOf(c || ''); return i < 0 ? 99 : i; };
+    rows = rows.slice().sort((a,b) => {
+      const co = ordOf(a['CO ALL']) - ordOf(b['CO ALL']) || (a['CO ALL']||'').localeCompare(b['CO ALL']||'');
+      if(co) return co;
+      let va=a['JATUH TEMPO'], vb=b['JATUH TEMPO'];
+      if(typeof va==='number' && typeof vb==='number') return (va-vb)*state.sortDir;
+      va=(va||'').toString().toLowerCase(); vb=(vb||'').toString().toLowerCase();
+      return va.localeCompare(vb)*state.sortDir;
+    });
+  } else if(state.sortKey){
     rows = rows.slice().sort((a,b) => {
       let va=a[state.sortKey], vb=b[state.sortKey];
       if(typeof va==='number' && typeof vb==='number') return (va-vb)*state.sortDir;
