@@ -210,6 +210,9 @@
     .rk-kpi-card{padding:14px 14px 12px 18px;}
     .rk-kpi-stat .val{font-size:13.5px;}
   }
+  /* Proyeksi Cabang: kartu kecil berisi toggle fleet + input Plan Sales */
+  .pc-plansales-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-1);padding:16px;margin-bottom:18px;}
+  .pc-plansales-card .field-group{max-width:360px;}
   /* Pengaruh Flow per Tipe Barang: tabel matriks ringkas, selalu tampil (tanpa <details>) */
   .rk-flowtipe{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-1);padding:14px 16px;}
   .rk-flowtipe-title{font-size:12px;font-weight:700;letter-spacing:.02em;color:var(--ink);margin-bottom:10px;}
@@ -1578,6 +1581,10 @@
           <span class="nav-icon-chip"><svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.1-2.8-2.8L7 14"/><circle cx="18.7" cy="8" r="1.2" fill="currentColor" stroke="none"/></svg></span>
           <span>Simulasi Rapor</span>
         </button>
+        <button class="nav-item nav-hidden" data-view="proyeksicabang" id="navProyeksiCabang">
+          <span class="nav-icon-chip"><svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></span>
+          <span>Proyeksi Cabang</span>
+        </button>
         <button class="nav-item" data-view="simulasi" id="navSimulasi">
           <span class="nav-icon-chip"><svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="7" x2="16" y2="7"/><line x1="8" y1="11" x2="10" y2="11"/><line x1="13" y1="11" x2="15" y2="11"/><line x1="8" y1="15" x2="10" y2="15"/><line x1="13" y1="15" x2="15" y2="15"/></svg></span>
           <span>Simulasi Penawaran</span>
@@ -1974,6 +1981,7 @@ function onDataLoaded(res){
   const navRingkasan = document.getElementById('navRingkasan');
   navRingkasan.classList.toggle('nav-hidden', !IS_ADMIN);
   document.getElementById('navCMS').classList.toggle('nav-hidden', !IS_ADMIN);
+  document.getElementById('navProyeksiCabang').classList.toggle('nav-hidden', !IS_ADMIN);
   document.getElementById('navUsulan').classList.toggle('nav-hidden', !(IS_ADMIN || IS_DESKCALL || (ROLE_INFO && (ROLE_INFO.role === 'FE' || ROLE_INFO.role === 'MR'))));
   const navNBQ = document.getElementById('navNBQ');
   const navFEEver = document.getElementById('navFEEver');
@@ -1996,6 +2004,7 @@ function onDataLoaded(res){
     navInsentif.classList.add('nav-hidden');
     navSimulasiRapor.classList.add('nav-hidden');
     navRingkasan.classList.add('nav-hidden');
+    document.getElementById('navProyeksiCabang').classList.add('nav-hidden');
     document.getElementById('navPanduan').classList.add('nav-hidden');
   }
 
@@ -2382,7 +2391,7 @@ let VIEW_MODE = 'dashboard';
 let INSENTIF_DATA = null;
 let INS_PANDUAN_ROLE = null, INS_PANDUAN_OPEN = false; // state panel Panduan KPI yang dilipat di halaman Insentif admin (Rencana 3)
 
-const VIEW_TITLES = { ringkasan: 'Dashboard', cms: 'CMS Produktivitas', usulan: 'Usulan DKH', dashboard: 'Beban Awal', targetdaily: 'Target Daily', nbq: 'NBQ', feever: 'FE Ever', tglbayar: 'Tgl Bayar Bulan Lalu', insentif: 'Insentif', dekscall: 'Deskcall', simulasi: 'Simulasi Penawaran', simulasirapor: 'Simulasi Rapor', panduan: 'Panduan KPI' };
+const VIEW_TITLES = { ringkasan: 'Dashboard', cms: 'CMS Produktivitas', usulan: 'Usulan DKH', dashboard: 'Beban Awal', targetdaily: 'Target Daily', nbq: 'NBQ', feever: 'FE Ever', tglbayar: 'Tgl Bayar Bulan Lalu', insentif: 'Insentif', dekscall: 'Deskcall', simulasi: 'Simulasi Penawaran', simulasirapor: 'Simulasi Rapor', proyeksicabang: 'Proyeksi Cabang', panduan: 'Panduan KPI' };
 
 function triggerFadeIn(){
   const el = document.getElementById('wrap');
@@ -2405,6 +2414,7 @@ function switchView(view){
   document.getElementById('navTglBayar').classList.toggle('active', view === 'tglbayar');
   document.getElementById('navInsentif').classList.toggle('active', view === 'insentif');
   document.getElementById('navSimulasiRapor').classList.toggle('active', view === 'simulasirapor');
+  document.getElementById('navProyeksiCabang').classList.toggle('active', view === 'proyeksicabang');
   document.getElementById('navDekscall').classList.toggle('active', view === 'dekscall');
   document.getElementById('navSimulasi').classList.toggle('active', view === 'simulasi');
   document.getElementById('navPanduan').classList.toggle('active', view === 'panduan');
@@ -2442,6 +2452,8 @@ function switchView(view){
     if(INSENTIF_DATA){ renderInsentifView(); triggerFadeIn(); } else { loadInsentif(); }
   } else if(view === 'simulasirapor'){
     if(SIMULASI_RAPOR_DATA){ renderSimulasiRapor(); triggerFadeIn(); } else { loadSimulasiRapor(); }
+  } else if(view === 'proyeksicabang'){
+    if(PC_DATA){ renderProyeksiCabang(); triggerFadeIn(); } else { loadProyeksiCabang(); }
   } else if(view === 'usulan'){
     loadUsulan();
   } else if(view === 'cms'){
@@ -3223,6 +3235,199 @@ function renderSimKontrakList_(){
       renderSimKontrakList_();
       const note = document.querySelector('.count-note');
       if(note) note.textContent = simulasiRaporState.proyeksi.size + ' kontrak diproyeksikan berubah dari ' + (SIMULASI_RAPOR_DATA.kontrakList.length) + ' yang berpengaruh';
+    });
+  });
+}
+
+// ============================================================
+// PROYEKSI CABANG — simulasi berdiri sendiri (bukan Simulasi Rapor): cabang penuh, bukan per-CO.
+// Dua input digabung: (1) kontrak existing yang diproyeksikan Stay/BTC/Lunas (logic sama seperti
+// Simulasi Rapor), (2) Plan Sales — rencana pencairan yang BELUM golive (begitu golive beneran,
+// otomatis sudah muncul sendiri di KA HARIAN, jadi ini CUMA buat pipeline yang masih rencana).
+// Hasilnya Balance per bucket & Delq 30+ cabang, sebelum vs proyeksi.
+// ============================================================
+let PC_DATA = null;
+let PC_RESULT = null;
+let pcState = { search:'', limit:20, proyeksi: new Map(), planSales:'', includeFleet:false };
+
+function loadProyeksiCabang(){
+  document.getElementById('wrap').innerHTML = `<div class="skeleton-row"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div><div class="skel tall"></div>`;
+  fetch('/api/proyeksi-cabang', { headers: { Authorization: 'Bearer ' + ID_TOKEN } })
+    .then(r => r.json().then(body => ({ ok: r.ok, body })))
+    .then(({ok, body}) => {
+      if(!ok || body.error){ document.getElementById('wrap').innerHTML = '<div class="state-box error"><div class="err-icon">'+ic('alert')+'</div>'+esc((body&&body.error)||'Gagal memuat Proyeksi Cabang.')+'<br><br><button class="btn" onclick="loadProyeksiCabang()">Coba lagi</button></div>'; return; }
+      PC_DATA = body;
+      PC_RESULT = null;
+      pcState = { search:'', limit:20, proyeksi: new Map(), planSales:'', includeFleet:false };
+      renderProyeksiCabang();
+      triggerFadeIn();
+    })
+    .catch(err => { document.getElementById('wrap').innerHTML = '<div class="state-box error"><div class="err-icon">'+ic('alert')+'</div>'+esc(pesanErr(err))+'<br><br><button class="btn" onclick="loadProyeksiCabang()">Coba lagi</button></div>'; });
+}
+
+function runProyeksiCabang(){
+  const btn = document.getElementById('pcRunBtn');
+  if(btn){ btn.disabled = true; btn.textContent = 'Menghitung…'; }
+  fetch('/api/proyeksi-cabang', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + ID_TOKEN },
+    body: JSON.stringify({ proyeksi: Object.fromEntries(pcState.proyeksi), includeFleet: pcState.includeFleet, planSales: Number(pcState.planSales) || 0 })
+  })
+    .then(r => r.json().then(body => ({ ok: r.ok, body })))
+    .then(({ok, body}) => {
+      if(!ok || body.error){ alert((body && body.error) || 'Gagal menjalankan simulasi.'); if(btn){ btn.disabled=false; btn.innerHTML=ic('refresh')+' Hitung Proyeksi'; } return; }
+      PC_RESULT = body;
+      renderProyeksiCabang();
+    })
+    .catch(err => { alert(err.message); if(btn){ btn.disabled=false; btn.innerHTML=ic('refresh')+' Hitung Proyeksi'; } });
+}
+
+function pcFleetToggle_(){
+  return `<div class="pill-toggle rk-fleet-toggle" id="pcFleetToggle" role="group" aria-label="Saring fleet">
+    <button type="button" data-mode="nonfleet" class="${!pcState.includeFleet ? 'active' : ''}">Non-Fleet</button>
+    <button type="button" data-mode="all" class="${pcState.includeFleet ? 'active' : ''}">Semua (+Fleet)</button>
+  </div>`;
+}
+
+// Arah "bagus" beda-beda per baris: Balance NOOD naik = bagus, sisanya (1-30/31-60/Delq 30+) turun = bagus.
+function pcCompareCard_(label, before, after, dirUp){
+  const delta = after.pct - before.pct;
+  const membaik = Math.abs(delta) < 0.005 ? null : (dirUp ? delta > 0 : delta < 0);
+  const cls = membaik === null ? '' : (membaik ? 'good' : 'warn');
+  return `<div class="rk-kpi-card">
+    <div class="lbl">${esc(label)}</div>
+    <div class="rk-kpi-stats">
+      <div class="rk-kpi-stat"><span class="cap">Sekarang</span><span class="val">${fmtDec(before.pct,2)}%</span></div>
+      <div class="rk-kpi-stat"><span class="cap">Proyeksi</span><span class="val">${fmtDec(after.pct,2)}%</span></div>
+      <div class="rk-kpi-divider"></div>
+      <div class="rk-kpi-stat pct ${cls}"><span class="cap">Selisih</span><span class="val">${delta>=0?'+':''}${fmtDec(delta,2)}%</span></div>
+    </div>
+    <div class="rk-kpi-sub">${fmtRupiah(before.amount)} → ${fmtRupiah(after.amount)}</div>
+  </div>`;
+}
+
+function getPCKontrakFiltered_(){
+  const list = (PC_DATA && PC_DATA.kontrakList) || [];
+  if(!pcState.search.trim()) return list;
+  const q = pcState.search.trim().toLowerCase();
+  return list.filter(k => (k.namaKonsumen||'').toLowerCase().includes(q) || (k.noKontrak||'').toLowerCase().includes(q));
+}
+
+function renderProyeksiCabang(){
+  const d = PC_DATA;
+  if(!d) return;
+  let html = '';
+
+  html += `<div class="rk-report-header"><div class="rk-report-title">${ic('chart')} Proyeksi Cabang</div></div>`;
+
+  html += `<details class="sim-intro"><summary>Cara baca &amp; cara pakai Proyeksi Cabang</summary><div class="sim-intro-body">
+    Simulasi berdiri sendiri buat ngelihat posisi Balance &amp; Delq 30+ cabang KALAU kontrak tertentu bergerak
+    dan/atau rencana pencairan baru ikut cair. Dua bagian yang bisa digabung:<br>
+    • <b>Pencairan Baru (Plan Sales)</b> — nominal rencana pencairan yang masih pipeline, <u>BELUM golive</u>.
+    Begitu golive beneran, otomatis sudah muncul sendiri di KA HARIAN — jadi isi di sini cuma buat yang
+    masih rencana. Nominal ini otomatis masuk Bucket NOOD dan ikut jadi pembagi (ENR), jadi efeknya Balance
+    NOOD naik dan Balance 1-30/31-60/Delq 30+ ikut terdilusi turun, walau nominal macetnya sendiri gak
+    berubah sama sekali.<br>
+    • <b>Pilih kontrak yang diproyeksikan</b> — logicnya sama seperti Simulasi Rapor: <b>Stay</b> (bayar
+    sebagian, berhenti di Bucket Awal sendiri), <b>BTC</b> (ngejar balik ke NOOD), <b>Lunas</b> (keluar total
+    dari buku). Bedanya di sini cabang penuh (semua CO sekaligus), bukan dibatasi ke satu metric rapor.
+  </div></details>`;
+
+  html += `<div class="pc-plansales-card">
+    ${pcFleetToggle_()}
+    <div class="field-group" style="margin-top:14px;">
+      <label class="edit-label" for="pcPlanSalesInput">Total rencana pencairan belum golive (Rp)</label>
+      <input type="text" inputmode="numeric" class="edit-input" id="pcPlanSalesInput" placeholder="mis. 500000000" value="${esc(pcState.planSales)}">
+    </div>
+  </div>`;
+
+  if(PC_RESULT){
+    const r = PC_RESULT;
+    const delq = (kpi) => (kpi.cumulative || []).find(c => c.label === '30+ (Delq)') || {amount:0,pct:0};
+    const bal = (kpi, kunci) => (kpi.perBucket || []).find(b => b.kunci === kunci) || {amount:0,pct:0};
+    html += `<div class="ins-section"><h2>Hasil Proyeksi (${r.jumlahKontrakDipilih} kontrak dipilih${r.planSales ? ' · Plan Sales ' + fmtRupiah(r.planSales) : ''})</h2>
+      <div class="rk-kpi-grid">
+        ${pcCompareCard_('Balance NOOD', bal(r.original,'NOOD'), bal(r.proyeksi,'NOOD'), true)}
+        ${pcCompareCard_('Balance 1-30', bal(r.original,'P001_030'), bal(r.proyeksi,'P001_030'), false)}
+        ${pcCompareCard_('Balance 31-60', bal(r.original,'P031_060'), bal(r.proyeksi,'P031_060'), false)}
+        ${pcCompareCard_('Delq 30+', delq(r.original), delq(r.proyeksi), false)}
+      </div>
+    </div>`;
+  }
+
+  html += `<div class="panel-title">Pilih proyeksi tiap kontrak (Stay / BTC / Lunas)</div>`;
+  if(!d.kontrakList || !d.kontrakList.length){
+    html += `<div class="state-box">Gak ada kontrak yang relevan buat diproyeksikan saat ini.</div>`;
+  } else {
+    html += `
+    <div class="controls">
+      <div class="search-box">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4C6272" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="pcSearchInput" type="text" placeholder="Cari nama konsumen atau no kontrak…" value="${esc(pcState.search)}">
+      </div>
+      <button class="btn" id="pcClearBtn">Bersihkan pilihan</button>
+      <button class="btn primary" id="pcRunBtn">${ic('refresh')} Hitung Proyeksi</button>
+    </div>
+    <div class="count-note" id="pcCountNote">${pcState.proyeksi.size} kontrak diproyeksikan berubah dari ${d.kontrakList.length} kontrak</div>
+    <div class="sim-kontrak-list" id="pcKontrakList"></div>`;
+  }
+
+  document.getElementById('wrap').innerHTML = html;
+
+  document.querySelectorAll('#pcFleetToggle button').forEach(b => b.addEventListener('click', () => {
+    const wantAll = b.dataset.mode === 'all';
+    if(wantAll === pcState.includeFleet) return;
+    pcState.includeFleet = wantAll;
+    renderProyeksiCabang();
+  }));
+  const planInput = document.getElementById('pcPlanSalesInput');
+  if(planInput) planInput.addEventListener('input', e => { pcState.planSales = e.target.value.replace(/[^\d]/g, ''); e.target.value = pcState.planSales; });
+
+  if(d.kontrakList && d.kontrakList.length){
+    renderPCKontrakList_();
+    document.getElementById('pcSearchInput').addEventListener('input', e => { pcState.search = e.target.value; pcState.limit = 20; renderPCKontrakList_(); });
+    document.getElementById('pcClearBtn').addEventListener('click', () => { pcState.proyeksi.clear(); PC_RESULT = null; renderProyeksiCabang(); });
+    document.getElementById('pcRunBtn').addEventListener('click', runProyeksiCabang);
+  }
+}
+
+function renderPCKontrakList_(){
+  const box = document.getElementById('pcKontrakList');
+  if(!box) return;
+  const allRows = getPCKontrakFiltered_();
+  const lim = pcState.limit || 20;
+  const rows = allRows.slice(0, lim);
+  box.innerHTML = rows.map(k => {
+    const current = pcState.proyeksi.get(k.noKontrak) || '';
+    const showStayBtn = k.kriteriaAcct === 'FLOW';
+    const showBtcBtn = k.bucketAwal !== 'NOOD' && k.bucketSekarang !== 'NOOD';
+    const pemilikBadge = k.coAll ? `<span class="sim-owner-badge">${ic('user')} ${esc(k.coAll)}</span>` : '';
+    const fleetBadge = k.fleet ? '<span class="sim-owner-badge">Fleet</span>' : '';
+    return `
+    <div class="sim-kontrak-item">
+      <div class="sim-kontrak-info">
+        <div class="sim-kontrak-name">${esc(k.namaKonsumen||'-')} <span class="sim-kontrak-kontrak">${esc(k.noKontrak)}</span>${k.kriteriaAcct ? ' <span class="sim-kriteria-badge sim-kriteria-'+esc(k.kriteriaAcct)+'">'+esc(k.kriteriaAcct)+'</span>' : ''}${pemilikBadge}${fleetBadge}</div>
+        <div class="sim-kontrak-meta">Bucket Awal ${fmtBucket(k.bucketAwal)} → Sekarang ${fmtBucket(k.bucketSekarang)}</div>
+      </div>
+      <div class="sim-kontrak-sipok">${fmtRupiah(k.sisaPiutang)}</div>
+      <div class="sim-proyeksi-group">
+        ${showStayBtn ? `<button type="button" class="sim-proyeksi-btn sim-proyeksi-stay ${current==='stay'?'active':''}" data-nokontrak="${esc(k.noKontrak)}" data-val="stay">${current==='stay'?ic('check')+' ':''}Proyeksi Stay <span class="sim-proyeksi-target">→ ${fmtBucket(k.bucketAwal)}</span></button>` : ''}
+        ${showBtcBtn ? `<button type="button" class="sim-proyeksi-btn sim-proyeksi-btc ${current==='btc'?'active':''}" data-nokontrak="${esc(k.noKontrak)}" data-val="btc">${current==='btc'?ic('check')+' ':''}Proyeksi BTC <span class="sim-proyeksi-target">→ NOOD</span></button>` : ''}
+        <button type="button" class="sim-proyeksi-btn sim-proyeksi-lunas ${current==='lunas'?'active':''}" data-nokontrak="${esc(k.noKontrak)}" data-val="lunas">${current==='lunas'?ic('check')+' ':''}Proyeksi Lunas</button>
+      </div>
+    </div>`;
+  }).join('') + (allRows.length > rows.length ? `<div class="load-more"><button type="button" class="btn" id="pcMoreBtn">Tampilkan ${Math.min(20, allRows.length - rows.length)} lagi <span class="load-note">(${rows.length} dari ${allRows.length})</span></button></div>` : '');
+  const moreBtn = document.getElementById('pcMoreBtn');
+  if(moreBtn) moreBtn.onclick = () => { pcState.limit = lim + 20; renderPCKontrakList_(); };
+  box.querySelectorAll('.sim-proyeksi-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const nk = btn.getAttribute('data-nokontrak');
+      const val = btn.getAttribute('data-val');
+      const cur = pcState.proyeksi.get(nk) || '';
+      if(cur === val){ pcState.proyeksi.delete(nk); } else { pcState.proyeksi.set(nk, val); }
+      renderPCKontrakList_();
+      const note = document.getElementById('pcCountNote');
+      if(note) note.textContent = pcState.proyeksi.size + ' kontrak diproyeksikan berubah dari ' + PC_DATA.kontrakList.length + ' kontrak';
     });
   });
 }
@@ -5720,14 +5925,14 @@ document.getElementById('overlay').onclick = document.getElementById('panelClose
   const dateEl = document.getElementById('topDate');
   if(!sidebar || !nav) return;
 
-  const HINT = { usulan:'Alur DKH: CO memilih kontrak, head mengecek lalu mengirim ke Silvi, Silvi membuat DKH', targetdaily:'Target daily balance dan flow per PIC, kontrak potensial, dan rekomendasi kejar', cms:'Produktivitas collection: balance 1-30 dan 31-60, DKH terbentuk, dikerjakan, bertemu, risk code', ringkasan:'Ringkasan performa cabang: sebaran bucket, flow, dan tren mingguan', dashboard:'Beban awal: daftar kontrak per bucket beserta status bayarnya', nbq:'Kontrak NBQ (new booking quality) dan status bayarnya', feever:'Kontrak limpahan 31+ hari', tglbayar:'Kontrak yang bulan lalu dibayar pada tanggal hari ini', insentif:'Proyeksi insentif mingguan', dekscall:'Daftar tugas deskcall', simulasirapor:'Simulasi nilai rapor jika kontrak tertentu flow/stay/lunas', simulasi:'Simulasi penawaran MotorKu', panduan:'Panduan membaca KPI dan insentif' };
+  const HINT = { usulan:'Alur DKH: CO memilih kontrak, head mengecek lalu mengirim ke Silvi, Silvi membuat DKH', targetdaily:'Target daily balance dan flow per PIC, kontrak potensial, dan rekomendasi kejar', cms:'Produktivitas collection: balance 1-30 dan 31-60, DKH terbentuk, dikerjakan, bertemu, risk code', ringkasan:'Ringkasan performa cabang: sebaran bucket, flow, dan tren mingguan', dashboard:'Beban awal: daftar kontrak per bucket beserta status bayarnya', nbq:'Kontrak NBQ (new booking quality) dan status bayarnya', feever:'Kontrak limpahan 31+ hari', tglbayar:'Kontrak yang bulan lalu dibayar pada tanggal hari ini', insentif:'Proyeksi insentif mingguan', dekscall:'Daftar tugas deskcall', simulasirapor:'Simulasi nilai rapor jika kontrak tertentu flow/stay/lunas', proyeksicabang:'Simulasi Balance & Delq 30+ cabang kalau kontrak bergerak dan/atau plan sales golive', simulasi:'Simulasi penawaran MotorKu', panduan:'Panduan membaca KPI dan insentif' };
   sidebar.querySelectorAll('.nav-item[data-view]').forEach(b => { if(HINT[b.dataset.view]) b.title = HINT[b.dataset.view]; });
   function orderFor(){
     if(IS_DESKCALL) return ['dashboard','usulan','dekscall','tglbayar','simulasi','panduan'];
-    if(IS_ADMIN) return ['ringkasan','dashboard','insentif','nbq','usulan','simulasirapor','cms','tglbayar'];
+    if(IS_ADMIN) return ['ringkasan','dashboard','insentif','nbq','usulan','simulasirapor','cms','tglbayar','proyeksicabang'];
     return ['dashboard','targetdaily','usulan','nbq','insentif','feever','tglbayar','simulasirapor','simulasi','panduan'];
   }
-  const SHORT = { usulan:'Usulan', cms:'CMS', ringkasan:'Ringkasan', dashboard:'Beban', targetdaily:'Target', nbq:'NBQ', feever:'FE Ever', tglbayar:'Tgl Bayar', insentif:'Insentif', dekscall:'Deskcall', simulasirapor:'Rapor', simulasi:'Simulasi', panduan:'Panduan' };
+  const SHORT = { usulan:'Usulan', cms:'CMS', ringkasan:'Ringkasan', dashboard:'Beban', targetdaily:'Target', nbq:'NBQ', feever:'FE Ever', tglbayar:'Tgl Bayar', insentif:'Insentif', dekscall:'Deskcall', simulasirapor:'Rapor', proyeksicabang:'Proyeksi', simulasi:'Simulasi', panduan:'Panduan' };
   const MORE_ICON = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/></svg>';
 
   function items(){
@@ -5837,7 +6042,7 @@ document.getElementById('overlay').onclick = document.getElementById('panelClose
 /* V4 — gerak halus: transisi antar menu, reveal saat gulir, top bar adaptif, pil bottom nav */
 (function(){
   const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const ORDER = ['ringkasan','dashboard','usulan','cms','nbq','feever','dekscall','tglbayar','insentif','simulasirapor','simulasi','panduan'];
+  const ORDER = ['ringkasan','dashboard','usulan','cms','nbq','feever','dekscall','tglbayar','insentif','simulasirapor','proyeksicabang','simulasi','panduan'];
   let prevView = null, io = null, holdTimer = null;
 
   function revealAll(){ document.querySelectorAll('#wrap > .m-hold').forEach(el => { el.classList.add('m-show'); }); }
