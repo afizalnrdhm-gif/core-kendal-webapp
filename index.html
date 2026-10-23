@@ -262,6 +262,9 @@
   .fd-header{font-size:14px;font-weight:800;color:var(--ink);margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--line);}
   .fd-field{margin-bottom:14px;}
   .fd-field:last-child{margin-bottom:0;}
+  .fd-field.fd-actions{margin-top:4px;padding-top:14px;border-top:1px solid var(--line);}
+  .fd-action-row{display:flex;gap:8px;}
+  .fd-action-row .btn{flex:1;}
 
   .active-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
   .chip{display:inline-flex;align-items:center;gap:6px;background:var(--info-bg);border:1px solid color-mix(in srgb, var(--navy-lighter) 25%, transparent);border-radius:99px;padding:3px 4px 3px 12px;font-size:12.5px;color:var(--ink-soft);}
@@ -552,18 +555,25 @@
     .bar-row-right{width:100%;justify-content:space-between;flex-wrap:nowrap;}
     .bar-row-meta{margin-right:auto;}
 
-    /* Kartu status: geser menyamping supaya tabel cepat terjangkau */
-    .status-row, .role-row{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:10px;margin:0 -16px 20px;padding:4px 16px 8px;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
-    .status-row::-webkit-scrollbar, .role-row::-webkit-scrollbar{display:none;}
-    .status-row > .status-card, .role-row > .status-card{flex:0 0 84%;scroll-snap-align:center;}
+    /* Kartu bucket (status-row): dipadatkan jadi grid 2 kolom, bukan digeser menyamping —
+       1 kolom otomatis kalau cuma 1 kartu (tidak ada ruang kosong). */
+    .status-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:20px;}
+    .status-row .status-card{padding:12px 13px;}
+    .status-row .status-card .bhead{margin-bottom:6px;}
+    .status-row .status-card .bname{font-size:13px;}
+    .status-row .status-card .btotal{font-size:10.5px;display:block;margin-top:2px;}
+    .status-row .status-card .progress{margin-bottom:3px;}
+    .status-row .status-card .progress-note{font-size:10px;margin-bottom:5px;}
+    .status-row .status-card .srow{font-size:10.5px;padding:5px 0;flex-wrap:wrap;}
+    .status-row .status-card .srow .sval{font-size:10px;}
     .co-row{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:10px;margin:0 -16px 20px;padding:4px 16px 8px;scrollbar-width:none;}
     .co-row::-webkit-scrollbar{display:none;}
     .co-row > .co-card{flex:0 0 78%;scroll-snap-align:center;}
 
     .controls .search-box{flex:1 1 100%;}
-    .controls .btn{flex:1;}
+    .controls > .btn{flex:1;}
     .controls .filter-drawer{flex:1;}
-    .controls .filter-drawer .btn{width:100%;}
+    .controls .filter-drawer > .filter-trigger-btn{width:100%;}
 
     .filter-drawer-panel, .multi-select-panel{position:fixed;left:12px;right:12px;bottom:12px;top:auto;width:auto;min-width:0;max-height:78vh;box-shadow:0 -10px 40px rgba(5,15,25,.4);z-index:40;border-radius:18px;}
     .multi-select-panel{max-height:60vh;}
@@ -2036,31 +2046,10 @@ function buildLayout(){
 
   let html = '';
 
-  html += `<div class="ba-panel">`;
-  if(IS_ADMIN || IS_DESKCALL){
-    html += `<div class="panel-title">Beban Awal — Semua PIC</div>
-      <div class="grand-row" id="grandRow"></div>
-      <div class="panel-title">Monitoring Realisasi per Bucket</div>
-      <div class="status-row" id="statusRowAdmin"></div>`;
-  }
-
-  if(isFE || isMR){
-    html += `<div class="panel-title">Beban Awal & Realisasi Kamu</div>
-      <div class="status-row" id="statusRowRole"></div>`;
-  }
-
-  html += `
-    <div class="alert-row" id="janjiStrip" role="group" aria-label="Pantauan janji bayar"></div>
-    <div class="proy-row" id="proyStrip" role="group" aria-label="Filter proyeksi"></div>
-  </div>
-    <details class="fold" id="foldSebaran"${window.innerWidth>900?' open':''}>
-      <summary><span>Sebaran bucket${IS_ADMIN ? ' &amp; per CO' : ''}</span><small>klik untuk memfilter tabel</small></summary>
-      <div class="bucket-bar" id="bucketBar"></div>
-      <div class="bucket-legend" id="bucketLegend"></div>
-      <div class="co-row" id="coRow" style="${IS_ADMIN ? '' : 'display:none;'}"></div>
-    </details>
-  `;
-
+  // Pencarian & filter ditaruh paling atas (sebelum kartu ringkasan) supaya langsung
+  // ketemu begitu buka halaman, tidak perlu scroll lewat kartu bucket dulu. Aksi yang
+  // jarang dipakai (Kolom lengkap, Reset filter) digabung ke dalam panel Filter yang
+  // sama, bukan jadi tombol terpisah-pisah di baris kontrol.
   html += `
     <div class="controls">
       <div class="search-box">
@@ -2070,10 +2059,10 @@ function buildLayout(){
       <div class="filter-drawer" id="filterDrawer">
         <button type="button" class="btn filter-trigger-btn" id="filterTriggerBtn">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
-          Filter <span class="filter-badge" id="filterBadge" style="display:none;">0</span>
+          Filter &amp; tampilan <span class="filter-badge" id="filterBadge" style="display:none;">0</span>
         </button>
         <div class="filter-drawer-panel" id="filterDrawerPanel">
-          <div class="fd-header"><span>Filter</span></div>
+          <div class="fd-header"><span>Filter &amp; tampilan</span></div>
           <div class="fd-field">
             <label class="edit-label">Bucket Awal</label>
             <select class="filter-select" id="bucketSelect" style="width:100%;">
@@ -2143,12 +2132,45 @@ function buildLayout(){
             </div>
             <div class="ms-grid" id="janjiGrid"></div>
           </div>
+          <div class="fd-field fd-actions">
+            <label class="edit-label">Tampilan &amp; aksi lain</label>
+            <div class="fd-action-row">
+              <button class="btn" id="colsBtn" type="button" aria-pressed="false" title="Tampilkan kolom tambahan: Angsuran, Status Ever">Kolom lengkap</button>
+              <button class="btn" id="resetBtn" type="button">Reset semua filter</button>
+            </div>
+          </div>
         </div>
       </div>
-      <button class="btn" id="colsBtn" type="button" aria-pressed="false" title="Tampilkan kolom tambahan: Angsuran, Status Ever">Kolom lengkap</button>
-      <button class="btn" id="resetBtn">Reset filter</button>
       <button class="btn primary" id="refreshBtn">${ic('refresh')} Muat ulang</button>
     </div>
+  `;
+
+  html += `<div class="ba-panel">`;
+  if(IS_ADMIN || IS_DESKCALL){
+    html += `<div class="panel-title">Beban Awal — Semua PIC</div>
+      <div class="grand-row" id="grandRow"></div>
+      <div class="panel-title">Monitoring Realisasi per Bucket</div>
+      <div class="status-row" id="statusRowAdmin"></div>`;
+  }
+
+  if(isFE || isMR){
+    html += `<div class="panel-title">Beban Awal & Realisasi Kamu</div>
+      <div class="status-row" id="statusRowRole"></div>`;
+  }
+
+  html += `
+    <div class="alert-row" id="janjiStrip" role="group" aria-label="Pantauan janji bayar"></div>
+    <div class="proy-row" id="proyStrip" role="group" aria-label="Filter proyeksi"></div>
+  </div>
+    <details class="fold" id="foldSebaran"${window.innerWidth>900?' open':''}>
+      <summary><span>Sebaran bucket${IS_ADMIN ? ' &amp; per CO' : ''}</span><small>klik untuk memfilter tabel</small></summary>
+      <div class="bucket-bar" id="bucketBar"></div>
+      <div class="bucket-legend" id="bucketLegend"></div>
+      <div class="co-row" id="coRow" style="${IS_ADMIN ? '' : 'display:none;'}"></div>
+    </details>
+  `;
+
+  html += `
     <div class="count-note" id="countNote"></div>
     <div class="active-chips" id="activeChips" style="display:none;"></div>
     <div class="table-scroll">
