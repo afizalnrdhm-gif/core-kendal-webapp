@@ -309,24 +309,21 @@ function daftarKontrakRelevan(namaCO, role, masterList, petaKA, cfg) {
   return list;
 }
 
-// Tiap kontrak bisa diproyeksikan salah satu dari 3 skenario (default = gak diapa-apain,
-// dianggap kondisi live sekarang apa adanya):
+// Tiap kontrak bisa diproyeksikan salah satu dari 3 skenario. BEDA dari versi sebelumnya: gak ada
+// lagi pilihan manual 'stay' -- "berhenti flow & balik ke Bucket Awal sendiri" sekarang jadi
+// ASUMSI DEFAULT otomatis buat SEMUA kontrak KRITERIA ACCT=FLOW yang gak kamu pilih sama sekali
+// (lihat autoRecoverStayMap di bawah), karena itu udah jadi parameter yang "otomatis kehitung" --
+// kamu cuma perlu milih kontrak yang KAMU YAKIN belum bakal membaik (pakai 'flow') atau yang
+// malah ngejar lebih jauh ('btc'/'lunas'):
 //
-//  'stay'  -> kontrak bayar SEBAGIAN, cukup buat gak lanjut flow tapi belum ngejar balik ke
-//             NOOD: BUCKET UPDATE-nya balik/berhenti persis di BUCKET AWAL kontrak itu sendiri
-//             (bukan ke bucket target role/cfg). Contoh: bucket awal 1-30, konsumen bayar 1x,
-//             bucket update yang tadinya mau lanjut ke 31-60 balik lagi jadi 1-30. Piutangnya
-//             belum lunas jadi TETAP ada di buku (gak dikeluarkan). BUCKET UPDATE (di MASTER
-//             & KA HARIAN) dipaksa = BUCKET AWAL kontrak itu, berlaku sama buat semua role
-//             (FE/MR/BCH) — bukan bucket acuan role (BUCKET_PENYELESAIAN).
+//  'flow'  -> KUNCI kontrak itu TETAP dihitung di posisi flow-nya SEKARANG (BUCKET UPDATE live,
+//             gak di-override sama sekali) -- lawan dari asumsi default (yang otomatis balik ke
+//             Bucket Awal). Dipakai buat kontrak yang kamu yakin BELUM bakal membaik bulan ini.
 //
 //  'btc'   -> Back To Current: kontrak ngejar SEMUA tunggakan sampai bucket update-nya balik
-//             ke NOOD, dari bucket berapapun sekarang (beda dari 'stay' yang cuma balik ke
-//             bucket awal sendiri — BTC lompat lebih jauh, lunasin semua keterlambatan).
-//             Piutangnya BELUM lunas (masih ada SISA PIUTANG, tetap kehitung di buku) — cuma
-//             bucket-nya (MASTER & KA HARIAN) dipaksa balik ke 'NOOD'.
-//             Catatan: kalau BUCKET AWAL kontraknya emang udah NOOD, 'stay' dan 'btc' hasilnya
-//             sama-sama NOOD (gak ada bedanya buat kontrak itu secara angka).
+//             ke NOOD, dari bucket berapapun sekarang. Piutangnya BELUM lunas (masih ada SISA
+//             PIUTANG, tetap kehitung di buku) — cuma bucket-nya (MASTER & KA HARIAN) dipaksa
+//             balik ke 'NOOD'.
 //
 //  'lunas' -> kontrak beneran lunas total. Dikeluarkan SEPENUHNYA dari masterList & KA HARIAN,
 //             seolah keluar dari buku piutang yang dipantau. Otomatis ngefek bener buat semua
@@ -336,33 +333,48 @@ function daftarKontrakRelevan(namaCO, role, masterList, petaKA, cfg) {
 // PENTING soal FLOW EVER: kolom ini adalah REKOR bucket TERBURUK yang PERNAH dicapai kontrak itu
 // bulan ini (dipertahankan apa adanya dari KA HARIAN, bukan dihitung ulang di sini) — begitu
 // sebuah kontrak "flow ever" ngelewatin bucket acuan, itu udah PERMANEN kehitung buat periode ini,
-// gak bisa "batal" lagi cuma gara-gara kontraknya bayar/membaik (Stay maupun BTC). Satu-satunya
-// cara ngurangin kontribusinya ke Flow Ever adalah kontraknya bener2 LUNAS (keluar total dari buku,
-// otomatis ilang dari pembilang MAUPUN penyebut). Makanya proyeksi 'stay'/'btc' di bawah CUMA
+// gak bisa "batal" lagi cuma gara-gara kontraknya bayar/membaik. Satu-satunya cara ngurangin
+// kontribusinya ke Flow Ever adalah kontraknya bener2 LUNAS (keluar total dari buku, otomatis
+// ilang dari pembilang MAUPUN penyebut). Makanya auto-recovery & proyeksi 'btc' di bawah CUMA
 // mengubah BUCKET UPDATE (posisi sekarang — ini yang boleh membaik), dan SENGAJA TIDAK menyentuh
-// FLOW EVER sama sekali, biar gak "mengunci-buka" rekor yang udah kejadian.
-function bucketTargetSTAY(role, cfg, bucketAwal) {
-  return bucketAwal;
+// FLOW EVER sama sekali, biar gak "mengunci-buka" rekor yang udah kejadian. Gak ada lagi target
+// bucket khusus buat 'flow' -- kontrak itu dibiarkan APA ADANYA dari data live, jadi gak perlu
+// fungsi bucketTargetSTAY lagi.
+
+// Default auto-recovery: kontrak mana aja (di SELURUH masterList, bukan cuma yang relevan ke
+// role/CO ini -- org-wide, sama persis semangatnya kayak autoRecoverFlowMap di
+// api/proyeksi-cabang.js) yang KRITERIA ACCT-nya FLOW dan BELUM dikasih proyeksi eksplisit
+// ('flow'/'btc'/'lunas') dari user, dianggap otomatis BERHENTI flow & balik ke Bucket Awal-nya
+// sendiri. Kontrak yang eksplisit dipilih 'flow' SENGAJA gak masuk sini (dibiarkan apa adanya).
+function autoRecoverStayMap(masterList, proyeksiEksplisit) {
+  const map = {};
+  masterList.forEach(m => {
+    const noKontrak = m['NO KONTRAK'];
+    if (!noKontrak) return;
+    if (Object.prototype.hasOwnProperty.call(proyeksiEksplisit, noKontrak)) return;
+    const kriteria = (m['KRITERIA ACCT'] || '').toString().trim().toUpperCase();
+    if (kriteria === 'FLOW') map[noKontrak] = m['BUCKET AWAL'];
+  });
+  return map;
 }
 
 function terapkanSimulasi(masterList, petaKA, proyeksi, role, cfg) {
   const lunasSet = new Set();
-  const stayMap = {};
   const btcMap = {};
   Object.keys(proyeksi || {}).forEach(k => {
     const v = proyeksi[k];
     if (v === 'lunas') lunasSet.add(k);
-    else if (v === 'stay') stayMap[k] = true;
     else if (v === 'btc') btcMap[k] = true;
+    // 'flow' -> sengaja TIDAK masuk map manapun, kontrak dibiarkan apa adanya dari data live.
   });
+  const stayMap = autoRecoverStayMap(masterList, proyeksi || {});
 
   const masterList2 = masterList
     .filter(m => !lunasSet.has(m['NO KONTRAK']))
     .map(m => {
       const noKontrak = m['NO KONTRAK'];
-      if (stayMap[noKontrak]) {
-        const target = bucketTargetSTAY(role, cfg, m['BUCKET AWAL']);
-        return Object.assign({}, m, { 'BUCKET UPDATE': target });
+      if (Object.prototype.hasOwnProperty.call(stayMap, noKontrak)) {
+        return Object.assign({}, m, { 'BUCKET UPDATE': stayMap[noKontrak] });
       }
       if (btcMap[noKontrak]) {
         return Object.assign({}, m, { 'BUCKET UPDATE': 'NOOD' });
@@ -373,11 +385,9 @@ function terapkanSimulasi(masterList, petaKA, proyeksi, role, cfg) {
   const petaKA2 = {};
   Object.keys(petaKA).forEach(noKontrak => {
     if (lunasSet.has(noKontrak)) return;
-    if (stayMap[noKontrak]) {
-      const m = masterList.find(x => x['NO KONTRAK'] === noKontrak);
-      const target = bucketTargetSTAY(role, cfg, m ? m['BUCKET AWAL'] : null);
+    if (Object.prototype.hasOwnProperty.call(stayMap, noKontrak)) {
       // FLOW EVER SENGAJA gak diubah -- rekor terburuk yang udah kejadian tetap kekunci.
-      petaKA2[noKontrak] = Object.assign({}, petaKA[noKontrak], { 'BUCKET UPDATE': target });
+      petaKA2[noKontrak] = Object.assign({}, petaKA[noKontrak], { 'BUCKET UPDATE': stayMap[noKontrak] });
     } else if (btcMap[noKontrak]) {
       // FLOW EVER SENGAJA gak diubah -- rekor terburuk yang udah kejadian tetap kekunci.
       petaKA2[noKontrak] = Object.assign({}, petaKA[noKontrak], { 'BUCKET UPDATE': 'NOOD' });
@@ -398,10 +408,12 @@ function terapkanSimulasi(masterList, petaKA, proyeksi, role, cfg) {
 // rekomendasi beda logic sama rumus rapor aslinya. Aksi yang dicoba per kontrak ngikutin
 // persis aturan tombol yang muncul di UI (lihat showStayBtn/showBtcBtn di index.html).
 // ============================================================
+// 'flow' SENGAJA gak dicoba di sini -- itu aksi "ngunci tetap jelek", gak pernah nolong naikin
+// nilai rapor (lawan dari asumsi default yang udah otomatis mengasumsikan membaik), jadi gak ada
+// gunanya dicoba sama mesin rekomendasi yang nyari kandidat PALING ngefek NAIKIN nilai.
 function aksiLegalUntukKontrak(k) {
   const bucketSekarang = (k.bucketUpdateKA || k.bucketUpdateMaster || '').toString().trim();
   const aksi = [];
-  if ((k.kriteriaAcct || '').toString().trim().toUpperCase() === 'FLOW') aksi.push('stay');
   if (k.bucketAwal !== 'NOOD' && bucketSekarang !== 'NOOD') aksi.push('btc');
   aksi.push('lunas');
   return aksi;
@@ -517,7 +529,7 @@ module.exports = async (req, res) => {
       const body = req.body || {};
       const proyeksi = (body.proyeksi && typeof body.proyeksi === 'object' && !Array.isArray(body.proyeksi)) ? body.proyeksi : {};
       const proyeksiValid = {};
-      Object.keys(proyeksi).forEach(k => { if (proyeksi[k] === 'stay' || proyeksi[k] === 'btc' || proyeksi[k] === 'lunas') proyeksiValid[k] = proyeksi[k]; });
+      Object.keys(proyeksi).forEach(k => { if (proyeksi[k] === 'flow' || proyeksi[k] === 'btc' || proyeksi[k] === 'lunas') proyeksiValid[k] = proyeksi[k]; });
 
       const original = hitungSatu(role, masterList, petaKA, cfg);
       const { masterList2, petaKA2 } = terapkanSimulasi(masterList, petaKA, proyeksiValid, role, cfg);

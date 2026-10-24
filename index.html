@@ -2990,17 +2990,26 @@ function renderInsentifView(){
 // ============================================================
 let SIMULASI_RAPOR_DATA = null;
 let SIMULASI_RAPOR_RESULT = null;
-// proyeksi: Map noKontrak -> 'stay' (bayar sebagian, berhenti di bucket target) | 'btc' (balik ke NOOD) | 'lunas' (keluar dari buku)
-let simulasiRaporState = { search:'', limit:20, step:'stay', proyeksi: new Map() };
+// proyeksi: Map noKontrak -> 'flow' (dikunci TETAP di posisi flow-nya sekarang, gak di-auto-recover) | 'btc' (balik ke NOOD) | 'lunas' (keluar dari buku)
+//
+// PENTING soal default: Flow Ever gak bisa diapa-apain lewat simulasi ini (rekor bucket terburuk
+// bulan ini udah permanen kehitung, lihat komentar di api/simulasi-rapor.js), jadi gak ada pilihan
+// buat dia. Parameter yang MASIH bisa digeser cuma Balance & Flow No OD/1-30 — keduanya dari posisi
+// SEKARANG (BUCKET UPDATE). Makanya gak perlu tombol "Stay" manual lagi: SEMUA kontrak KRITERIA
+// ACCT=FLOW yang TIDAK kamu pilih di tab Flow otomatis diasumsikan server BERHENTI & balik ke Bucket
+// Awal-nya sendiri (itu baseline default-nya). Milih kontrak di tab Flow = ngunci kontrak itu TETAP
+// dihitung di posisi flow-nya sekarang (gak ikut auto-recover) — buat kontrak yang kamu yakin BELUM
+// bakal membaik bulan ini.
+let simulasiRaporState = { search:'', limit:20, step:'flow', proyeksi: new Map() };
 
-// Tampilan pemilihan kontrak disamain kayak Proyeksi Cabang: tab per kategori (Stay/BTC/Lunas),
+// Tampilan pemilihan kontrak disamain kayak Proyeksi Cabang: tab per kategori (Flow/BTC/Lunas),
 // satu tombol "Pilih kontrak ini" per baris, bukan sampai 3 tombol sekaligus kayak sebelumnya. Beda
-// sama PC_STEPS: target di sini LANGSUNG sama kayak step.key ('stay'/'btc'/'lunas'), jadi hitung
+// sama PC_STEPS: target di sini LANGSUNG sama kayak step.key ('flow'/'btc'/'lunas'), jadi hitung
 // jumlah per tab gak perlu validasi bucket macem-macem kayak di Proyeksi Cabang.
 const SIM_STEPS = [
-  { key:'stay', label:'Stay', target:'stay', btnClass:'sim-proyeksi-stay', targetLabel:null,
+  { key:'flow', label:'Flow', target:'flow', btnClass:'sim-proyeksi-stay', targetLabel:null,
     eligible: k => k.kriteriaAcct === 'FLOW',
-    desc:'Kontrak yang lagi FLOW (masih aktif pindah ke bucket lebih buruk) tapi ada potensi bayar (walau cuma sebagian) — diproyeksikan BERHENTI flow, balik ke Bucket Awal-nya sendiri (belum lunas, cuma berhenti nyicil ke bucket berikutnya, gak sampai ngejar ke NOOD).' },
+    desc:'Kontrak yang lagi FLOW (masih aktif pindah ke bucket lebih buruk) dan kamu yakin BELUM bakal membaik bulan ini — pilih di sini buat MENGUNCI kontrak itu tetap dihitung di posisi flow-nya sekarang. Kontrak FLOW yang TIDAK kamu pilih di sini otomatis diasumsikan berhenti & balik ke Bucket Awal-nya sendiri (belum lunas, cuma berhenti nyicil ke bucket berikutnya).' },
   { key:'btc', label:'BTC', target:'btc', btnClass:'sim-proyeksi-btc', targetLabel:'NOOD',
     eligible: k => { const bs = k.bucketUpdateKA || k.bucketUpdateMaster; return k.bucketAwal !== 'NOOD' && bs !== 'NOOD'; },
     desc:'Khusus kontrak Bucket Awal-nya BUKAN NOOD, yang diproyeksikan berhasil ngejar SEMUA tunggakannya balik ke kondisi lancar (NOOD) — piutangnya belum lunas, masih tetap kehitung di buku, cuma posisinya balik ke paling awal.' },
@@ -3041,7 +3050,7 @@ function loadSimulasiRapor(namaCO){
       if(body.error){ document.getElementById('wrap').innerHTML = '<div class="state-box">'+esc(body.error)+'</div>'; return; }
       SIMULASI_RAPOR_DATA = body;
       SIMULASI_RAPOR_RESULT = null;
-      simulasiRaporState = { search:'', limit:20, step:'stay', proyeksi: new Map() };
+      simulasiRaporState = { search:'', limit:20, step:'flow', proyeksi: new Map() };
       renderSimulasiRapor();
       triggerFadeIn();
     })
@@ -3116,16 +3125,18 @@ function renderSimulasiRapor(){
     balik ke 1-30, tetap ke-cover di sini). Kontrak yang Kriteria Acct-nya udah <b>BTC / LUNAS</b> gak ditampilkan lagi (udah beres
     duluan), begitu juga kontrak yang masih <b>STAY</b> persis di bucket asal flow-nya sendiri (NOOD buat FE, 1-30 buat MR) —
     kondisi normal mayoritas kontrak, belum actionable buat parameter Flow, sengaja gak ditawarkan biar daftarnya gak kebanjiran.${d.role === 'MR' ? ' Khusus MR, parameter Flow 1-30 & Balance itu dihitung <u>org-wide</u> (semua CO, bukan cuma kontrak milikmu sendiri) — jadi kontrak yang pemiliknya CO lain bisa aja ikut muncul di sini (ditandai <span class="sim-owner-badge">'+ic('user')+' nama CO</span>) kalau dia relevan buat metric-mu.' : ''} Daftar diurutkan per bucket (NOOD → 1-30 → 31-60 → dst) biar rapi, dalam satu bucket yang sama diurutin dari SIPOK terbesar.<br>
-    Tiap kontrak punya sampai 3 tombol proyeksi, pilih salah satu kalau ada potensi berubah — biarkan kosong kalau kontraknya
-    diperkirakan tetap seperti data live sekarang:<br>
-    • <b>Proyeksi Stay</b> — kontrak <u>flow</u> tapi ada potensi bayar (walau cuma sebagian), sehingga proyeksinya berhenti flow dan
-    balik ke <b>Bucket Awal</b>-nya sendiri (piutangnya belum lunas, cuma berhenti nyicil ke bucket berikutnya, gak sampai ngejar ke NOOD).<br>
-    • <b>Proyeksi BTC</b> (Back To Current) — <u>khusus kontrak yang Bucket Awal-nya BUKAN NOOD</u> dan berhasil ngejar SEMUA tunggakannya
+    Simulasi ini CUMA ngatur parameter yang masih bisa digeser dari posisi <b>SEKARANG</b> (Balance & Flow No OD/1-30) —
+    <b>Flow Ever</b> gak ada pilihannya di sini karena udah otomatis kehitung permanen dari rekor bucket terburuk bulan ini,
+    gak kepengaruh simulasi apapun.<br>
+    Pilih tab di bawah, lalu klik kontrak yang mau diproyeksikan. <u>Default-nya</u>, SEMUA kontrak yang lagi <b>FLOW</b>
+    otomatis diasumsikan berhenti & balik sendiri ke <b>Bucket Awal</b>-nya (belum lunas, cuma berhenti nyicil) — kamu <b>cuma
+    perlu milih kontrak yang KAMU YAKIN belum bakal membaik</b>:<br>
+    • <b>Flow</b> — kunci kontrak itu TETAP dihitung di posisi flow-nya sekarang (gak ikut auto-recover ke Bucket Awal).<br>
+    • <b>BTC</b> (Back To Current) — <u>khusus kontrak yang Bucket Awal-nya BUKAN NOOD</u> dan berhasil ngejar SEMUA tunggakannya
     balik ke kondisi lancar, jadi bucket-nya balik ke <b>NOOD</b> (bucket pertama/paling sehat) — piutangnya <u>belum lunas</u>, masih tetap
-    kehitung di buku, cuma posisinya balik ke paling awal. Kontrak yang Bucket Awal-nya emang udah NOOD gak ditawarin opsi ini — cukup pakai
-    <b>Proyeksi Stay</b> (yang buat kontrak begitu target-nya juga otomatis NOOD).<br>
-    • <b>Proyeksi Lunas</b> — kontrak beneran <u>lunas total</u>, sehingga kontrak itu keluar sepenuhnya dari buku piutang yang
-    dipantau (keluar dari Balance, Flow Ever, maupun Flow NOOD/1-30/Forward sekaligus).<br>
+    kehitung di buku, cuma posisinya balik ke paling awal.<br>
+    • <b>Lunas</b> — kontrak beneran <u>lunas total</u>, sehingga kontrak itu keluar sepenuhnya dari buku piutang yang
+    dipantau (keluar dari Balance, maupun Flow No OD/1-30 sekaligus).<br>
     Lalu lihat apakah nilai Rapor Harian ${d.isAdmin ? '<b>'+d.namaCO+'</b>' : 'kamu'} jadi ON TARGET atau tidak.
   </div></details>`;
 
@@ -3165,7 +3176,7 @@ function renderSimulasiRapor(){
     // lain di daftar yang sama, poinnya baru keliatan naik pas beberapa kontrak digabung.
     if(r.rekomendasiKejar && r.rekomendasiKejar.daftar && r.rekomendasiKejar.daftar.length){
       const rk = r.rekomendasiKejar;
-      const aksiLabel = { stay: 'Proyeksi Stay', btc: 'Proyeksi BTC', lunas: 'Proyeksi Lunas' };
+      const aksiLabel = { btc: 'Proyeksi BTC', lunas: 'Proyeksi Lunas' };
       html += `<div class="ins-section">
         <h2>${ic('bulb')} Rekomendasi Kontrak yang Perlu Dikejar</h2>
         <div class="sim-intro" style="margin-bottom:12px;">
@@ -3189,7 +3200,7 @@ function renderSimulasiRapor(){
     }
   }
 
-  html += `<div class="panel-title">Pilih kontrak per kategori (Stay / BTC / Lunas)</div>`;
+  html += `<div class="panel-title">Pilih kontrak per kategori (Flow / BTC / Lunas)</div>`;
   if(!d.kontrakList || !d.kontrakList.length){
     html += `<div class="state-box">Gak ada kontrak yang relevan buat disimulasikan saat ini.</div>`;
   } else {
@@ -3263,7 +3274,8 @@ function renderSimKontrakList_(){
     // sendiri) — jadi kalau kontraknya kebetulan bukan punya CO yang lagi disimulasikan, kasih
     // tau pemilik aslinya biar gak bingung "kok kontrak orang lain muncul di daftarku".
     const pemilikBadge = (k.coAll && k.coAll !== SIMULASI_RAPOR_DATA.namaCO) ? `<span class="sim-owner-badge">${ic('user')} ${esc(k.coAll)}</span>` : '';
-    const targetLabel = step.key === 'stay' ? fmtBucket(k.bucketAwal) : step.targetLabel;
+    const targetLabel = step.key === 'flow' ? fmtBucket(bucketSekarang) : step.targetLabel;
+    const btnLabel = step.key === 'flow' ? 'Kunci kontrak ini' : 'Pilih kontrak ini';
     return `
     <div class="sim-kontrak-item">
       <div class="sim-kontrak-info">
@@ -3272,7 +3284,7 @@ function renderSimKontrakList_(){
       </div>
       <div class="sim-kontrak-sipok">${fmtRupiah(k.sisaPiutang)}</div>
       <div class="sim-proyeksi-group">
-        <button type="button" class="sim-proyeksi-btn ${step.btnClass} ${isActiveHere?'active':''}" data-nokontrak="${esc(k.noKontrak)}">${isActiveHere?ic('check')+' ':''}Pilih kontrak ini <span class="sim-proyeksi-target">→ ${esc(targetLabel)}</span></button>
+        <button type="button" class="sim-proyeksi-btn ${step.btnClass} ${isActiveHere?'active':''}" data-nokontrak="${esc(k.noKontrak)}">${isActiveHere?ic('check')+' ':''}${btnLabel} <span class="sim-proyeksi-target">${step.key==='flow' ? '🔒 tetap '+esc(targetLabel) : '→ '+esc(targetLabel)}</span></button>
       </div>
     </div>`;
   }).join('') + (allRows.length > rows.length ? `<div class="load-more"><button type="button" class="btn" id="simMoreBtn">Tampilkan ${Math.min(20, allRows.length - rows.length)} lagi <span class="load-note">(${rows.length} dari ${allRows.length})</span></button></div>` : '');
