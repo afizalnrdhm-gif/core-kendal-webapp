@@ -2990,8 +2990,46 @@ function renderInsentifView(){
 // ============================================================
 let SIMULASI_RAPOR_DATA = null;
 let SIMULASI_RAPOR_RESULT = null;
-// proyeksi: Map noKontrak -> 'stay' (bayar sebagian, berhenti di bucket target) | 'btc' (lunas total, keluar dari buku)
-let simulasiRaporState = { search:'', proyeksi: new Map() };
+// proyeksi: Map noKontrak -> 'stay' (bayar sebagian, berhenti di bucket target) | 'btc' (balik ke NOOD) | 'lunas' (keluar dari buku)
+let simulasiRaporState = { search:'', limit:20, step:'stay', proyeksi: new Map() };
+
+// Tampilan pemilihan kontrak disamain kayak Proyeksi Cabang: tab per kategori (Stay/BTC/Lunas),
+// satu tombol "Pilih kontrak ini" per baris, bukan sampai 3 tombol sekaligus kayak sebelumnya. Beda
+// sama PC_STEPS: target di sini LANGSUNG sama kayak step.key ('stay'/'btc'/'lunas'), jadi hitung
+// jumlah per tab gak perlu validasi bucket macem-macem kayak di Proyeksi Cabang.
+const SIM_STEPS = [
+  { key:'stay', label:'Stay', target:'stay', btnClass:'sim-proyeksi-stay', targetLabel:null,
+    eligible: k => k.kriteriaAcct === 'FLOW',
+    desc:'Kontrak yang lagi FLOW (masih aktif pindah ke bucket lebih buruk) tapi ada potensi bayar (walau cuma sebagian) — diproyeksikan BERHENTI flow, balik ke Bucket Awal-nya sendiri (belum lunas, cuma berhenti nyicil ke bucket berikutnya, gak sampai ngejar ke NOOD).' },
+  { key:'btc', label:'BTC', target:'btc', btnClass:'sim-proyeksi-btc', targetLabel:'NOOD',
+    eligible: k => { const bs = k.bucketUpdateKA || k.bucketUpdateMaster; return k.bucketAwal !== 'NOOD' && bs !== 'NOOD'; },
+    desc:'Khusus kontrak Bucket Awal-nya BUKAN NOOD, yang diproyeksikan berhasil ngejar SEMUA tunggakannya balik ke kondisi lancar (NOOD) — piutangnya belum lunas, masih tetap kehitung di buku, cuma posisinya balik ke paling awal.' },
+  { key:'lunas', label:'Lunas', target:'lunas', btnClass:'sim-proyeksi-lunas', targetLabel:'Lunas',
+    eligible: k => true,
+    desc:'Kontrak bucket manapun yang diproyeksikan LUNAS total, sehingga keluar sepenuhnya dari buku piutang yang dipantau (keluar dari Balance, Flow Ever, maupun Flow NOOD/1-30/Forward sekaligus).' }
+];
+function simStepByKey_(key){ return SIM_STEPS.find(s => s.key === key) || SIM_STEPS[0]; }
+function simCountForStep_(step){
+  let n = 0;
+  simulasiRaporState.proyeksi.forEach(v => { if(v === step.target) n++; });
+  return n;
+}
+function simTabBtnHtml_(s){
+  const n = simCountForStep_(s);
+  return `<button type="button" role="tab" data-step="${s.key}" class="${simulasiRaporState.step===s.key?'on':''}" aria-selected="${simulasiRaporState.step===s.key}">${esc(s.label)}${n?' <span class="pc-step-badge">'+n+'</span>':''}</button>`;
+}
+function simPatchTabsAndCount_(){
+  const tabsBox = document.getElementById('simStepTabs');
+  if(tabsBox){
+    tabsBox.querySelectorAll('button[data-step]').forEach(btn => {
+      const s = simStepByKey_(btn.dataset.step);
+      const n = simCountForStep_(s);
+      btn.innerHTML = esc(s.label) + (n ? ' <span class="pc-step-badge">'+n+'</span>' : '');
+    });
+  }
+  const totalEl = document.getElementById('simTotalCount');
+  if(totalEl) totalEl.textContent = simulasiRaporState.proyeksi.size;
+}
 
 function loadSimulasiRapor(namaCO){
   document.getElementById('wrap').innerHTML = `<div class="skeleton-row"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div><div class="skel tall"></div>`;
@@ -3003,7 +3041,7 @@ function loadSimulasiRapor(namaCO){
       if(body.error){ document.getElementById('wrap').innerHTML = '<div class="state-box">'+esc(body.error)+'</div>'; return; }
       SIMULASI_RAPOR_DATA = body;
       SIMULASI_RAPOR_RESULT = null;
-      simulasiRaporState = { search:'', proyeksi: new Map() };
+      simulasiRaporState = { search:'', limit:20, step:'stay', proyeksi: new Map() };
       renderSimulasiRapor();
       triggerFadeIn();
     })
@@ -3056,11 +3094,14 @@ function simResultCard_(title, h, highlight){
   </div>`;
 }
 
-function getSimulasiKontrakFiltered_(){
+function getSimStepKontrakFiltered_(step){
   const list = (SIMULASI_RAPOR_DATA && SIMULASI_RAPOR_DATA.kontrakList) || [];
-  if(!simulasiRaporState.search.trim()) return list;
-  const q = simulasiRaporState.search.trim().toLowerCase();
-  return list.filter(k => (k.namaKonsumen||'').toLowerCase().includes(q) || (k.noKontrak||'').toLowerCase().includes(q));
+  let filtered = list.filter(step.eligible);
+  if(simulasiRaporState.search.trim()){
+    const q = simulasiRaporState.search.trim().toLowerCase();
+    filtered = filtered.filter(k => (k.namaKonsumen||'').toLowerCase().includes(q) || (k.noKontrak||'').toLowerCase().includes(q));
+  }
+  return filtered;
 }
 
 function renderSimulasiRapor(){
@@ -3148,7 +3189,7 @@ function renderSimulasiRapor(){
     }
   }
 
-  html += `<div class="panel-title">Pilih proyeksi tiap kontrak (Stay / BTC / Lunas)</div>`;
+  html += `<div class="panel-title">Pilih kontrak per kategori (Stay / BTC / Lunas)</div>`;
   if(!d.kontrakList || !d.kontrakList.length){
     html += `<div class="state-box">Gak ada kontrak yang relevan buat disimulasikan saat ini.</div>`;
   } else {
@@ -3156,12 +3197,16 @@ function renderSimulasiRapor(){
     <div class="controls">
       <div class="search-box">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4C6272" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input id="simSearchInput" type="text" placeholder="Cari nama konsumen atau no kontrak…" value="${simulasiRaporState.search}">
+        <input id="simSearchInput" type="text" placeholder="Cari nama konsumen atau no kontrak…" value="${esc(simulasiRaporState.search)}">
       </div>
-      <button class="btn" id="simClearBtn">Bersihkan pilihan</button>
+      <button class="btn" id="simClearBtn">Bersihkan semua pilihan</button>
       <button class="btn primary" id="simRunBtn">${ic('refresh')} Jalankan Simulasi</button>
     </div>
-    <div class="count-note">${simulasiRaporState.proyeksi.size} kontrak diproyeksikan berubah dari ${d.kontrakList.length} yang berpengaruh</div>
+    <div class="count-note"><span id="simTotalCount">${simulasiRaporState.proyeksi.size}</span> kontrak total diproyeksikan berubah dari ${d.kontrakList.length} yang berpengaruh</div>
+    <div class="dash-tabs" id="simStepTabs" role="tablist" aria-label="Kategori proyeksi kontrak">
+      ${SIM_STEPS.map(s => simTabBtnHtml_(s)).join('')}
+    </div>
+    <div class="sim-intro-body" id="simStepDesc" style="margin:0 0 14px;">${esc(simStepByKey_(simulasiRaporState.step).desc)}</div>
     <div class="sim-kontrak-list" id="simKontrakList"></div>`;
   }
 
@@ -3183,28 +3228,34 @@ function renderSimulasiRapor(){
     document.getElementById('simSearchInput').addEventListener('input', e => { simulasiRaporState.search = e.target.value; simulasiRaporState.limit = 20; renderSimKontrakList_(); });
     document.getElementById('simClearBtn').addEventListener('click', () => { simulasiRaporState.proyeksi.clear(); SIMULASI_RAPOR_RESULT = null; renderSimulasiRapor(); });
     document.getElementById('simRunBtn').addEventListener('click', runSimulasiRapor);
+    document.querySelectorAll('#simStepTabs button[data-step]').forEach(b => b.addEventListener('click', () => {
+      if(b.dataset.step === simulasiRaporState.step) return;
+      simulasiRaporState.step = b.dataset.step;
+      simulasiRaporState.limit = 20;
+      document.querySelectorAll('#simStepTabs button[data-step]').forEach(x => {
+        const on = x.dataset.step === simulasiRaporState.step;
+        x.classList.toggle('on', on);
+        x.setAttribute('aria-selected', on);
+      });
+      document.getElementById('simStepDesc').textContent = simStepByKey_(simulasiRaporState.step).desc;
+      renderSimKontrakList_();
+    }));
   }
 }
 
 function renderSimKontrakList_(){
   const box = document.getElementById('simKontrakList');
   if(!box) return;
-  const allRows = getSimulasiKontrakFiltered_();
+  const step = simStepByKey_(simulasiRaporState.step);
+  const allRows = getSimStepKontrakFiltered_(step);
   const lim = simulasiRaporState.limit || 20;
   const rows = allRows.slice(0, lim);
+  if(!allRows.length){ box.innerHTML = '<div class="state-box">Gak ada kontrak yang cocok buat kategori ini.</div>'; return; }
   box.innerHTML = rows.map(k => {
-    const current = simulasiRaporState.proyeksi.get(k.noKontrak) || '';
     const bucketSekarang = k.bucketUpdateKA || k.bucketUpdateMaster;
-    // "Proyeksi Stay" cuma relevan buat kontrak yang LAGI flow (masih actively pindah bucket
-    // makin buruk) — buat kontrak STAY (udah diem) atau ROLLBACK (udah membaik), nge-klik Stay
-    // gak ngubah apa-apa (dia emang udah "diem" di situ), jadi tombolnya gak usah ditampilkan.
-    const showStayBtn = k.kriteriaAcct === 'FLOW';
-    // "Proyeksi BTC" cuma relevan buat kontrak yang BUCKET AWAL-nya BUKAN NOOD (BTC = ngejar
-    // balik ke NOOD dari kondisi yang udah kadung jelek). Kalau Bucket Awal-nya emang udah NOOD,
-    // itu bukan kasus BTC — cukup "Proyeksi Stay" (yang buat kontrak begini target-nya juga NOOD,
-    // krn Stay = balik ke Bucket Awal sendiri). Tombol BTC juga gak usah muncul kalau posisinya
-    // SEKARANG udah di NOOD (gak ada bedanya sama kondisi live).
-    const showBtcBtn = k.bucketAwal !== 'NOOD' && bucketSekarang !== 'NOOD';
+    const current = simulasiRaporState.proyeksi.get(k.noKontrak) || '';
+    const isActiveHere = current === step.target;
+    const elsewhereNote = (current && !isActiveHere) ? ' · sudah dipilih di kategori lain (' + esc(simStepByKey_(current).label) + ')' : '';
     // badge ini nandain kontrak yang SEKARANG beneran lagi kehitung di Balance rapor — biar CO
     // tau kontrak mana yang paling ngefek kalau di-BTC/Lunas-kan (bukan cuma nebak dari bucket awal).
     const balanceBadge = k.diBalanceSekarang ? '<span class="sim-balance-badge">'+ic('pin')+' Di Balance</span>' : '';
@@ -3212,17 +3263,16 @@ function renderSimKontrakList_(){
     // sendiri) — jadi kalau kontraknya kebetulan bukan punya CO yang lagi disimulasikan, kasih
     // tau pemilik aslinya biar gak bingung "kok kontrak orang lain muncul di daftarku".
     const pemilikBadge = (k.coAll && k.coAll !== SIMULASI_RAPOR_DATA.namaCO) ? `<span class="sim-owner-badge">${ic('user')} ${esc(k.coAll)}</span>` : '';
+    const targetLabel = step.key === 'stay' ? fmtBucket(k.bucketAwal) : step.targetLabel;
     return `
     <div class="sim-kontrak-item">
       <div class="sim-kontrak-info">
         <div class="sim-kontrak-name">${esc(k.namaKonsumen||'-')} <span class="sim-kontrak-kontrak">${esc(k.noKontrak)}</span>${k.kriteriaAcct ? ' <span class="sim-kriteria-badge sim-kriteria-'+esc(k.kriteriaAcct)+'">'+esc(k.kriteriaAcct)+'</span>' : ''}${balanceBadge}${pemilikBadge}</div>
-        <div class="sim-kontrak-meta">Bucket Awal ${fmtBucket(k.bucketAwal)} → Sekarang ${fmtBucket(bucketSekarang)}${k.flowEver && k.flowEver!==k.bucketUpdateKA ? ' · Flow Ever '+fmtBucket(k.flowEver) : ''}</div>
+        <div class="sim-kontrak-meta">Bucket Awal ${fmtBucket(k.bucketAwal)} → Sekarang ${fmtBucket(bucketSekarang)}${k.flowEver && k.flowEver!==k.bucketUpdateKA ? ' · Flow Ever '+fmtBucket(k.flowEver) : ''}${elsewhereNote}</div>
       </div>
       <div class="sim-kontrak-sipok">${fmtRupiah(k.sisaPiutang)}</div>
       <div class="sim-proyeksi-group">
-        ${showStayBtn ? `<button type="button" class="sim-proyeksi-btn sim-proyeksi-stay ${current==='stay'?'active':''}" data-nokontrak="${esc(k.noKontrak)}" data-val="stay">${current==='stay'?ic('check')+' ':''}Proyeksi Stay <span class="sim-proyeksi-target">→ ${fmtBucket(k.bucketAwal)}</span></button>` : ''}
-        ${showBtcBtn ? `<button type="button" class="sim-proyeksi-btn sim-proyeksi-btc ${current==='btc'?'active':''}" data-nokontrak="${esc(k.noKontrak)}" data-val="btc">${current==='btc'?ic('check')+' ':''}Proyeksi BTC <span class="sim-proyeksi-target">→ NOOD</span></button>` : ''}
-        <button type="button" class="sim-proyeksi-btn sim-proyeksi-lunas ${current==='lunas'?'active':''}" data-nokontrak="${esc(k.noKontrak)}" data-val="lunas">${current==='lunas'?ic('check')+' ':''}Proyeksi Lunas</button>
+        <button type="button" class="sim-proyeksi-btn ${step.btnClass} ${isActiveHere?'active':''}" data-nokontrak="${esc(k.noKontrak)}">${isActiveHere?ic('check')+' ':''}Pilih kontrak ini <span class="sim-proyeksi-target">→ ${esc(targetLabel)}</span></button>
       </div>
     </div>`;
   }).join('') + (allRows.length > rows.length ? `<div class="load-more"><button type="button" class="btn" id="simMoreBtn">Tampilkan ${Math.min(20, allRows.length - rows.length)} lagi <span class="load-note">(${rows.length} dari ${allRows.length})</span></button></div>` : '');
@@ -3231,12 +3281,10 @@ function renderSimKontrakList_(){
   box.querySelectorAll('.sim-proyeksi-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const nk = btn.getAttribute('data-nokontrak');
-      const val = btn.getAttribute('data-val');
       const cur = simulasiRaporState.proyeksi.get(nk) || '';
-      if(cur === val){ simulasiRaporState.proyeksi.delete(nk); } else { simulasiRaporState.proyeksi.set(nk, val); }
+      if(cur === step.target){ simulasiRaporState.proyeksi.delete(nk); } else { simulasiRaporState.proyeksi.set(nk, step.target); }
       renderSimKontrakList_();
-      const note = document.querySelector('.count-note');
-      if(note) note.textContent = simulasiRaporState.proyeksi.size + ' kontrak diproyeksikan berubah dari ' + (SIMULASI_RAPOR_DATA.kontrakList.length) + ' yang berpengaruh';
+      simPatchTabsAndCount_();
     });
   });
 }
