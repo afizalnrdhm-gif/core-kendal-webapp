@@ -11,31 +11,56 @@ function isFleet(row) { return String(row && row['FLEET/NON FLEET'] != null ? ro
 function sisaOf(k) { return typeof k['SISA PIUTANG'] === 'number' && isFinite(k['SISA PIUTANG']) ? k['SISA PIUTANG'] : 0; }
 function tipeBarangOf(m) { return String(m && m['TYPE BARANG'] != null ? m['TYPE BARANG'] : '').trim().toUpperCase() || '(Tidak diketahui)'; }
 
-// Pecah pemberat satu angka Flow (mis. Flow NOOD 21,0%) per TYPE BARANG: dari seluruh SIPOK bucket awal
-// `asal` (basis skala PERSIS sama seperti flowStat di bawah — totalAsal, bukan cuma yang flow), berapa
-// persen disumbang tiap tipe barang yang sudah pindah ke `target`. Jumlah pct semua baris = flowPct =
-// angka Flow yang tampil di kartu KPI, jadi langsung kelihatan mobil/motor masing-masing "nyumbang" berapa
-// persen dari pelebaran itu — bukan sekadar porsi di antara yang sudah flow (yang selalu jumlah 100%).
-function flowByTipe_(masterRows, asal, target, includeFleet) {
+// Kolom "NBQ" di MASTER isinya umur kontrak dalam bulan, format teks "3 MOB" (MOB = Months On
+// Book) — bukan angka murni. Sama persis cara parse-nya dengan nbqNum() di api/telegram-nbq.js,
+// biar konsisten satu definisi di seluruh app.
+function nbqNum(m) {
+  const v = String(m && m['NBQ'] != null ? m['NBQ'] : '').trim();
+  const match = v.match(/^(\d+)\s*MOB$/i);
+  return match ? parseInt(match[1], 10) : null;
+}
+const NBQ_LABEL_BARU = 'Angsuran Awal / NBQ (≤12 bulan)';
+const NBQ_LABEL_LAWAS = 'Kontrak Lawas (>12 bulan)';
+// Ambang 12 bulan dipilih SAMA PERSIS dengan definisi "kontrak NBQ" yang udah dipakai di command
+// Telegram /nbq (nbqNum(m) <= 12), jadi satu istilah "NBQ" konsisten artinya di seluruh app.
+function kelompokNbqOf(m) {
+  const mob = nbqNum(m);
+  if (mob === null) return '(MOB tidak diketahui)';
+  return mob <= 12 ? NBQ_LABEL_BARU : NBQ_LABEL_LAWAS;
+}
+
+// Pecah pemberat satu angka Flow (mis. Flow NOOD 21,0%) per kelompok (TYPE BARANG, atau umur
+// kontrak NBQ/lawas, dll — ditentukan `groupFn`): dari seluruh SIPOK bucket awal `asal` (basis
+// skala PERSIS sama seperti flowStat di bawah — totalAsal, bukan cuma yang flow), berapa persen
+// disumbang tiap kelompok yang sudah pindah ke `target`. Jumlah pct semua baris = flowPct = angka
+// Flow yang tampil di kartu KPI, jadi langsung kelihatan kelompok mana yang paling "nyumbang" ke
+// pelebaran itu — bukan sekadar porsi di antara yang sudah flow (yang selalu jumlah 100%).
+function flowByGroup_(masterRows, asal, target, includeFleet, groupFn) {
   const passFleet = (row) => includeFleet || !isFleet(row);
   let totalAsal = 0;
-  const perTipe = {};
+  const perGroup = {};
   let flowAmount = 0, flowCount = 0;
   (masterRows || []).forEach(m => {
     if (!passFleet(m) || m['BUCKET AWAL'] !== asal) return;
     const sipok = sipokOf(m);
     totalAsal += sipok;
     if (m['BUCKET UPDATE'] === target) {
-      const tipe = tipeBarangOf(m);
-      if (!perTipe[tipe]) perTipe[tipe] = { amount: 0, count: 0 };
-      perTipe[tipe].amount += sipok; perTipe[tipe].count += 1;
+      const grp = groupFn(m);
+      if (!perGroup[grp]) perGroup[grp] = { amount: 0, count: 0 };
+      perGroup[grp].amount += sipok; perGroup[grp].count += 1;
       flowAmount += sipok; flowCount += 1;
     }
   });
-  const rows = Object.keys(perTipe)
-    .map(tipe => ({ label: tipe, amount: perTipe[tipe].amount, count: perTipe[tipe].count, pct: totalAsal > 0 ? perTipe[tipe].amount / totalAsal * 100 : 0 }))
+  const rows = Object.keys(perGroup)
+    .map(grp => ({ label: grp, amount: perGroup[grp].amount, count: perGroup[grp].count, pct: totalAsal > 0 ? perGroup[grp].amount / totalAsal * 100 : 0 }))
     .sort((a, b) => b.amount - a.amount);
   return { flowAmount, flowCount, totalAsal, flowPct: totalAsal > 0 ? flowAmount / totalAsal * 100 : 0, rows };
+}
+function flowByTipe_(masterRows, asal, target, includeFleet) {
+  return flowByGroup_(masterRows, asal, target, includeFleet, tipeBarangOf);
+}
+function flowByNbq_(masterRows, asal, target, includeFleet) {
+  return flowByGroup_(masterRows, asal, target, includeFleet, kelompokNbqOf);
 }
 
 function hitungKpi(masterRows, kaRows, includeFleet) {
@@ -83,7 +108,12 @@ function hitungKpi(masterRows, kaRows, includeFleet) {
     'Flow 1-30': flowByTipe_(masterRows, 'P001_030', 'P031_060', includeFleet),
     'Flow 31-60': flowByTipe_(masterRows, 'P031_060', 'P061_090', includeFleet)
   };
-  return { enr, enrCount, perBucket, cumulative, flowBtc, flowByTipe };
+  const flowByNbq = {
+    'Flow NOOD': flowByNbq_(masterRows, 'NOOD', 'P001_030', includeFleet),
+    'Flow 1-30': flowByNbq_(masterRows, 'P001_030', 'P031_060', includeFleet),
+    'Flow 31-60': flowByNbq_(masterRows, 'P031_060', 'P061_090', includeFleet)
+  };
+  return { enr, enrCount, perBucket, cumulative, flowBtc, flowByTipe, flowByNbq };
 }
 
 // Flow "lebar": kontrak bucket awal `awal` yang BUCKET UPDATE-nya lebih buruk (bucket mana pun). Dasar penyelesaian = 100 - pct.

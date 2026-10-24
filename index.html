@@ -4754,6 +4754,35 @@ function flowTipeTable_(d){
   </div>`;
 }
 
+// Pengaruh Flow per komposisi kontrak (Angsuran Awal/NBQ ≤12 bulan vs Kontrak Lawas >12 bulan) —
+// tabel matriks sama persis strukturnya kayak flowTipeTable_ di atas (reuse class CSS rk-flowtipe
+// yang sama), cuma kelompoknya dari umur kontrak (kolom NBQ di MASTER, format "N MOB") bukan dari
+// TYPE BARANG. Jawab pertanyaan: kontrak yang lagi FLOW itu didominasi nasabah BARU (angsuran awal,
+// makanya gampang gagal bayar pertama/FPD-SPD) atau nasabah LAWAS (udah lama jalan, tiba-tiba macet)?
+function flowNbqTable_(d){
+  const keys = Object.keys(d.flowByNbq || {}).filter(k => d.flowByNbq[k] && d.flowByNbq[k].rows.length);
+  if(!keys.length) return '';
+  const totals = {};
+  keys.forEach(k => d.flowByNbq[k].rows.forEach(r => { totals[r.label] = (totals[r.label] || 0) + r.amount; }));
+  const kelompokList = Object.keys(totals).sort((a,b) => totals[b] - totals[a]);
+  const cellHtml = (k, kelompok) => {
+    const r = d.flowByNbq[k].rows.find(x => x.label === kelompok);
+    if(!r) return '<td><span class="rk-ft-cell rk-ft-empty">-</span></td>';
+    return `<td><span class="rk-ft-cell"><span class="rk-ft-pct">${fmtDec(r.pct,2)}%</span><span class="rk-ft-amt">${tdRp(r.amount)}</span></span></td>`;
+  };
+  const head = `<tr><th>Komposisi Kontrak</th>${keys.map(k => `<th>${esc(RK_FLOWTIPE_LABEL[k] || k)}</th>`).join('')}</tr>`;
+  const body = kelompokList.map(kelompok => `<tr><td>${esc(kelompok)}</td>${keys.map(k => cellHtml(k, kelompok)).join('')}</tr>`).join('');
+  const total = `<tr class="rk-ft-total"><td>Total Flow</td>${keys.map(k => {
+    const fb = d.flowByNbq[k];
+    return `<td><span class="rk-ft-cell"><span class="rk-ft-pct">${fmtDec(fb.flowPct,2)}%</span><span class="rk-ft-amt">${tdRp(fb.flowAmount)}</span></span></td>`;
+  }).join('')}</tr>`;
+  return `
+  <div class="rk-flowtipe">
+    <div class="rk-flowtipe-title">Pengaruh Flow per Komposisi Kontrak<small>kontrak angsuran awal/NBQ (≤12 bulan) atau kontrak lawas yang paling menyumbang flow</small></div>
+    <div class="rk-flowtipe-scroll"><table class="rk-flowtipe-table"><thead>${head}</thead><tbody>${body}${total}</tbody></table></div>
+  </div>`;
+}
+
 // ---------- Tren penyelesaian mingguan (admin) ----------
 let TREN_DATA = null, TREN_MONTH = 'cur';
 function trenShell(inner){ return '<div class="rk-report-header"><div class="rk-report-title">' + ic('chart') + ' Tren penyelesaian mingguan</div></div>' + inner; }
@@ -4877,6 +4906,7 @@ function renderRingkasanKpi_(){
   // jadi kalau dijumlah semua baris per kolom, hasilnya = persen Flow yang tampil di kartu — bukan sekadar
   // porsi di antara yang sudah pindah (yang pasti selalu 100%).
   const flowTipeTable = flowTipeTable_(d);
+  const flowNbqTable = flowNbqTable_(d);
   document.getElementById('wrap').innerHTML = `
     <div class="rk-report-header"><div class="rk-report-title">${ic('chart')} Ringkasan</div><div class="rk-report-date">Update per: ${esc(fmtDate(RINGKASAN_DATA.generatedAt))}</div></div>
     ${rkFleetToggle_()}
@@ -4890,6 +4920,7 @@ function renderRingkasanKpi_(){
         <div class="rk-kpi-grid">${flowCards}</div>
       </div>
       ${flowTipeTable}
+      ${flowNbqTable}
     </div>`;
   bindRkFleetToggle_();
 }
