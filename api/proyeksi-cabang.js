@@ -74,6 +74,30 @@ function daftarKontrakCabang(masterRows, kaRows) {
   return list;
 }
 
+// Kategori Flow NOOD/1-30/31-60 di UI (lihat PC_STEPS di index.html): kontrak Bucket Awal X yang
+// SEKARANG sudah flow ke bucket berikutnya (belum realisasi). Default-nya di PROYEKSI (bukan di
+// "Sekarang" — itu tetap data asli apa adanya): kontrak-kontrak ini DIANGGAP BAKAL REALISASI (balik
+// ke Bucket Awal-nya) bulan ini, KECUALI dikunci secara eksplisit lewat tab Flow (proyeksi[noKontrak]
+// sudah diisi user) — yang dikunci tetap dihitung di bucket yang dia tempatin sekarang (gak realisasi).
+// Tanpa default ini, milih/gak milih kontrak di tab Flow gak ngaruh ke angka proyeksi sama sekali,
+// karena target kategori Flow itu sendiri = posisi sekarang kontrak (dipilih pun gak mindahin apa-apa).
+const FLOW_RECOVERY_PAIRS = [['NOOD', 'P001_030'], ['P001_030', 'P031_060'], ['P031_060', 'P061_090']];
+function autoRecoverFlowMap(masterRows, kaRows, existingProyeksi) {
+  const petaKA = {};
+  kaRows.forEach(r => { if (r['NO KONTRAK']) petaKA[r['NO KONTRAK']] = r; });
+  const map = {};
+  masterRows.forEach(m => {
+    const nk = m['NO KONTRAK']; if (!nk) return;
+    if (Object.prototype.hasOwnProperty.call(existingProyeksi, nk)) return; // user udah nentuin sendiri, jangan ditimpa
+    const ka = petaKA[nk];
+    const bucketSekarang = ((ka ? ka['BUCKET UPDATE'] : m['BUCKET UPDATE']) || '').toString().trim();
+    const bucketAwal = (m['BUCKET AWAL'] || '').toString().trim();
+    const cocok = FLOW_RECOVERY_PAIRS.some(p => p[0] === bucketAwal && p[1] === bucketSekarang);
+    if (cocok) map[nk] = bucketAwal;
+  });
+  return map;
+}
+
 // Terapkan proyeksi ke masterRows & kaRows. `proyeksi` di sini adalah noKontrak -> TARGET, di mana
 // TARGET adalah salah satu kode bucket (NOOD/P001_030/P031_060/P061_090 dst, lihat BUCKET_ORDER) atau
 // string 'LUNAS'. Ini dipilih lewat UI per-kategori (Flow NOOD, Flow 1-30, BTC 1-30, Rollback 31-60,
@@ -133,7 +157,11 @@ module.exports = async (req, res) => {
       const includeFleet = !!body.includeFleet;
       const planSales = Math.max(0, Number(body.planSales) || 0);
 
-      const { masterRows2, kaRows2 } = terapkanProyeksi(masterRows, kaRows, proyeksi);
+      // Default realisasi buat kontrak Flow NOOD/1-30/31-60 yang gak dikunci eksplisit (lihat
+      // autoRecoverFlowMap) digabung di BAWAH pilihan eksplisit user, supaya pilihan user selalu menang.
+      const autoRecover = autoRecoverFlowMap(masterRows, kaRows, proyeksi);
+      const proyeksiPenuh = Object.assign({}, autoRecover, proyeksi);
+      const { masterRows2, kaRows2 } = terapkanProyeksi(masterRows, kaRows, proyeksiPenuh);
       if (planSales > 0) {
         // Plan sales = kontrak belum golive, jadi otomatis anggap non-fleet (mayoritas kasus) dan
         // langsung masuk bucket NOOD — begitu golive beneran, nanti muncul sendiri di KA HARIAN.

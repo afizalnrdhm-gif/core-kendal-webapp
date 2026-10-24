@@ -3263,19 +3263,23 @@ let pcState = { search:'', limit:20, step:'flow_nood', proyeksi: new Map(), plan
 //    (Bucket Sekarang === target) — itu artinya kontrak itu KRITERIA ACCT=FLOW/STATUS BAYAR=BELUM BAYAR
 //    di data (sudah dicek langsung ke Sheet MASTER: FLOW selalu = sudah pindah satu bucket, STAY selalu
 //    = belum pindah sama sekali & SUDAH BAYAR). Jadi kandidatnya kontrak yang SUDAH flow bulan ini tapi
-//    BELUM realisasi (belum balik ke Bucket Awal) — milih di sini mengunci kontrak itu tetap terhitung
-//    di bucket yang dia tempatin sekarang (target), bukan dianggap otomatis realisasi/balik ke Bucket Awal.
+//    BELUM realisasi (belum balik ke Bucket Awal). PENTING: backend (autoRecoverFlowMap di
+//    api/proyeksi-cabang.js) otomatis nganggep SEMUA kontrak kayak gini bakal REALISASI (balik ke
+//    Bucket Awal) di proyeksi KECUALI dikunci di sini — milih/mengunci di tab ini artinya "kontrak ini
+//    GAK bakal realisasi", tetap dihitung di bucket yang dia tempatin sekarang (target). Tanpa default
+//    auto-realisasi itu, milih kontrak Flow gak ngaruh ke angka proyeksi (soalnya target = posisi
+//    sekarangnya sendiri, dipilih pun gak mindahin apa-apa).
 //  - BTC & Rollback (gak ada requireFlowed): kandidatnya SEMUA kontrak Bucket Awal itu yang belum
 //    BTC/lunas (masihRelevan() di backend udah nyaring yang KRITERIA ACCT-nya BTC/LUNAS), gak peduli
 //    posisi sekarang-nya udah di mana — proyeksinya emang soal "ujung-ujungnya kontrak ini balik ke
 //    NOOD/membaik gak", bukan soal posisi hari ini.
 const PC_STEPS = [
   { key:'flow_nood', label:'Flow NOOD', filterOn:'awal', filterBucket:'NOOD', requireFlowed:true, target:'P001_030', targetLabel:'Bucket 1-30', btnClass:'sim-proyeksi-stay',
-    desc:'Pilih kontrak dengan Bucket Awal NOOD yang SUDAH pindah ke Bucket 1-30 bulan ini (belum realisasi/belum balik ke NOOD) dan diproyeksikan TETAP di Bucket 1-30 (gak realisasi).' },
+    desc:'Kontrak Bucket Awal NOOD yang SUDAH pindah ke Bucket 1-30 bulan ini (belum realisasi). Default-nya di proyeksi dianggap REALISASI (balik ke NOOD) — kunci di sini kalau yakin kontrak ini GAK bakal realisasi, tetap di Bucket 1-30.' },
   { key:'flow_130', label:'Flow 1-30', filterOn:'awal', filterBucket:'P001_030', requireFlowed:true, target:'P031_060', targetLabel:'Bucket 31-60', btnClass:'sim-proyeksi-stay',
-    desc:'Pilih kontrak dengan Bucket Awal 1-30 yang SUDAH pindah ke Bucket 31-60 bulan ini (belum realisasi/belum balik ke 1-30) dan diproyeksikan TETAP di Bucket 31-60 (gak realisasi).' },
+    desc:'Kontrak Bucket Awal 1-30 yang SUDAH pindah ke Bucket 31-60 bulan ini (belum realisasi). Default-nya di proyeksi dianggap REALISASI (balik ke Bucket 1-30) — kunci di sini kalau yakin kontrak ini GAK bakal realisasi, tetap di Bucket 31-60.' },
   { key:'flow_3160', label:'Flow 31-60', filterOn:'awal', filterBucket:'P031_060', requireFlowed:true, target:'P061_090', targetLabel:'Bucket 61-90', btnClass:'sim-proyeksi-stay',
-    desc:'Pilih kontrak dengan Bucket Awal 31-60 yang SUDAH pindah ke Bucket 61-90 bulan ini (belum realisasi/belum balik ke 31-60) dan diproyeksikan TETAP di Bucket 61-90 (gak realisasi).' },
+    desc:'Kontrak Bucket Awal 31-60 yang SUDAH pindah ke Bucket 61-90 bulan ini (belum realisasi). Default-nya di proyeksi dianggap REALISASI (balik ke Bucket 31-60) — kunci di sini kalau yakin kontrak ini GAK bakal realisasi, tetap di Bucket 61-90.' },
   { key:'btc_130', label:'BTC 1-30', filterOn:'awal', filterBucket:'P001_030', target:'NOOD', targetLabel:'NOOD', btnClass:'sim-proyeksi-btc',
     desc:'Pilih kontrak dengan Bucket Awal 1-30 (belum BTC/lunas) dan diproyeksikan ngejar SEMUA tunggakan, balik ke NOOD.' },
   { key:'btc_3160', label:'BTC 31-60', filterOn:'awal', filterBucket:'P031_060', target:'NOOD', targetLabel:'NOOD', btnClass:'sim-proyeksi-btc',
@@ -3415,14 +3419,19 @@ function renderProyeksiCabang(){
     masih rencana. Nominal ini otomatis masuk Bucket NOOD dan ikut jadi pembagi (ENR), jadi efeknya Balance
     NOOD naik dan Balance 1-30/31-60/Delq 30+ ikut terdilusi turun, walau nominal macetnya sendiri gak
     berubah sama sekali.<br>
-    • <b>Pilih kontrak per kategori</b> — jalan tahap demi tahap lewat tab di bawah. <b>Flow NOOD/1-30/31-60</b>
-    basisnya <u>Bucket Awal</u> (persis seperti rumus Flow di Ringkasan): kontrak yang mulai bulan ini di
-    bucket itu dan BELUM pindah sama sekali (belum bayar), diproyeksikan bakal telat pindah ke bucket
-    berikutnya. <b>BTC 1-30/31-60</b> &amp; <b>Rollback 31-60</b> basisnya posisi <u>Sekarang</u>: kontrak
-    yang sekarang ada di bucket itu (apapun Bucket Awal-nya) diproyeksikan membaik — BTC balik total ke
-    NOOD, Rollback cuma balik satu tingkat ke 1-30. Lalu <b>Lunas</b> (kontrak bucket manapun, keluar total
-    dari buku). Satu kontrak cuma bisa punya SATU proyeksi aktif — kalau dipilih lagi di kategori lain,
-    proyeksinya pindah ke situ. Setelah semua kategori yang relevan dipilih, klik <b>Hitung Proyeksi</b>
+    • <b>Pilih kontrak per kategori</b> — jalan tahap demi tahap lewat tab di bawah. Semua kategori
+    basisnya <u>Bucket Awal</u> (persis seperti rumus Flow di Ringkasan), bukan posisi sekarang.<br>
+    &nbsp;&nbsp;– <b>Flow NOOD/1-30/31-60</b>: kontrak yang SUDAH pindah ke bucket berikutnya bulan ini
+    (belum realisasi/belum balik). Default-nya di proyeksi SEMUA kontrak kayak gini dianggap bakal
+    REALISASI (balik ke Bucket Awal) — kunci satu per satu di sini cuma kontrak yang kamu yakin GAK
+    bakal realisasi (tetap di bucket sekarang).<br>
+    &nbsp;&nbsp;– <b>BTC 1-30/31-60</b> &amp; <b>Rollback 31-60</b>: kontrak Bucket Awal 1-30/31-60
+    (apapun posisi sekarang-nya, selama belum BTC/lunas) yang kamu pilih buat diproyeksikan membaik — BTC
+    balik total ke NOOD, Rollback cuma balik satu tingkat ke 1-30. Default-nya (gak dipilih) tetap posisi
+    asli, gak ada asumsi membaik otomatis di sini.<br>
+    &nbsp;&nbsp;– <b>Lunas</b>: kontrak bucket manapun, keluar total dari buku.<br>
+    Satu kontrak cuma bisa punya SATU proyeksi aktif — kalau dipilih lagi di kategori lain, proyeksinya
+    pindah ke situ. Setelah semua kategori yang relevan dipilih/dikunci, klik <b>Hitung Proyeksi</b>
     (tombolnya selalu kelihatan di atas tab, gak perlu ganti-ganti tab dulu).
   </div></details>`;
 
