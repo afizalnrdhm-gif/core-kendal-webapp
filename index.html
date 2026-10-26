@@ -232,6 +232,9 @@
   .rk-flowtipe-table tr.rk-ft-total td{padding-top:9px;border-top:1px solid var(--line);}
   .rk-flowtipe-table tr.rk-ft-total td:first-child{color:var(--ink-soft);font-weight:700;}
   .rk-flowtipe-table tr.rk-ft-total .rk-ft-pct{color:var(--gold-dark,var(--navy));}
+  .rk-flowtipe-table tr.rk-ft-sub td:first-child{font-weight:400;color:var(--ink-soft);padding-left:22px;font-size:11.5px;}
+  .rk-flowtipe-table tr.rk-ft-sub .rk-ft-pct{font-weight:600;font-size:12px;}
+  .rk-flowtipe-table tr.rk-ft-sub+tr.rk-ft-group td{border-top:1px solid var(--line);}
   @media (max-width:900px){
     .rk-flowtipe-table{font-size:11.5px;}
     .rk-flowtipe-table th,.rk-flowtipe-table td{padding:6px 7px;}
@@ -4783,6 +4786,49 @@ function flowNbqTable_(d){
   </div>`;
 }
 
+// Silang Tipe Barang x Komposisi Kontrak (NBQ): dari tiap angka Tipe Barang di flowTipeTable_ (mis.
+// Mobil 16,62%), dibedah lagi berapa porsinya yang masih Angsuran Awal/NBQ vs Kontrak Lawas vs tidak
+// diketahui — baris Tipe Barang (bold) diikuti sub-baris NBQ yang menjorok, dan jumlah sub-baris itu
+// pas balik ke angka Tipe Barang-nya (reuse d.flowByTipeNbq dari _kpi.js, basis totalAsal yang sama).
+function flowTipeNbqTable_(d){
+  const keys = Object.keys(d.flowByTipeNbq || {}).filter(k => d.flowByTipeNbq[k] && d.flowByTipeNbq[k].rows.length);
+  if(!keys.length) return '';
+  const tipeTotals = {};
+  keys.forEach(k => d.flowByTipeNbq[k].rows.forEach(r => { tipeTotals[r.label] = (tipeTotals[r.label] || 0) + r.amount; }));
+  const tipeList = Object.keys(tipeTotals).sort((a,b) => tipeTotals[b] - tipeTotals[a]);
+  // urutan sub-baris NBQ tetap (bukan diurut per tipe) biar enak dibandingkan antar tipe barang
+  const nbqOrder = ['Angsuran Awal / NBQ (≤12 bulan)', 'Kontrak Lawas (>12 bulan)', '(MOB tidak diketahui)'];
+  const nbqSet = new Set();
+  keys.forEach(k => d.flowByTipeNbq[k].rows.forEach(r => r.nbqRows.forEach(nr => nbqSet.add(nr.label))));
+  const nbqList = nbqOrder.filter(l => nbqSet.has(l)).concat([...nbqSet].filter(l => !nbqOrder.includes(l)));
+  const cellHtml = (k, tipe) => {
+    const r = (d.flowByTipeNbq[k].rows.find(x => x.label === tipe));
+    if(!r) return '<td><span class="rk-ft-cell rk-ft-empty">-</span></td>';
+    return `<td><span class="rk-ft-cell"><span class="rk-ft-pct">${fmtDec(r.pct,2)}%</span><span class="rk-ft-amt">${tdRp(r.amount)}</span></span></td>`;
+  };
+  const subCellHtml = (k, tipe, nbqLabel) => {
+    const r = d.flowByTipeNbq[k].rows.find(x => x.label === tipe);
+    const nr = r && r.nbqRows.find(x => x.label === nbqLabel);
+    if(!nr) return '<td><span class="rk-ft-cell rk-ft-empty">-</span></td>';
+    return `<td><span class="rk-ft-cell"><span class="rk-ft-pct">${fmtDec(nr.pct,2)}%</span><span class="rk-ft-amt">${tdRp(nr.amount)}</span></span></td>`;
+  };
+  const head = `<tr><th>Tipe Barang / Komposisi</th>${keys.map(k => `<th>${esc(RK_FLOWTIPE_LABEL[k] || k)}</th>`).join('')}</tr>`;
+  const body = tipeList.map(tipe => {
+    const groupRow = `<tr class="rk-ft-group"><td>${esc(tipe)}</td>${keys.map(k => cellHtml(k, tipe)).join('')}</tr>`;
+    const subRows = nbqList.map(nbqLabel => `<tr class="rk-ft-sub"><td>${esc(nbqLabel)}</td>${keys.map(k => subCellHtml(k, tipe, nbqLabel)).join('')}</tr>`).join('');
+    return groupRow + subRows;
+  }).join('');
+  const total = `<tr class="rk-ft-total"><td>Total Flow</td>${keys.map(k => {
+    const fb = d.flowByTipeNbq[k];
+    return `<td><span class="rk-ft-cell"><span class="rk-ft-pct">${fmtDec(fb.flowPct,2)}%</span><span class="rk-ft-amt">${tdRp(fb.flowAmount)}</span></span></td>`;
+  }).join('')}</tr>`;
+  return `
+  <div class="rk-flowtipe">
+    <div class="rk-flowtipe-title">Pengaruh Flow per Tipe Barang &amp; Komposisi Kontrak<small>tiap Tipe Barang dibedah lagi: berapa persen yang masih angsuran awal/NBQ vs lawas</small></div>
+    <div class="rk-flowtipe-scroll"><table class="rk-flowtipe-table"><thead>${head}</thead><tbody>${body}${total}</tbody></table></div>
+  </div>`;
+}
+
 // ---------- Tren penyelesaian mingguan (admin) ----------
 let TREN_DATA = null, TREN_MONTH = 'cur';
 function trenShell(inner){ return '<div class="rk-report-header"><div class="rk-report-title">' + ic('chart') + ' Tren penyelesaian mingguan</div></div>' + inner; }
@@ -4907,6 +4953,7 @@ function renderRingkasanKpi_(){
   // porsi di antara yang sudah pindah (yang pasti selalu 100%).
   const flowTipeTable = flowTipeTable_(d);
   const flowNbqTable = flowNbqTable_(d);
+  const flowTipeNbqTable = flowTipeNbqTable_(d);
   document.getElementById('wrap').innerHTML = `
     <div class="rk-report-header"><div class="rk-report-title">${ic('chart')} Ringkasan</div><div class="rk-report-date">Update per: ${esc(fmtDate(RINGKASAN_DATA.generatedAt))}</div></div>
     ${rkFleetToggle_()}
@@ -4921,6 +4968,7 @@ function renderRingkasanKpi_(){
       </div>
       ${flowTipeTable}
       ${flowNbqTable}
+      ${flowTipeNbqTable}
     </div>`;
   bindRkFleetToggle_();
 }

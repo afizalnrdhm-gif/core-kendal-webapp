@@ -63,6 +63,54 @@ function flowByNbq_(masterRows, asal, target, includeFleet) {
   return flowByGroup_(masterRows, asal, target, includeFleet, kelompokNbqOf);
 }
 
+// Silang Tipe Barang x komposisi NBQ, per Flow bucket: tiap baris Tipe Barang (mis. MOBIL) dipecah
+// lagi jadi sub-baris NBQ (Angsuran Awal/NBQ, Lawas, tidak diketahui). pct tiap sub-baris NBQ pakai
+// basis SAMA (totalAsal) seperti flowByGroup_, jadi sub-baris NBQ dalam satu Tipe Barang jumlahnya
+// pas sama dengan pct Tipe Barang itu sendiri, dan jumlah semua Tipe Barang = flowPct (angka Flow di
+// kartu KPI) — berantai turun persis seperti user minta: "dari 16.62% Mobil, berapa yang NBQ dan
+// berapa yang lawas".
+function flowByTipeNbq_(masterRows, asal, target, includeFleet) {
+  const passFleet = (row) => includeFleet || !isFleet(row);
+  let totalAsal = 0;
+  const perTipe = {};
+  let flowAmount = 0, flowCount = 0;
+  (masterRows || []).forEach(m => {
+    if (!passFleet(m) || m['BUCKET AWAL'] !== asal) return;
+    const sipok = sipokOf(m);
+    totalAsal += sipok;
+    if (m['BUCKET UPDATE'] === target) {
+      const tipe = tipeBarangOf(m);
+      const nbq = kelompokNbqOf(m);
+      if (!perTipe[tipe]) perTipe[tipe] = { amount: 0, count: 0, perNbq: {} };
+      perTipe[tipe].amount += sipok; perTipe[tipe].count += 1;
+      if (!perTipe[tipe].perNbq[nbq]) perTipe[tipe].perNbq[nbq] = { amount: 0, count: 0 };
+      perTipe[tipe].perNbq[nbq].amount += sipok; perTipe[tipe].perNbq[nbq].count += 1;
+      flowAmount += sipok; flowCount += 1;
+    }
+  });
+  const rows = Object.keys(perTipe)
+    .map(tipe => {
+      const t = perTipe[tipe];
+      const nbqRows = Object.keys(t.perNbq)
+        .map(nbq => ({
+          label: nbq,
+          amount: t.perNbq[nbq].amount,
+          count: t.perNbq[nbq].count,
+          pct: totalAsal > 0 ? t.perNbq[nbq].amount / totalAsal * 100 : 0
+        }))
+        .sort((a, b) => b.amount - a.amount);
+      return {
+        label: tipe,
+        amount: t.amount,
+        count: t.count,
+        pct: totalAsal > 0 ? t.amount / totalAsal * 100 : 0,
+        nbqRows
+      };
+    })
+    .sort((a, b) => b.amount - a.amount);
+  return { flowAmount, flowCount, totalAsal, flowPct: totalAsal > 0 ? flowAmount / totalAsal * 100 : 0, rows };
+}
+
 function hitungKpi(masterRows, kaRows, includeFleet) {
   const passFleet = (row) => includeFleet || !isFleet(row);
   const bucketAmounts = {}; const bucketCounts = {};
@@ -113,7 +161,12 @@ function hitungKpi(masterRows, kaRows, includeFleet) {
     'Flow 1-30': flowByNbq_(masterRows, 'P001_030', 'P031_060', includeFleet),
     'Flow 31-60': flowByNbq_(masterRows, 'P031_060', 'P061_090', includeFleet)
   };
-  return { enr, enrCount, perBucket, cumulative, flowBtc, flowByTipe, flowByNbq };
+  const flowByTipeNbq = {
+    'Flow NOOD': flowByTipeNbq_(masterRows, 'NOOD', 'P001_030', includeFleet),
+    'Flow 1-30': flowByTipeNbq_(masterRows, 'P001_030', 'P031_060', includeFleet),
+    'Flow 31-60': flowByTipeNbq_(masterRows, 'P031_060', 'P061_090', includeFleet)
+  };
+  return { enr, enrCount, perBucket, cumulative, flowBtc, flowByTipe, flowByNbq, flowByTipeNbq };
 }
 
 // Flow "lebar": kontrak bucket awal `awal` yang BUCKET UPDATE-nya lebih buruk (bucket mana pun). Dasar penyelesaian = 100 - pct.
