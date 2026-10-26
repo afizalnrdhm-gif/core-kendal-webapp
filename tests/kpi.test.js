@@ -58,46 +58,46 @@ test('hitungKpi: flowByTipe pecah Flow NOOD per TYPE BARANG, urut amount terbesa
   assert.strictEqual(fbFleet.flowAmount, 800); // termasuk fleet (mobil +200)
 });
 
-test('hitungKpi: flowByNbq pecah Flow NOOD per komposisi umur kontrak (NBQ <=12 bulan vs lawas), urut amount terbesar', () => {
+test('hitungKpi: flowByNbq pecah Flow NOOD per status kolom "NBQ / NON NBQ" di MASTER, urut amount terbesar', () => {
   const masterNbq = [
-    { 'BUCKET AWAL': 'NOOD', 'BUCKET UPDATE': 'P001_030', SIPOK: 300, 'FLEET/NON FLEET': 'NON FLEET', 'NBQ': '3 MOB' },
-    { 'BUCKET AWAL': 'NOOD', 'BUCKET UPDATE': 'P001_030', SIPOK: 100, 'FLEET/NON FLEET': 'NON FLEET', 'NBQ': '12 MOB' },
-    { 'BUCKET AWAL': 'NOOD', 'BUCKET UPDATE': 'P001_030', SIPOK: 150, 'FLEET/NON FLEET': 'NON FLEET', 'NBQ': '13 MOB' },
-    { 'BUCKET AWAL': 'NOOD', 'BUCKET UPDATE': 'P001_030', SIPOK: 200, 'FLEET/NON FLEET': 'FLEET', 'NBQ': '24 MOB' },
-    { 'BUCKET AWAL': 'NOOD', 'BUCKET UPDATE': 'NOOD', SIPOK: 999, 'FLEET/NON FLEET': 'NON FLEET', 'NBQ': '1 MOB' },
-    { 'BUCKET AWAL': 'NOOD', 'BUCKET UPDATE': 'P001_030', SIPOK: 50, 'FLEET/NON FLEET': 'NON FLEET' } // NBQ kosong -> tidak diketahui
+    { 'BUCKET AWAL': 'NOOD', 'BUCKET UPDATE': 'P001_030', SIPOK: 300, 'FLEET/NON FLEET': 'NON FLEET', 'NBQ / NON NBQ': 'NBQ' },
+    { 'BUCKET AWAL': 'NOOD', 'BUCKET UPDATE': 'P001_030', SIPOK: 100, 'FLEET/NON FLEET': 'NON FLEET', 'NBQ / NON NBQ': 'nbq' }, // lowercase tetap kehitung
+    { 'BUCKET AWAL': 'NOOD', 'BUCKET UPDATE': 'P001_030', SIPOK: 150, 'FLEET/NON FLEET': 'NON FLEET', 'NBQ / NON NBQ': 'NON NBQ' },
+    { 'BUCKET AWAL': 'NOOD', 'BUCKET UPDATE': 'P001_030', SIPOK: 200, 'FLEET/NON FLEET': 'FLEET', 'NBQ / NON NBQ': 'NON NBQ' },
+    { 'BUCKET AWAL': 'NOOD', 'BUCKET UPDATE': 'NOOD', SIPOK: 999, 'FLEET/NON FLEET': 'NON FLEET', 'NBQ / NON NBQ': 'NBQ' },
+    { 'BUCKET AWAL': 'NOOD', 'BUCKET UPDATE': 'P001_030', SIPOK: 50, 'FLEET/NON FLEET': 'NON FLEET' } // kolom kosong -> belum diisi
   ];
   const fb = hitungKpi(masterNbq, [], false).flowByNbq['Flow NOOD'];
   assert.strictEqual(fb.totalAsal, 1599); // semua SIPOK bucket awal NOOD non-fleet (300+100+150+999+50)
   assert.strictEqual(fb.flowAmount, 600); // 300+100+150+50, yang sudah pindah ke 1-30
   assert.strictEqual(fb.flowCount, 4);
   assert.strictEqual(fb.flowPct, hitungKpi(masterNbq, [], false).flowBtc.find(x => x.label === 'Flow NOOD').pct);
-  // 3 MOB (<=12) + 12 MOB (<=12) = 400 Angsuran Awal; 13 MOB (>12) = 150 Lawas; NBQ kosong = 50 tidak diketahui.
-  assert.deepStrictEqual(fb.rows[0], { label: 'Angsuran Awal / NBQ (≤12 bulan)', amount: 400, count: 2, pct: 400 / 1599 * 100 });
-  assert.deepStrictEqual(fb.rows[1], { label: 'Kontrak Lawas (>12 bulan)', amount: 150, count: 1, pct: 150 / 1599 * 100 });
-  assert.deepStrictEqual(fb.rows[2], { label: '(MOB tidak diketahui)', amount: 50, count: 1, pct: 50 / 1599 * 100 });
+  // NBQ (300+100=400 Angsuran Awal); NON NBQ (150 Lawas, non-fleet); kolom kosong = 50 belum diisi.
+  assert.deepStrictEqual(fb.rows[0], { label: 'Angsuran Awal / NBQ', amount: 400, count: 2, pct: 400 / 1599 * 100 });
+  assert.deepStrictEqual(fb.rows[1], { label: 'Kontrak Lawas (Non NBQ)', amount: 150, count: 1, pct: 150 / 1599 * 100 });
+  assert.deepStrictEqual(fb.rows[2], { label: '(Status NBQ belum diisi)', amount: 50, count: 1, pct: 50 / 1599 * 100 });
   const sumPct = fb.rows.reduce((s, r) => s + r.pct, 0);
   assert.ok(Math.abs(sumPct - fb.flowPct) < 1e-9);
   const fbFleet = hitungKpi(masterNbq, [], true).flowByNbq['Flow NOOD'];
-  assert.strictEqual(fbFleet.totalAsal, 1799); // +200 (24 MOB fleet)
-  assert.strictEqual(fbFleet.flowAmount, 800); // termasuk fleet (+200, masuk kelompok lawas)
-  assert.strictEqual(fbFleet.rows.find(r => r.label === 'Kontrak Lawas (>12 bulan)').amount, 350); // 150 + 200
+  assert.strictEqual(fbFleet.totalAsal, 1799); // +200 (fleet, NON NBQ)
+  assert.strictEqual(fbFleet.flowAmount, 800); // termasuk fleet (+200, masuk kelompok Non NBQ)
+  assert.strictEqual(fbFleet.rows.find(r => r.label === 'Kontrak Lawas (Non NBQ)').amount, 350); // 150 + 200
 });
 
-test('hitungKpi: flowByTipeNbq silang Tipe Barang x NBQ per Flow NOOD, sub-baris NBQ jumlahnya pas ke pct Tipe Barang-nya', () => {
+test('hitungKpi: flowByTipeNbq silang Tipe Barang x status "NBQ / NON NBQ" per Flow NOOD, sub-baris NBQ jumlahnya pas ke pct Tipe Barang-nya', () => {
   const masterCross = [
-    // MOBIL, NBQ (<=12)
-    { 'BUCKET AWAL': 'NOOD', 'BUCKET UPDATE': 'P001_030', SIPOK: 200, 'FLEET/NON FLEET': 'NON FLEET', 'TYPE BARANG': 'mobil', 'NBQ': '5 MOB' },
-    // MOBIL, Lawas (>12)
-    { 'BUCKET AWAL': 'NOOD', 'BUCKET UPDATE': 'P001_030', SIPOK: 150, 'FLEET/NON FLEET': 'NON FLEET', 'TYPE BARANG': 'mobil', 'NBQ': '18 MOB' },
-    // MOBIL, tidak diketahui (NBQ kosong)
+    // MOBIL, NBQ
+    { 'BUCKET AWAL': 'NOOD', 'BUCKET UPDATE': 'P001_030', SIPOK: 200, 'FLEET/NON FLEET': 'NON FLEET', 'TYPE BARANG': 'mobil', 'NBQ / NON NBQ': 'NBQ' },
+    // MOBIL, Non NBQ/Lawas
+    { 'BUCKET AWAL': 'NOOD', 'BUCKET UPDATE': 'P001_030', SIPOK: 150, 'FLEET/NON FLEET': 'NON FLEET', 'TYPE BARANG': 'mobil', 'NBQ / NON NBQ': 'NON NBQ' },
+    // MOBIL, kolom belum diisi
     { 'BUCKET AWAL': 'NOOD', 'BUCKET UPDATE': 'P001_030', SIPOK: 50, 'FLEET/NON FLEET': 'NON FLEET', 'TYPE BARANG': 'mobil' },
-    // MOTOR, NBQ (<=12)
-    { 'BUCKET AWAL': 'NOOD', 'BUCKET UPDATE': 'P001_030', SIPOK: 300, 'FLEET/NON FLEET': 'NON FLEET', 'TYPE BARANG': 'motor', 'NBQ': '2 MOB' },
-    // MOTOR, Lawas (fleet, dibuang kalau includeFleet=false)
-    { 'BUCKET AWAL': 'NOOD', 'BUCKET UPDATE': 'P001_030', SIPOK: 999, 'FLEET/NON FLEET': 'FLEET', 'TYPE BARANG': 'motor', 'NBQ': '20 MOB' },
+    // MOTOR, NBQ
+    { 'BUCKET AWAL': 'NOOD', 'BUCKET UPDATE': 'P001_030', SIPOK: 300, 'FLEET/NON FLEET': 'NON FLEET', 'TYPE BARANG': 'motor', 'NBQ / NON NBQ': 'NBQ' },
+    // MOTOR, Non NBQ (fleet, dibuang kalau includeFleet=false)
+    { 'BUCKET AWAL': 'NOOD', 'BUCKET UPDATE': 'P001_030', SIPOK: 999, 'FLEET/NON FLEET': 'FLEET', 'TYPE BARANG': 'motor', 'NBQ / NON NBQ': 'NON NBQ' },
     // tidak flow (tetap di NOOD), ikut basis totalAsal
-    { 'BUCKET AWAL': 'NOOD', 'BUCKET UPDATE': 'NOOD', SIPOK: 300, 'FLEET/NON FLEET': 'NON FLEET', 'TYPE BARANG': 'mobil', 'NBQ': '1 MOB' }
+    { 'BUCKET AWAL': 'NOOD', 'BUCKET UPDATE': 'NOOD', SIPOK: 300, 'FLEET/NON FLEET': 'NON FLEET', 'TYPE BARANG': 'mobil', 'NBQ / NON NBQ': 'NBQ' }
   ];
   const fb = hitungKpi(masterCross, [], false).flowByTipeNbq['Flow NOOD'];
   assert.strictEqual(fb.totalAsal, 1000); // semua SIPOK bucket awal NOOD non-fleet: 200+150+50+300+300
@@ -110,14 +110,14 @@ test('hitungKpi: flowByTipeNbq silang Tipe Barang x NBQ per Flow NOOD, sub-baris
   assert.strictEqual(mobil.pct, 400 / 1000 * 100);
   const mobilSumPct = mobil.nbqRows.reduce((s, r) => s + r.pct, 0);
   assert.ok(Math.abs(mobilSumPct - mobil.pct) < 1e-9); // sub-baris NBQ mobil jumlahnya pas ke pct MOBIL
-  assert.deepStrictEqual(mobil.nbqRows.find(r => r.label === 'Angsuran Awal / NBQ (≤12 bulan)'), { label: 'Angsuran Awal / NBQ (≤12 bulan)', amount: 200, count: 1, pct: 200 / 1000 * 100 });
-  assert.deepStrictEqual(mobil.nbqRows.find(r => r.label === 'Kontrak Lawas (>12 bulan)'), { label: 'Kontrak Lawas (>12 bulan)', amount: 150, count: 1, pct: 150 / 1000 * 100 });
-  assert.deepStrictEqual(mobil.nbqRows.find(r => r.label === '(MOB tidak diketahui)'), { label: '(MOB tidak diketahui)', amount: 50, count: 1, pct: 50 / 1000 * 100 });
+  assert.deepStrictEqual(mobil.nbqRows.find(r => r.label === 'Angsuran Awal / NBQ'), { label: 'Angsuran Awal / NBQ', amount: 200, count: 1, pct: 200 / 1000 * 100 });
+  assert.deepStrictEqual(mobil.nbqRows.find(r => r.label === 'Kontrak Lawas (Non NBQ)'), { label: 'Kontrak Lawas (Non NBQ)', amount: 150, count: 1, pct: 150 / 1000 * 100 });
+  assert.deepStrictEqual(mobil.nbqRows.find(r => r.label === '(Status NBQ belum diisi)'), { label: '(Status NBQ belum diisi)', amount: 50, count: 1, pct: 50 / 1000 * 100 });
 
   const motor = fb.rows.find(r => r.label === 'MOTOR');
   assert.strictEqual(motor.amount, 300); // fleet (999) dibuang
   assert.strictEqual(motor.nbqRows.length, 1);
-  assert.deepStrictEqual(motor.nbqRows[0], { label: 'Angsuran Awal / NBQ (≤12 bulan)', amount: 300, count: 1, pct: 300 / 1000 * 100 });
+  assert.deepStrictEqual(motor.nbqRows[0], { label: 'Angsuran Awal / NBQ', amount: 300, count: 1, pct: 300 / 1000 * 100 });
 
   const sumAllPct = fb.rows.reduce((s, r) => s + r.pct, 0);
   assert.ok(Math.abs(sumAllPct - fb.flowPct) < 1e-9); // total Tipe Barang = flowPct, persis angka Flow di kartu KPI
@@ -126,7 +126,7 @@ test('hitungKpi: flowByTipeNbq silang Tipe Barang x NBQ per Flow NOOD, sub-baris
   assert.strictEqual(fbFleet.totalAsal, 1999); // +999 (motor fleet)
   const motorFleet = fbFleet.rows.find(r => r.label === 'MOTOR');
   assert.strictEqual(motorFleet.amount, 1299); // 300 + 999
-  assert.strictEqual(motorFleet.nbqRows.find(r => r.label === 'Kontrak Lawas (>12 bulan)').amount, 999);
+  assert.strictEqual(motorFleet.nbqRows.find(r => r.label === 'Kontrak Lawas (Non NBQ)').amount, 999);
 });
 
 test('isFleet seragam: " Fleet " dianggap fleet', () => {

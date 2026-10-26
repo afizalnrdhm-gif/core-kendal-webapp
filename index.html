@@ -4757,10 +4757,10 @@ function flowTipeTable_(d){
   </div>`;
 }
 
-// Pengaruh Flow per komposisi kontrak (Angsuran Awal/NBQ ≤12 bulan vs Kontrak Lawas >12 bulan) —
-// tabel matriks sama persis strukturnya kayak flowTipeTable_ di atas (reuse class CSS rk-flowtipe
-// yang sama), cuma kelompoknya dari umur kontrak (kolom NBQ di MASTER, format "N MOB") bukan dari
-// TYPE BARANG. Jawab pertanyaan: kontrak yang lagi FLOW itu didominasi nasabah BARU (angsuran awal,
+// Pengaruh Flow per komposisi kontrak (Angsuran Awal/NBQ vs Kontrak Lawas/Non NBQ) — tabel matriks
+// sama persis strukturnya kayak flowTipeTable_ di atas (reuse class CSS rk-flowtipe yang sama), cuma
+// kelompoknya dari kolom "NBQ / NON NBQ" di MASTER (status final yang diisi admin) bukan dari TYPE
+// BARANG. Jawab pertanyaan: kontrak yang lagi FLOW itu didominasi nasabah BARU (angsuran awal,
 // makanya gampang gagal bayar pertama/FPD-SPD) atau nasabah LAWAS (udah lama jalan, tiba-tiba macet)?
 function flowNbqTable_(d){
   const keys = Object.keys(d.flowByNbq || {}).filter(k => d.flowByNbq[k] && d.flowByNbq[k].rows.length);
@@ -4781,7 +4781,7 @@ function flowNbqTable_(d){
   }).join('')}</tr>`;
   return `
   <div class="rk-flowtipe">
-    <div class="rk-flowtipe-title">Pengaruh Flow per Komposisi Kontrak<small>kontrak angsuran awal/NBQ (≤12 bulan) atau kontrak lawas yang paling menyumbang flow</small></div>
+    <div class="rk-flowtipe-title">Pengaruh Flow per Komposisi Kontrak<small>kontrak angsuran awal/NBQ atau kontrak lawas/non NBQ yang paling menyumbang flow</small></div>
     <div class="rk-flowtipe-scroll"><table class="rk-flowtipe-table"><thead>${head}</thead><tbody>${body}${total}</tbody></table></div>
   </div>`;
 }
@@ -4797,7 +4797,7 @@ function flowTipeNbqTable_(d){
   keys.forEach(k => d.flowByTipeNbq[k].rows.forEach(r => { tipeTotals[r.label] = (tipeTotals[r.label] || 0) + r.amount; }));
   const tipeList = Object.keys(tipeTotals).sort((a,b) => tipeTotals[b] - tipeTotals[a]);
   // urutan sub-baris NBQ tetap (bukan diurut per tipe) biar enak dibandingkan antar tipe barang
-  const nbqOrder = ['Angsuran Awal / NBQ (≤12 bulan)', 'Kontrak Lawas (>12 bulan)', '(MOB tidak diketahui)'];
+  const nbqOrder = ['Angsuran Awal / NBQ', 'Kontrak Lawas (Non NBQ)', '(Status NBQ belum diisi)'];
   const nbqSet = new Set();
   keys.forEach(k => d.flowByTipeNbq[k].rows.forEach(r => r.nbqRows.forEach(nr => nbqSet.add(nr.label))));
   const nbqList = nbqOrder.filter(l => nbqSet.has(l)).concat([...nbqSet].filter(l => !nbqOrder.includes(l)));

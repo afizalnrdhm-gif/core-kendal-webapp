@@ -11,22 +11,17 @@ function isFleet(row) { return String(row && row['FLEET/NON FLEET'] != null ? ro
 function sisaOf(k) { return typeof k['SISA PIUTANG'] === 'number' && isFinite(k['SISA PIUTANG']) ? k['SISA PIUTANG'] : 0; }
 function tipeBarangOf(m) { return String(m && m['TYPE BARANG'] != null ? m['TYPE BARANG'] : '').trim().toUpperCase() || '(Tidak diketahui)'; }
 
-// Kolom "NBQ" di MASTER isinya umur kontrak dalam bulan, format teks "3 MOB" (MOB = Months On
-// Book) — bukan angka murni. Sama persis cara parse-nya dengan nbqNum() di api/telegram-nbq.js,
-// biar konsisten satu definisi di seluruh app.
-function nbqNum(m) {
-  const v = String(m && m['NBQ'] != null ? m['NBQ'] : '').trim();
-  const match = v.match(/^(\d+)\s*MOB$/i);
-  return match ? parseInt(match[1], 10) : null;
-}
-const NBQ_LABEL_BARU = 'Angsuran Awal / NBQ (≤12 bulan)';
-const NBQ_LABEL_LAWAS = 'Kontrak Lawas (>12 bulan)';
-// Ambang 12 bulan dipilih SAMA PERSIS dengan definisi "kontrak NBQ" yang udah dipakai di command
-// Telegram /nbq (nbqNum(m) <= 12), jadi satu istilah "NBQ" konsisten artinya di seluruh app.
+const NBQ_LABEL_BARU = 'Angsuran Awal / NBQ';
+const NBQ_LABEL_LAWAS = 'Kontrak Lawas (Non NBQ)';
+const NBQ_LABEL_KOSONG = '(Status NBQ belum diisi)';
+// Status NBQ/Non NBQ sekarang diisi langsung di MASTER lewat kolom "NBQ / NON NBQ" (bukan dihitung
+// dari umur kontrak/kolom "NBQ" format "N MOB" lagi) — kolom itu udah final diisi admin, jadi jadi
+// satu-satunya sumber kebenaran biar konsisten sama laporan manual tim.
 function kelompokNbqOf(m) {
-  const mob = nbqNum(m);
-  if (mob === null) return '(MOB tidak diketahui)';
-  return mob <= 12 ? NBQ_LABEL_BARU : NBQ_LABEL_LAWAS;
+  const v = String(m && m['NBQ / NON NBQ'] != null ? m['NBQ / NON NBQ'] : '').trim().toUpperCase();
+  if (v === 'NBQ') return NBQ_LABEL_BARU;
+  if (v === 'NON NBQ') return NBQ_LABEL_LAWAS;
+  return NBQ_LABEL_KOSONG;
 }
 
 // Pecah pemberat satu angka Flow (mis. Flow NOOD 21,0%) per kelompok (TYPE BARANG, atau umur
