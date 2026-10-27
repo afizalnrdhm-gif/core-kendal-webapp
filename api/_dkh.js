@@ -172,6 +172,17 @@ function sudahJatuhTempo(r) {
   if (jt !== null) return jt <= Date.parse(tglStr(waktuWIB()) + 'T00:00:00Z');
   return false;
 }
+// Khusus MR: kontrak bucket awal 1-30 yang KRITERIA ACCT-nya STAY (gak lanjut flow ke 31-60) atau
+// STATUS BAYAR-nya udah SUDAH BAYAR bulan ini, meski DPD-nya belum nyampe 31 (ambang normal MR) —
+// tetap boleh diusulkan ke DKH buat dikawal/follow-up lebih awal, bukan nunggu sampai menunggak
+// parah (DPD>=31) baru dikunjungi. Dicek duluan karena dipakai di filter DAN buat kasih tag di UI.
+function tagStayBayar(co, r) {
+  if (co.role !== 'MR' || r['BUCKET AWAL'] !== 'P001_030') return '';
+  const kriteria = String(r['KRITERIA ACCT'] || '').trim().toUpperCase();
+  if (kriteria === 'STAY') return 'STAY';
+  if (String(r['STATUS BAYAR'] || '').trim().toUpperCase() === 'SUDAH BAYAR') return 'Sudah bayar';
+  return '';
+}
 function kandidat(co) {
   const b = BUCKET_ROLE[co.role];
   if (!b) return [];
@@ -179,8 +190,12 @@ function kandidat(co) {
   const awal = ASAL_FLOW[co.role], minDpd = co.role === 'MR' ? 31 : 1;
   // Ditambah kontrak BELUM EVER: bucket awal = bucket penyelesaian role-nya (FE 1-30, MR 31-60) dan FLOW EVER belum melewati bucket itu.
   const belumEver = r => r['BUCKET AWAL'] === b && r['FLOW EVER'] && URUT.indexOf(r['FLOW EVER']) > -1 && URUT.indexOf(r['FLOW EVER']) <= URUT.indexOf(b);
-  return co.kontrak.filter(r => ((r['BUCKET AWAL'] === awal && Number(r['DPD']) >= minDpd) || belumEver(r)) && r['FLEET/NON FLEET'] !== 'FLEET' && sudahJatuhTempo(r))
-    .map(r => ({ jt: toMs(r['JATUH TEMPO']), jh: hariDariCell(r['JANJI BAYAR']), bh: hariDariCell(r['TGL BYR']), noKontrak: String(r['NO KONTRAK']), nama: String(r['NAMA KONSUMEN'] || '-'), sipok: Number(r['SIPOK']) || 0, dpd: r['DPD'] === undefined || r['DPD'] === '' ? null : Number(r['DPD']), janji: r['JANJI BAYAR'] ? String(r['JANJI BAYAR']) : '', proyeksi: r['PROYEKSI'] ? String(r['PROYEKSI']) : '' }))
+  // Kontrak STAY/sudah bayar (lihat tagStayBayar) dilewatkan dari syarat sudahJatuhTempo juga — tujuannya
+  // follow-up lebih awal, jadi gak nunggu JATUH TEMPO/DPD numpuk dulu kayak kandidat biasa.
+  return co.kontrak.filter(r => r['FLEET/NON FLEET'] !== 'FLEET' && (
+      tagStayBayar(co, r) || (((r['BUCKET AWAL'] === awal && Number(r['DPD']) >= minDpd) || belumEver(r)) && sudahJatuhTempo(r))
+    ))
+    .map(r => ({ jt: toMs(r['JATUH TEMPO']), jh: hariDariCell(r['JANJI BAYAR']), bh: hariDariCell(r['TGL BYR']), noKontrak: String(r['NO KONTRAK']), nama: String(r['NAMA KONSUMEN'] || '-'), sipok: Number(r['SIPOK']) || 0, dpd: r['DPD'] === undefined || r['DPD'] === '' ? null : Number(r['DPD']), janji: r['JANJI BAYAR'] ? String(r['JANJI BAYAR']) : '', proyeksi: r['PROYEKSI'] ? String(r['PROYEKSI']) : '', tag: tagStayBayar(co, r) }))
     .sort((a, c) => c.sipok - a.sipok);
 }
 

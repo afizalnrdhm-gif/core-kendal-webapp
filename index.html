@@ -2648,7 +2648,7 @@ function renderUsulanCO(){
   const d = UD_DATA, w = document.getElementById('wrap');
   if(!d.bisa){ w.innerHTML = '<div class="state-box">'+esc(d.pesan||'Menu ini tidak tersedia untuk akunmu.')+'</div>'; return; }
   let h = '<div class="rk-header"><h1>Usulan DKH</h1></div>';
-  h += '<div class="pg-card"><p>Pilih <b>' + d.minEfektif + '–' + d.max + ' kontrak</b> balance ' + udBucketLabel(d.bucket) + ' (BUCKET UPDATE masih ' + udBucketLabel(d.bucket) + ') yang sudah jatuh tempo dan akan kamu kunjungi. Usulan untuk <b>' + udTgl(d.untuk) + '</b>; admin/head yang menetapkan DKH-nya.</p></div>';
+  h += '<div class="pg-card"><p>Pilih <b>' + d.minEfektif + '–' + d.max + ' kontrak</b> balance ' + udBucketLabel(d.bucket) + ' (BUCKET UPDATE masih ' + udBucketLabel(d.bucket) + ') yang sudah jatuh tempo dan akan kamu kunjungi. Usulan untuk <b>' + udTgl(d.untuk) + '</b>; admin/head yang menetapkan DKH-nya.' + (d.bucket === 'P031_060' ? ' Kontrak dengan tag <span class="ud-chip warn">STAY</span>/<span class="ud-chip warn">Sudah bayar</span> ikut ditampilkan meski DPD-nya belum tinggi, biar bisa dikawal lebih awal.' : '') + '</p></div>';
   if(d.sudahKirim && !UD_EDIT){
     const ada = d.sudahKirim.kontrak.some(x => x.assign);
     h += '<div class="ud-ok"><b>Usulan terkirim</b> · ' + fmtWaktu(d.sudahKirim.waktu) + ' · ' + d.sudahKirim.kontrak.length + ' kontrak' + (ada ? '' : ' <button class="btn" onclick="UD_EDIT=true;renderUsulanCO()">Ubah usulan</button>') + '</div>';
@@ -2660,7 +2660,7 @@ function renderUsulanCO(){
   h += '<div class="ud-list" id="udList">' + d.kandidat.map(x => {
     const on = UD_SEL.has(x.noKontrak);
     return '<label class="ud-row' + (on ? ' on' : '') + '" data-q="' + esc((x.nama + ' ' + x.noKontrak).toLowerCase()) + '"><input type="checkbox" data-no="' + esc(x.noKontrak) + '"' + (on ? ' checked' : '') + ' onchange="udToggle(this)">' +
-      '<div class="ud-main"><b>' + esc(x.nama) + '</b><span class="mono">' + esc(x.noKontrak) + '</span><span class="ud-sub">' + (x.dpd !== null && !isNaN(x.dpd) ? 'DPD ' + x.dpd : '') + (x.janji ? ' · janji tgl ' + esc(x.janji) : '') + '</span></div>' +
+      '<div class="ud-main"><b>' + esc(x.nama) + '</b><span class="mono">' + esc(x.noKontrak) + '</span>' + (x.tag ? '<span class="ud-tags"><span class="ud-chip warn">' + esc(x.tag) + '</span></span>' : '') + '<span class="ud-sub">' + (x.dpd !== null && !isNaN(x.dpd) ? 'DPD ' + x.dpd : '') + (x.janji ? ' · janji tgl ' + esc(x.janji) : '') + '</span></div>' +
       '<div class="ud-side"><span class="mono">' + fmtRupiah(x.sipok) + '</span><span class="ud-pick"></span></div></label>';
   }).join('') + '</div>';
   h += '<div class="ud-bar" id="udBar"><div class="ud-count" id="udCount"></div><button class="btn primary" id="udKirim" onclick="udKirim()">Kirim usulan</button></div><div class="ud-msg" id="udMsg" role="status"></div>';

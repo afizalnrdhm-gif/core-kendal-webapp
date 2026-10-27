@@ -65,6 +65,30 @@ test('sudah bayar 1x / stay: JATUH TEMPO bergeser ke depan tapi DPD > 0 -> tetap
   assert.deepStrictEqual(kandidat({ role: 'FE', kontrak: [r] }).map(x => x.noKontrak), ['9']);
 });
 
+test('kandidat MR juga memuat kontrak bucket awal 1-30 yang STAY atau SUDAH BAYAR meski DPD < 31, dengan tag', () => {
+  const k = (no, extra) => m(no, 'X', 'B', Object.assign({ 'BUCKET AWAL': 'P001_030', DPD: 5 }, extra || {}));
+  const master = [
+    k('1', { 'KRITERIA ACCT': 'STAY' }), // DPD rendah tapi STAY -> tetap kandidat, tag STAY
+    k('2', { 'STATUS BAYAR': 'SUDAH BAYAR' }), // DPD rendah tapi sudah bayar -> tetap kandidat, tag Sudah bayar
+    k('3', { 'KRITERIA ACCT': 'FLOW' }), // DPD rendah, bukan STAY/sudah bayar -> tidak ikut (DPD < 31)
+    k('4', { 'KRITERIA ACCT': 'STAY', 'FLEET/NON FLEET': 'FLEET' }), // STAY tapi fleet -> tetap dibuang
+    k('5', { DPD: 35 }) // DPD >= 31 (jalur normal MR) -> tetap kandidat, tanpa tag
+  ];
+  const cfg = [{ NAMA_CO: 'B', ROLE: 'MR' }];
+  const mr = cariCO(master, cfg, 'b@x.id');
+  const hasil = kandidat(mr);
+  assert.deepStrictEqual(hasil.map(x => x.noKontrak).sort(), ['1', '2', '5']);
+  assert.strictEqual(hasil.find(x => x.noKontrak === '1').tag, 'STAY');
+  assert.strictEqual(hasil.find(x => x.noKontrak === '2').tag, 'Sudah bayar');
+  assert.strictEqual(hasil.find(x => x.noKontrak === '5').tag, '');
+});
+
+test('tag STAY/sudah bayar cuma berlaku buat role MR, bukan FE', () => {
+  const r = m('1', 'X', 'A', { 'BUCKET AWAL': 'P001_030', DPD: 5, 'KRITERIA ACCT': 'STAY' });
+  // FE awal-nya NOOD, jadi kontrak BUCKET AWAL 1-30 ini bukan kandidat FE sama sekali, STAY atau bukan.
+  assert.deepStrictEqual(kandidat({ role: 'FE', kontrak: [r] }).map(x => x.noKontrak), []);
+});
+
 test('kaliDKH: jumlah terbentuk dari Map PRODUCTIVITY; null kalau tab tidak terbaca; Set lama tetap jalan', () => {
   const { kaliDKH } = require('../api/_dkh');
   assert.strictEqual(kaliDKH(new Map([['1', 3]]), '1'), 3);
