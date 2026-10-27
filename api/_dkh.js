@@ -186,14 +186,17 @@ function tagStayBayar(co, r) {
 function kandidat(co) {
   const b = BUCKET_ROLE[co.role];
   if (!b) return [];
-  // Logika sama dengan KPI Flow: FE = bucket awal NOOD dengan DPD > 0; MR = bucket awal 1-30 dengan DPD >= 31.
-  const awal = ASAL_FLOW[co.role], minDpd = co.role === 'MR' ? 31 : 1;
+  // Logika sama dengan KPI Flow: FE = bucket awal NOOD dengan DPD 1-30; MR = bucket awal 1-30 dengan
+  // DPD 31-60. Batas atas DPD ini yang bikin kontrak nyangkut ke PIC yang tepat sesuai balance bucket
+  // yang lagi dia pegang (FE pegang balance 1-30, MR pegang balance 31-60) — kontrak yang DPD-nya udah
+  // lewat 60 hari gak lagi nyangkut ke kandidat siapa-siapa dari jalur ini.
+  const awal = ASAL_FLOW[co.role], minDpd = co.role === 'MR' ? 31 : 1, maxDpd = co.role === 'MR' ? 60 : 30;
   // Ditambah kontrak BELUM EVER: bucket awal = bucket penyelesaian role-nya (FE 1-30, MR 31-60) dan FLOW EVER belum melewati bucket itu.
   const belumEver = r => r['BUCKET AWAL'] === b && r['FLOW EVER'] && URUT.indexOf(r['FLOW EVER']) > -1 && URUT.indexOf(r['FLOW EVER']) <= URUT.indexOf(b);
   // Kontrak STAY/sudah bayar (lihat tagStayBayar) dilewatkan dari syarat sudahJatuhTempo juga — tujuannya
   // follow-up lebih awal, jadi gak nunggu JATUH TEMPO/DPD numpuk dulu kayak kandidat biasa.
   return co.kontrak.filter(r => r['FLEET/NON FLEET'] !== 'FLEET' && (
-      tagStayBayar(co, r) || (((r['BUCKET AWAL'] === awal && Number(r['DPD']) >= minDpd) || belumEver(r)) && sudahJatuhTempo(r))
+      tagStayBayar(co, r) || (((r['BUCKET AWAL'] === awal && Number(r['DPD']) >= minDpd && Number(r['DPD']) <= maxDpd) || belumEver(r)) && sudahJatuhTempo(r))
     ))
     .map(r => ({ jt: toMs(r['JATUH TEMPO']), jh: hariDariCell(r['JANJI BAYAR']), bh: hariDariCell(r['TGL BYR']), noKontrak: String(r['NO KONTRAK']), nama: String(r['NAMA KONSUMEN'] || '-'), sipok: Number(r['SIPOK']) || 0, dpd: r['DPD'] === undefined || r['DPD'] === '' ? null : Number(r['DPD']), janji: r['JANJI BAYAR'] ? String(r['JANJI BAYAR']) : '', proyeksi: r['PROYEKSI'] ? String(r['PROYEKSI']) : '', tag: tagStayBayar(co, r) }))
     .sort((a, c) => c.sipok - a.sipok);

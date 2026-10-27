@@ -4,18 +4,20 @@ const { kandidat, cariCO, usulanTerbaru, statusAssign } = require('../api/_dkh.j
 
 const m = (no, upd, co, extra) => Object.assign({ 'NO KONTRAK': no, 'NAMA KONSUMEN': 'N' + no, 'CO ALL': co, 'EMAIL CO': co.toLowerCase() + '@x.id', 'BUCKET UPDATE': upd, SIPOK: 100, 'FLEET/NON FLEET': 'NON FLEET', 'JATUH TEMPO': '2020-01-01' }, extra || {});
 
-test('kandidat FE = BUCKET AWAL NOOD & DPD>0 milik sendiri; MR = BUCKET AWAL 1-30 & DPD>=31 se-cabang', () => {
+test('kandidat FE = BUCKET AWAL NOOD & DPD 1-30 milik sendiri; MR = BUCKET AWAL 1-30 & DPD 31-60 se-cabang', () => {
   const k = (no, awal, co, extra) => m(no, 'X', co, Object.assign({ 'BUCKET AWAL': awal, DPD: 5 }, extra || {}));
   const master = [
     k('1', 'NOOD', 'A'), k('2', 'NOOD', 'A', { DPD: 0 }), k('3', 'NOOD', 'A', { 'FLEET/NON FLEET': 'FLEET' }),
     k('4', 'NOOD', 'B'), k('5', 'P001_030', 'A', { DPD: 40 }), k('6', 'P001_030', 'A', { DPD: 20 }),
-    k('7', 'NOOD', 'A', { 'JATUH TEMPO': '2999-01-01', DPD: 0 }), k('8', 'P001_030', 'C', { DPD: 31 })
+    k('7', 'NOOD', 'A', { 'JATUH TEMPO': '2999-01-01', DPD: 0 }), k('8', 'P001_030', 'C', { DPD: 31 }),
+    k('9', 'NOOD', 'A', { DPD: 45 }), // FE: DPD udah lewat 30 -> gak nyangkut lagi ke FE
+    k('10', 'P001_030', 'A', { DPD: 75 }) // MR: DPD udah lewat 60 -> gak nyangkut lagi ke MR
   ];
   const cfg = [{ NAMA_CO: 'A', ROLE: 'FE' }, { NAMA_CO: 'B', ROLE: 'MR' }];
   const fe = cariCO(master, cfg, 'a@x.id');
-  assert.deepStrictEqual(kandidat(fe).map(x => x.noKontrak), ['1']); // 2 & 7 DPD 0, 3 fleet
+  assert.deepStrictEqual(kandidat(fe).map(x => x.noKontrak), ['1']); // 2 & 7 DPD 0, 3 fleet, 9 DPD>30
   const mr = cariCO(master, cfg, 'b@x.id');
-  assert.deepStrictEqual(kandidat(mr).map(x => x.noKontrak).sort(), ['5', '8']); // DPD>=31 saja, milik FE mana pun
+  assert.deepStrictEqual(kandidat(mr).map(x => x.noKontrak).sort(), ['5', '8']); // DPD 31-60 saja, milik FE mana pun; 10 DPD>60 dibuang
   assert.strictEqual(cariCO(master, cfg, 'z@x.id'), null);
 });
 
