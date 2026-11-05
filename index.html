@@ -1129,6 +1129,12 @@
     tbody td[data-label="Sisa Piutang"]{grid-column:auto;order:-3;font-weight:700;}
     tbody td.num,tbody td.mono{font-family:var(--mono);font-size:12.5px;}
     tbody tr.empty-row{display:block;padding:18px;}
+    /* Jualan Top Up: kolom Unit/Sinyal/Tindak Lanjut full width, select-nya jangan sampai meluber */
+    tbody td[data-label="Unit"],tbody td[data-label="Sinyal"],tbody td[data-label="Tindak Lanjut"]{grid-column:1 / -1;}
+    tbody td[data-label="Unit"]{order:-2;}
+    tbody td[data-label="Sinyal"]{order:-1;display:flex;flex-wrap:wrap;gap:4px;}
+    tbody td[data-label="Tindak Lanjut"]{order:0;margin-top:4px;}
+    tbody td[data-label="Tindak Lanjut"] select{width:100%;}
   }
 
   /* ===== Fokus hari ini ===== */
@@ -4090,7 +4096,7 @@ function buildTopupLayout(){
             <th>Unit</th>
             <th data-key="SIPOK" class="num">Sisa Piutang</th>
             <th data-key="_TOPUP_SKOR" class="num">Sinyal</th>
-            <th>Status</th>
+            <th>Tindak Lanjut</th>
           </tr>
         </thead>
         <tbody id="tuTbody"></tbody>
@@ -4184,8 +4190,8 @@ function renderTopupTable(){
       <td data-label="Unit" class="mono" style="max-width:180px;white-space:normal;">${esc(r['TYPE BARANG']||'-')}${r['TYPE UNIT'] ? ' · ' + esc(r['TYPE UNIT']) : ''}</td>
       <td data-label="Sisa Piutang" class="num">${fmtRupiah(r['SIPOK'])}</td>
       <td data-label="Sinyal" class="num">${(r._TOPUP_TAGS||[]).map(t => `<span class="status-pill status-sudah" style="margin:1px;display:inline-block;">${esc(t)}</span>`).join('')}</td>
-      <td data-label="Status">
-        <select class="tu-status-select" data-kontrak="${esc(r['NO KONTRAK'])}">
+      <td data-label="Tindak Lanjut">
+        <select class="filter-select tu-status-select" data-kontrak="${esc(r['NO KONTRAK'])}" style="width:100%;max-width:100%;box-sizing:border-box;">
           ${TOPUP_STATUS_OPTIONS.map(s => `<option value="${esc(s)}" ${s===status?'selected':''}>${esc(s)}</option>`).join('')}
         </select>
       </td>
@@ -6381,7 +6387,12 @@ function openPanel(noKontrak){
   document.getElementById('panelCO').textContent = meta.short + (meta.role?' · '+meta.role:'');
   document.getElementById('panelName').textContent = r['NAMA KONSUMEN']||'-';
   document.getElementById('panelKontrak').textContent = r['NO KONTRAK'];
-  const wa = waLink(r['WHATSAPP'] || r['NO HP']);
+  // Di menu Jualan Top Up, tombol WA di panel detail ini juga pakai pesan penawaran top up
+  // (bukan cuma ikon kecil row-wa di tabel) — soalnya kebiasaan orang nge-klik baris buat buka
+  // detail, bukan selalu tepat kena ikon kecilnya.
+  const wa = (VIEW_MODE === 'topup')
+    ? waLinkText(r['WHATSAPP'] || r['NO HP'], TOPUP_WA_MSG(r['NAMA KONSUMEN'] || 'Bapak/Ibu'))
+    : waLink(r['WHATSAPP'] || r['NO HP']);
   const waBtn = document.getElementById('panelWaBtn');
   if(wa){ waBtn.style.display='inline-flex'; waBtn.href = wa; } else { waBtn.style.display='none'; }
   const moneyFields = new Set(['SIPOK','ANGSURAN']); const dateFields = new Set(['TANGGAL BAYAR BULAN LALU','JATUH TEMPO']);
