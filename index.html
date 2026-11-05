@@ -5526,7 +5526,9 @@ let nbqState = { search:'', bucket:'ALL', nbqList:[], statusNbq:'ALL', statusBay
 
 function nbqNum(rec){
   const v = (rec['NBQ']||'').toString().trim();
-  const m = v.match(/^(\d+)\s*MOB$/i);
+  // Terima dua format: "11 MOB" / "11MOB" (angka dulu) ATAU "MOB 11" / "MOB11" (MOB dulu) —
+  // di spreadsheet riil ternyata isinya "MOB 11", bukan "11 MOB" seperti asumsi awal.
+  const m = v.match(/^(\d+)\s*MOB$/i) || v.match(/^MOB\s*(\d+)$/i);
   return m ? parseInt(m[1],10) : null;
 }
 function nbqPopulasi(){
