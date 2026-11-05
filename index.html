@@ -1593,6 +1593,10 @@
           <span class="nav-icon-chip"><svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 16c2-4 4-6 6-6s3 3 6 3 4-3 6-6"/><path d="M3 20c2-4 4-6 6-6s3 3 6 3 4-3 6-6"/></svg></span>
           <span>Freshflow</span>
         </button>
+        <button class="nav-item nav-hidden" data-view="topup" id="navTopup">
+          <span class="nav-icon-chip"><svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>
+          <span>Jualan Top Up</span>
+        </button>
         <button class="nav-item" data-view="simulasi" id="navSimulasi">
           <span class="nav-icon-chip"><svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="7" x2="16" y2="7"/><line x1="8" y1="11" x2="10" y2="11"/><line x1="13" y1="11" x2="15" y2="11"/><line x1="8" y1="15" x2="10" y2="15"/><line x1="13" y1="15" x2="15" y2="15"/></svg></span>
           <span>Simulasi Penawaran</span>
@@ -1773,6 +1777,7 @@ let DATA = [];
 let ESCALATIONS = [];
 let ROLE_INFO = null;
 let IS_ADMIN = false;
+let CAN_TOPUP = false;
 let IS_DESKCALL = false;
 let USER_EMAIL = '';
 let ID_TOKEN = null;
@@ -1913,6 +1918,7 @@ document.getElementById('navInsentif').addEventListener('click', () => switchVie
 document.getElementById('navSimulasiRapor').addEventListener('click', () => switchView('simulasirapor'));
 document.getElementById('navProyeksiCabang').addEventListener('click', () => switchView('proyeksicabang'));
 document.getElementById('navFreshflow').addEventListener('click', () => switchView('freshflow'));
+document.getElementById('navTopup').addEventListener('click', () => switchView('topup'));
 document.getElementById('navDekscall').addEventListener('click', () => switchView('dekscall'));
 document.getElementById('navSimulasi').addEventListener('click', () => switchView('simulasi'));
 document.getElementById('navPanduan').addEventListener('click', () => switchView('panduan'));
@@ -1973,7 +1979,7 @@ function setFresh(prefix, iso){
 }
 function onDataLoaded(res){
   if(res.generatedAt && !LAST_KNOWN_MODIFIED) setFresh('Dimuat', res.generatedAt);
-  DATA = res.records; IS_ADMIN = res.isAdmin; USER_EMAIL = res.email;
+  DATA = res.records; IS_ADMIN = res.isAdmin; USER_EMAIL = res.email; CAN_TOPUP = !!res.canTopup;
   ESCALATIONS = res.escalations || []; ROLE_INFO = res.roleInfo || null;
   IS_DESKCALL = !!(ROLE_INFO && ROLE_INFO.role === 'DESKCALL');
   state.tab = 'own';
@@ -1993,6 +1999,7 @@ function onDataLoaded(res){
   document.getElementById('navCMS').classList.toggle('nav-hidden', !IS_ADMIN);
   document.getElementById('navProyeksiCabang').classList.toggle('nav-hidden', !IS_ADMIN);
   document.getElementById('navFreshflow').classList.toggle('nav-hidden', !IS_ADMIN);
+  document.getElementById('navTopup').classList.toggle('nav-hidden', !CAN_TOPUP);
   document.getElementById('navUsulan').classList.toggle('nav-hidden', !(IS_ADMIN || IS_DESKCALL || (ROLE_INFO && (ROLE_INFO.role === 'FE' || ROLE_INFO.role === 'MR'))));
   const navNBQ = document.getElementById('navNBQ');
   const navFEEver = document.getElementById('navFEEver');
@@ -2042,6 +2049,7 @@ function onDataLoaded(res){
     else if(VIEW_MODE === 'feever'){ buildFEEverLayout(); renderFEEver(); }
     else if(VIEW_MODE === 'tglbayar'){ buildTglBayarLayout(); renderTglBayarTable(); }
     else if(VIEW_MODE === 'freshflow'){ buildFreshflowLayout(); renderFreshflowTable(); }
+    else if(VIEW_MODE === 'topup'){ buildTopupLayout(); renderTopupTable(); }
   }
 }
 
@@ -2403,7 +2411,7 @@ let VIEW_MODE = 'dashboard';
 let INSENTIF_DATA = null;
 let INS_PANDUAN_ROLE = null, INS_PANDUAN_OPEN = false; // state panel Panduan KPI yang dilipat di halaman Insentif admin (Rencana 3)
 
-const VIEW_TITLES = { ringkasan: 'Dashboard', cms: 'CMS Produktivitas', usulan: 'Usulan DKH', dashboard: 'Beban Awal', targetdaily: 'Target Daily', nbq: 'NBQ', feever: 'FE Ever', tglbayar: 'Tgl Bayar Bulan Lalu', insentif: 'Insentif', dekscall: 'Deskcall', simulasi: 'Simulasi Penawaran', simulasirapor: 'Simulasi Rapor', proyeksicabang: 'Proyeksi Cabang', panduan: 'Panduan KPI', freshflow: 'Freshflow' };
+const VIEW_TITLES = { ringkasan: 'Dashboard', cms: 'CMS Produktivitas', usulan: 'Usulan DKH', dashboard: 'Beban Awal', targetdaily: 'Target Daily', nbq: 'NBQ', feever: 'FE Ever', tglbayar: 'Tgl Bayar Bulan Lalu', insentif: 'Insentif', dekscall: 'Deskcall', simulasi: 'Simulasi Penawaran', simulasirapor: 'Simulasi Rapor', proyeksicabang: 'Proyeksi Cabang', panduan: 'Panduan KPI', freshflow: 'Freshflow', topup: 'Jualan Top Up' };
 
 function triggerFadeIn(){
   const el = document.getElementById('wrap');
@@ -2431,6 +2439,7 @@ function switchView(view){
   document.getElementById('navSimulasi').classList.toggle('active', view === 'simulasi');
   document.getElementById('navPanduan').classList.toggle('active', view === 'panduan');
   document.getElementById('navFreshflow').classList.toggle('active', view === 'freshflow');
+  document.getElementById('navTopup').classList.toggle('active', view === 'topup');
   document.getElementById('mobilePageTitle').textContent = VIEW_TITLES[view] || '';
   closeSidebarDrawer();
 
@@ -2477,6 +2486,10 @@ function switchView(view){
   } else if(view === 'freshflow'){
     buildFreshflowLayout();
     renderFreshflowTable();
+    triggerFadeIn();
+  } else if(view === 'topup'){
+    buildTopupLayout();
+    renderTopupTable();
     triggerFadeIn();
   }
 }
@@ -3993,6 +4006,200 @@ function renderFreshflowTable(){
     </tr>`;
   }).join('');
   tbody.querySelectorAll('tr[data-kontrak]').forEach(tr => tr.onclick = (ev) => { if(ev && ev.target.closest && ev.target.closest('a.row-wa')) return; openPanel(tr.getAttribute('data-kontrak')); });
+}
+
+// ============================================================
+// JUALAN TOP UP (booking mandiri) — menu PRIVAT, cuma tampil kalau CAN_TOPUP true
+// (dicek juga di server, lihat api/data.js & api/topup-status.js). Rekomendasi kontrak
+// yang layak ditawari top up pinjaman: scope BUCKET AWAL NOOD/1-30 (masih lancar), dan
+// salah satu (OR) dari 3 sinyal: sisa angsuran = 1 ("Mau Lunas"), sisa angsuran < 10
+// ("Angsuran Tinggal Sedikit"), atau SIPOK < Rp10 juta ("SIPOK Kecil"). Skor = jumlah
+// sinyal yang kena, dipakai buat urutan default. TYPE UNIT/TYPE BARANG ditampilkan biar
+// bisa dicek manual kasus "motor mahal tapi SIPOK kecil" (belum diotomasi, lihat spec).
+// ============================================================
+const TOPUP_SCOPE_BUCKETS = ['NOOD', 'P001_030'];
+const TOPUP_STATUS_OPTIONS = ['BELUM DIHUBUNGI', 'SUDAH DITAWARI', 'TERTARIK', 'TIDAK TERTARIK'];
+let topupState = { co:'ALL', status:'ALL', search:'', sortKey:'_TOPUP_SKOR', sortDir:-1 };
+
+function topupSisaAngsuran_(r){
+  const tenor = typeof r['TENOR'] === 'number' ? r['TENOR'] : parseFloat(r['TENOR']);
+  const angsKe = typeof r['ANGS KE'] === 'number' ? r['ANGS KE'] : parseFloat(r['ANGS KE']);
+  if(!isFinite(tenor) || !isFinite(angsKe)) return null;
+  return tenor - angsKe;
+}
+function topupTags_(r){
+  const tags = [];
+  const sisa = topupSisaAngsuran_(r);
+  if(sisa !== null && sisa === 1) tags.push('Mau Lunas');
+  if(sisa !== null && sisa < 10) tags.push('Angsuran Tinggal Sedikit');
+  const sipok = typeof r['SIPOK'] === 'number' ? r['SIPOK'] : 0;
+  if(sipok > 0 && sipok < 10000000) tags.push('SIPOK Kecil');
+  return tags;
+}
+function getTopupBase(){
+  return DATA.filter(r => TOPUP_SCOPE_BUCKETS.indexOf(r['BUCKET AWAL']) > -1)
+    .map(r => Object.assign({}, r, { _TOPUP_TAGS: topupTags_(r) }))
+    .filter(r => r._TOPUP_TAGS.length > 0)
+    .map(r => Object.assign(r, { _TOPUP_SKOR: r._TOPUP_TAGS.length }));
+}
+function topupCoList_(){
+  const known = Object.keys(CO_META);
+  const extra = Array.from(new Set(DATA.map(r => r['CO ALL']).filter(Boolean))).filter(n => known.indexOf(n) === -1);
+  return known.concat(extra);
+}
+const TOPUP_WA_MSG = (nama) => `Halo Bapak/Ibu ${nama}, perkenalkan dari WOM Finance Kendal. Konsumen kami yang pembayarannya lancar berkesempatan untuk mengajukan tambahan pinjaman (top up). Apakah Bapak/Ibu berkenan untuk kami bantu informasikan lebih lanjut?`;
+
+function buildTopupLayout(){
+  const base = getTopupBase();
+  const stat = { count: base.length, sipok: base.reduce((s,r)=> s + (typeof r['SIPOK']==='number' ? r['SIPOK'] : 0), 0) };
+  const coList = topupCoList_();
+  const coCount = {}; base.forEach(r => { const k = r['CO ALL'] || '(Tanpa CO)'; coCount[k] = (coCount[k]||0) + 1; });
+  const statusCount = {}; base.forEach(r => { const k = r['TOPUP STATUS'] || 'BELUM DIHUBUNGI'; statusCount[k] = (statusCount[k]||0) + 1; });
+
+  document.getElementById('wrap').innerHTML = `
+    <div class="panel-title">Jualan Top Up — Rekomendasi Konsumen Layak Ditawari</div>
+    <div class="grand-row" style="margin-bottom:16px;">
+      <div class="grand-card"><div class="lbl">Jumlah Kandidat</div><div class="val" id="tuValKontrak">0</div></div>
+      <div class="grand-card"><div class="lbl">Total SIPOK Kandidat</div><div class="val" id="tuValSipok">Rp0</div></div>
+    </div>
+    <div class="pill-toggle" id="tuTabCo" style="margin-bottom:14px;flex-wrap:wrap;">
+      <button class="${topupState.co==='ALL'?'active':''}" data-co="ALL">Semua (${base.length})</button>
+      ${coList.map(n => `<button class="${topupState.co===n?'active':''}" data-co="${esc(n)}">${esc((CO_META[n]||{}).short || n)} (${coCount[n]||0})</button>`).join('')}
+    </div>
+    <div class="pill-toggle" id="tuTabStatus" style="margin-bottom:14px;flex-wrap:wrap;">
+      <button class="${topupState.status==='ALL'?'active':''}" data-status="ALL">Semua Status</button>
+      ${TOPUP_STATUS_OPTIONS.map(s => `<button class="${topupState.status===s?'active':''}" data-status="${esc(s)}">${esc(s)} (${statusCount[s]||0})</button>`).join('')}
+    </div>
+    <div class="controls">
+      <div class="search-box">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4C6272" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="tuSearchInput" type="text" placeholder="Cari nama konsumen, no kontrak, atau nopol…">
+      </div>
+      <button class="btn" id="tuResetBtn">Reset filter</button>
+      <button class="btn primary" id="tuRefreshBtn">${ic('refresh')} Muat ulang</button>
+    </div>
+    <div class="count-note" id="tuCountNote"></div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th data-key="CO ALL">CO</th>
+            <th data-key="NO KONTRAK">No Kontrak</th>
+            <th data-key="NAMA KONSUMEN">Nama Konsumen</th>
+            <th>Bucket</th>
+            <th>Unit</th>
+            <th data-key="SIPOK" class="num">Sisa Piutang</th>
+            <th data-key="_TOPUP_SKOR" class="num">Sinyal</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="tuTbody"></tbody>
+      </table>
+    </div>
+  `;
+  animateCount(document.getElementById('tuValKontrak'), stat.count, false);
+  document.getElementById('tuValSipok').textContent = fmtRupiah(stat.sipok);
+
+  document.getElementById('tuTabCo').querySelectorAll('button').forEach(btn => btn.onclick = () => {
+    if(btn.dataset.co === topupState.co) return;
+    topupState.co = btn.dataset.co;
+    buildTopupLayout();
+    renderTopupTable();
+  });
+  document.getElementById('tuTabStatus').querySelectorAll('button').forEach(btn => btn.onclick = () => {
+    if(btn.dataset.status === topupState.status) return;
+    topupState.status = btn.dataset.status;
+    buildTopupLayout();
+    renderTopupTable();
+  });
+  document.querySelectorAll('#wrap thead th[data-key]').forEach(th => th.onclick = () => {
+    const key = th.getAttribute('data-key');
+    if(topupState.sortKey === key) topupState.sortDir *= -1; else { topupState.sortKey = key; topupState.sortDir = key === '_TOPUP_SKOR' ? -1 : 1; }
+    renderTopupTable();
+  });
+  document.getElementById('tuSearchInput').addEventListener('input', e => { topupState.search = e.target.value; renderTopupTable(); });
+  document.getElementById('tuResetBtn').addEventListener('click', () => {
+    topupState = { co:'ALL', status:'ALL', search:'', sortKey:'_TOPUP_SKOR', sortDir:-1 };
+    buildTopupLayout();
+    renderTopupTable();
+  });
+  document.getElementById('tuRefreshBtn').addEventListener('click', () => loadData(true));
+}
+
+function getTopupFiltered(){
+  let rows = getTopupBase();
+  if(topupState.co !== 'ALL') rows = rows.filter(r => (r['CO ALL'] || '(Tanpa CO)') === topupState.co);
+  if(topupState.status !== 'ALL') rows = rows.filter(r => (r['TOPUP STATUS'] || 'BELUM DIHUBUNGI') === topupState.status);
+  if(topupState.search.trim()){
+    const q = topupState.search.trim().toLowerCase();
+    rows = rows.filter(r => [r['NAMA KONSUMEN'], r['NO KONTRAK'], r['NOPOL']].some(v => (v||'').toString().toLowerCase().includes(q)));
+  }
+  if(topupState.sortKey){
+    rows = rows.slice().sort((a,b) => {
+      let va=a[topupState.sortKey], vb=b[topupState.sortKey];
+      if(typeof va==='number' && typeof vb==='number') return (va-vb)*topupState.sortDir;
+      va = (va||'').toString(); vb = (vb||'').toString();
+      return va.localeCompare(vb)*topupState.sortDir;
+    });
+  }
+  return rows;
+}
+
+async function topupSetStatus_(noKontrak, status, selectEl){
+  selectEl.disabled = true;
+  try{
+    const res = await fetch('/api/topup-status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + ID_TOKEN },
+      body: JSON.stringify({ noKontrak, status })
+    });
+    const json = await res.json();
+    if(!res.ok) throw new Error(json.error || 'Gagal menyimpan status.');
+    const rec = DATA.find(r => r['NO KONTRAK'] === noKontrak);
+    if(rec) rec['TOPUP STATUS'] = status;
+  }catch(e){
+    alert(e.message || 'Gagal menyimpan status.');
+    renderTopupTable();
+  }finally{
+    selectEl.disabled = false;
+  }
+}
+
+function renderTopupTable(){
+  const rows = getTopupFiltered();
+  const base = getTopupBase();
+  document.getElementById('tuCountNote').innerHTML = `Menampilkan <b>${rows.length}</b> dari <b>${base.length}</b> kandidat top up`;
+  const tbody = document.getElementById('tuTbody');
+  if(rows.length===0){ tbody.innerHTML = emptyRowHtml(8, tbody); return; }
+  tbody.innerHTML = pageRows('topup', rows, tbody, renderTopupTable).map(r => {
+    const meta = CO_META[r['CO ALL']] || {short:r['CO ALL']||'-'};
+    const status = r['TOPUP STATUS'] || 'BELUM DIHUBUNGI';
+    const waMsg = TOPUP_WA_MSG(r['NAMA KONSUMEN'] || 'Bapak/Ibu');
+    const wa = waLinkText(r['WHATSAPP'] || r['NO HP'], waMsg);
+    return `<tr data-kontrak="${esc(r['NO KONTRAK'])}">
+      <td data-label="CO" class="mono">${esc(meta.short)}</td>
+      <td data-label="No Kontrak" class="mono">${esc(r['NO KONTRAK']||'-')}</td>
+      <td data-label="Nama">${esc(r['NAMA KONSUMEN']||'-')}${wa ? `<a class="row-wa" href="${esc(wa)}" target="_blank" rel="noopener" aria-label="Tawarkan Top Up via WhatsApp" title="Tawarkan via WhatsApp">${ic('wa')}</a>` : ''}</td>
+      <td data-label="Bucket"><span class="bpill" style="--c:${BUCKET_COLOR[r['BUCKET AWAL']]||'#999'}">${fmtBucket(r['BUCKET AWAL'])}</span></td>
+      <td data-label="Unit" class="mono" style="max-width:180px;white-space:normal;">${esc(r['TYPE BARANG']||'-')}${r['TYPE UNIT'] ? ' · ' + esc(r['TYPE UNIT']) : ''}</td>
+      <td data-label="Sisa Piutang" class="num">${fmtRupiah(r['SIPOK'])}</td>
+      <td data-label="Sinyal" class="num">${(r._TOPUP_TAGS||[]).map(t => `<span class="status-pill status-sudah" style="margin:1px;display:inline-block;">${esc(t)}</span>`).join('')}</td>
+      <td data-label="Status">
+        <select class="tu-status-select" data-kontrak="${esc(r['NO KONTRAK'])}">
+          ${TOPUP_STATUS_OPTIONS.map(s => `<option value="${esc(s)}" ${s===status?'selected':''}>${esc(s)}</option>`).join('')}
+        </select>
+      </td>
+    </tr>`;
+  }).join('');
+  tbody.querySelectorAll('tr[data-kontrak]').forEach(tr => tr.onclick = (ev) => {
+    if(ev && ev.target.closest && (ev.target.closest('a.row-wa') || ev.target.closest('select'))) return;
+    openPanel(tr.getAttribute('data-kontrak'));
+  });
+  tbody.querySelectorAll('select.tu-status-select').forEach(sel => sel.addEventListener('change', (ev) => {
+    ev.stopPropagation();
+    topupSetStatus_(sel.dataset.kontrak, sel.value, sel);
+  }));
+  tbody.querySelectorAll('select.tu-status-select').forEach(sel => sel.addEventListener('click', ev => ev.stopPropagation()));
 }
 
 // ============================================================
@@ -5998,6 +6205,11 @@ function waLink(raw){
   else if(!d.startsWith('62')) d = '62' + d;
   return 'https://wa.me/' + d;
 }
+function waLinkText(raw, text){
+  const base = waLink(raw);
+  if(!base) return null;
+  return base + '?text=' + encodeURIComponent(text || '');
+}
 
 let PANEL_KONTRAK = null, HIST_ITEMS = [];
 const BLN = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
@@ -6345,14 +6557,14 @@ document.getElementById('overlay').onclick = document.getElementById('panelClose
   const dateEl = document.getElementById('topDate');
   if(!sidebar || !nav) return;
 
-  const HINT = { usulan:'Alur DKH: CO memilih kontrak, head mengecek lalu mengirim ke Silvi, Silvi membuat DKH', targetdaily:'Target daily balance dan flow per PIC, kontrak potensial, dan rekomendasi kejar', cms:'Produktivitas collection: balance 1-30 dan 31-60, DKH terbentuk, dikerjakan, bertemu, risk code', ringkasan:'Ringkasan performa cabang: sebaran bucket, flow, dan tren mingguan', dashboard:'Beban awal: daftar kontrak per bucket beserta status bayarnya', nbq:'Kontrak NBQ (new booking quality) dan status bayarnya', feever:'Kontrak limpahan 31+ hari', tglbayar:'Kontrak yang bulan lalu dibayar pada tanggal hari ini', insentif:'Proyeksi insentif mingguan', dekscall:'Daftar tugas deskcall', simulasirapor:'Simulasi nilai rapor jika kontrak tertentu flow/stay/lunas', proyeksicabang:'Simulasi Balance & Delq 30+ cabang kalau kontrak bergerak dan/atau plan sales golive', simulasi:'Simulasi penawaran MotorKu', panduan:'Panduan membaca KPI dan insentif', freshflow:'Kontrak yang bucket awalnya bulan ini baru pertama kali ada di posisi itu (bukan STAY dari bulan lalu) — berdasarkan kolom KOMPOSISI ACT di spreadsheet' };
+  const HINT = { usulan:'Alur DKH: CO memilih kontrak, head mengecek lalu mengirim ke Silvi, Silvi membuat DKH', targetdaily:'Target daily balance dan flow per PIC, kontrak potensial, dan rekomendasi kejar', cms:'Produktivitas collection: balance 1-30 dan 31-60, DKH terbentuk, dikerjakan, bertemu, risk code', ringkasan:'Ringkasan performa cabang: sebaran bucket, flow, dan tren mingguan', dashboard:'Beban awal: daftar kontrak per bucket beserta status bayarnya', nbq:'Kontrak NBQ (new booking quality) dan status bayarnya', feever:'Kontrak limpahan 31+ hari', tglbayar:'Kontrak yang bulan lalu dibayar pada tanggal hari ini', insentif:'Proyeksi insentif mingguan', dekscall:'Daftar tugas deskcall', simulasirapor:'Simulasi nilai rapor jika kontrak tertentu flow/stay/lunas', proyeksicabang:'Simulasi Balance & Delq 30+ cabang kalau kontrak bergerak dan/atau plan sales golive', simulasi:'Simulasi penawaran MotorKu', panduan:'Panduan membaca KPI dan insentif', freshflow:'Kontrak yang bucket awalnya bulan ini baru pertama kali ada di posisi itu (bukan STAY dari bulan lalu) — berdasarkan kolom KOMPOSISI ACT di spreadsheet', topup:'Rekomendasi konsumen aktif (bucket NOOD/1-30) yang layak ditawari top up pinjaman' };
   sidebar.querySelectorAll('.nav-item[data-view]').forEach(b => { if(HINT[b.dataset.view]) b.title = HINT[b.dataset.view]; });
   function orderFor(){
     if(IS_DESKCALL) return ['dashboard','usulan','dekscall','tglbayar','simulasi','panduan'];
     if(IS_ADMIN) return ['ringkasan','dashboard','insentif','nbq','freshflow','usulan','simulasirapor','cms','tglbayar','proyeksicabang'];
     return ['dashboard','targetdaily','usulan','nbq','insentif','feever','tglbayar','simulasirapor','simulasi','panduan'];
   }
-  const SHORT = { usulan:'Usulan', cms:'CMS', ringkasan:'Ringkasan', dashboard:'Beban', targetdaily:'Target', nbq:'NBQ', feever:'FE Ever', tglbayar:'Tgl Bayar', insentif:'Insentif', dekscall:'Deskcall', simulasirapor:'Rapor', proyeksicabang:'Proyeksi', simulasi:'Simulasi', panduan:'Panduan', freshflow:'Freshflow' };
+  const SHORT = { usulan:'Usulan', cms:'CMS', ringkasan:'Ringkasan', dashboard:'Beban', targetdaily:'Target', nbq:'NBQ', feever:'FE Ever', tglbayar:'Tgl Bayar', insentif:'Insentif', dekscall:'Deskcall', simulasirapor:'Rapor', proyeksicabang:'Proyeksi', simulasi:'Simulasi', panduan:'Panduan', freshflow:'Freshflow', topup:'Top Up' };
   const MORE_ICON = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/></svg>';
 
   function items(){
@@ -6462,7 +6674,7 @@ document.getElementById('overlay').onclick = document.getElementById('panelClose
 /* V4 — gerak halus: transisi antar menu, reveal saat gulir, top bar adaptif, pil bottom nav */
 (function(){
   const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const ORDER = ['ringkasan','dashboard','usulan','cms','nbq','freshflow','feever','dekscall','tglbayar','insentif','simulasirapor','proyeksicabang','simulasi','panduan'];
+  const ORDER = ['ringkasan','dashboard','usulan','cms','nbq','freshflow','topup','feever','dekscall','tglbayar','insentif','simulasirapor','proyeksicabang','simulasi','panduan'];
   let prevView = null, io = null, holdTimer = null;
 
   function revealAll(){ document.querySelectorAll('#wrap > .m-hold').forEach(el => { el.classList.add('m-show'); }); }

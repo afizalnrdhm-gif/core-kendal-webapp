@@ -179,6 +179,26 @@ module.exports = async (req, res) => {
     const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(x => x.trim().toLowerCase());
     const isAdmin = adminEmails.indexOf(email) > -1;
 
+    // Menu "Jualan Top Up" (booking mandiri) privat — cuma email di TOPUP_OWNER_EMAILS yang dapat
+    // field status top up-nya. Admin lain (atasan/pengawas) tetap isAdmin:true tapi canTopup:false.
+    const topupOwnerEmails = (process.env.TOPUP_OWNER_EMAILS || '').split(',').map(x => x.trim().toLowerCase()).filter(Boolean);
+    const canTopup = isAdmin && topupOwnerEmails.indexOf(email) > -1;
+    if (canTopup) {
+      try {
+        const topupRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/TOPUP_STATUS?valueRenderOption=UNFORMATTED_VALUE`, {
+          headers: { Authorization: 'Bearer ' + accessToken }
+        });
+        const topupJson = await topupRes.json();
+        const topupRows = parseSheetValues(topupJson.values || []);
+        const topupMap = {};
+        topupRows.forEach(r => { if (r['NO KONTRAK']) topupMap[r['NO KONTRAK']] = r['STATUS'] || ''; });
+        allRecords.forEach(r => { r['TOPUP STATUS'] = topupMap[r['NO KONTRAK']] || 'BELUM DIHUBUNGI'; });
+      } catch (e) {
+        console.error('Gagal baca TOPUP_STATUS (menu Jualan Top Up tetap jalan tanpa status tersimpan):', e && e.message);
+        allRecords.forEach(r => { r['TOPUP STATUS'] = 'BELUM DIHUBUNGI'; });
+      }
+    }
+
     function computeEscalations() {
       const mrEntry = Object.values(roleMap).find(r => r.role === 'MR');
       if (!mrEntry) return [];
@@ -193,7 +213,7 @@ module.exports = async (req, res) => {
 
     if (isAdmin) {
       res.status(200).json({
-        email, isAdmin: true, records: allRecords, roleInfo: null, escalations: computeEscalations(),
+        email, isAdmin: true, canTopup, records: allRecords, roleInfo: null, escalations: computeEscalations(),
         generatedAt: new Date().toISOString()
       });
       return;
