@@ -3854,13 +3854,12 @@ function renderDekscallTable(){
 // sini, karena itu cuma gambaran pergerakan DALAM bulan berjalan, bukan status "baru pertama kali"
 // lintas bulan. Nilai KOMPOSISI ACT lain yang sudah dipakai di sheet: STAY (sudah di bucket itu dari
 // bulan sebelumnya), NEW AR (kontrak baru tercatat), BTC (kembali ke NOOD/current), ROLLBACK (bucket
-// turun). Tab di bawah mengelompokkan kontrak FRESHFLOW itu per BUCKET AWAL (1-30, 31-60, 61-90).
+// turun). Tab di bawah mengelompokkan kontrak FRESHFLOW itu per BUCKET AWAL (1-30, 31-60).
 // Khusus admin/BCH/head (menu head), fleet ikut dihitung (cakupan BCH, bukan per-CO).
 // ============================================================
 const FRESHFLOW_DEFS = [
   { key:'p130',  label:'Freshflow 1-30',  short:'1-30',  bucket:'P001_030' },
-  { key:'p3160', label:'Freshflow 31-60', short:'31-60', bucket:'P031_060' },
-  { key:'p6190', label:'Freshflow 61-90', short:'61-90', bucket:'P061_090' }
+  { key:'p3160', label:'Freshflow 31-60', short:'31-60', bucket:'P031_060' }
 ];
 let freshflowState = { transisi:'p130', co:'ALL', search:'', sortKey:'SIPOK', sortDir:-1 };
 
