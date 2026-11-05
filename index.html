@@ -6210,10 +6210,12 @@ function waLinkText(raw, text){
   if(!d) return null;
   if(d.startsWith('0')) d = '62' + d.slice(1);
   else if(!d.startsWith('62')) d = '62' + d;
-  // Pakai api.whatsapp.com/send (bukan wa.me) — di Android, wa.me yang dibuka dari browser/PWA
-  // kadang "dilempar" langsung ke app WhatsApp lewat intent dan query ?text= ikut hilang;
-  // api.whatsapp.com/send lebih konsisten bawa parameter text-nya.
-  return 'https://api.whatsapp.com/send?phone=' + d + '&text=' + encodeURIComponent(text || '');
+  // Pakai skema whatsapp:// langsung (bukan wa.me / api.whatsapp.com) — link https: yang dibuka dari
+  // browser/PWA di Android kadang "dilempar" ke app WhatsApp lewat intent Android dan query ?text=
+  // ikut hilang di beberapa kombinasi versi app/OS. Skema whatsapp:// native langsung ke app, lebih
+  // konsisten bawa teksnya. Konsekuensi: kalau WhatsApp tidak terpasang, link ini gagal diam-diam
+  // (acceptable — tool ini cuma dipakai dari HP yang pasti ada WhatsApp-nya).
+  return 'whatsapp://send?phone=' + d + '&text=' + encodeURIComponent(text || '');
 }
 
 let PANEL_KONTRAK = null, HIST_ITEMS = [];
