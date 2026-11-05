@@ -80,6 +80,72 @@ module.exports = async (req, res) => {
     }
     const email = await verifyIdToken(idToken);
 
+    // POST ?topupStatus=1 -> update status tindak lanjut menu "Jualan Top Up" (dulu endpoint
+    // topup-status.js terpisah, digabung ke sini supaya tidak nambah slot serverless function
+    // baru — Vercel Hobby plan dibatasi 12 function per deployment).
+    if (req.method === 'POST' && req.query && req.query.topupStatus) {
+      const topupOwnerEmailsPost = (process.env.TOPUP_OWNER_EMAILS || '').split(',').map(x => x.trim().toLowerCase()).filter(Boolean);
+      if (topupOwnerEmailsPost.indexOf(email) === -1) {
+        res.status(403).json({ error: 'Kamu tidak punya akses ke fitur ini.' });
+        return;
+      }
+      let body = req.body;
+      if (typeof body === 'string') { try { body = JSON.parse(body); } catch (e) { body = {}; } }
+      const noKontrak = (body && body.noKontrak || '').toString().trim();
+      const status = (body && body.status || '').toString().trim().toUpperCase();
+      const STATUS_OK = ['BELUM DIHUBUNGI', 'SUDAH DITAWARI', 'TERTARIK', 'TIDAK TERTARIK'];
+      if (!noKontrak) { res.status(400).json({ error: 'noKontrak wajib diisi.' }); return; }
+      if (STATUS_OK.indexOf(status) === -1) { res.status(400).json({ error: 'Status harus salah satu dari: ' + STATUS_OK.join(', ') + '.' }); return; }
+
+      const accessTokenPost = await getAccessToken();
+      const sheetIdPost = process.env.GOOGLE_SHEET_ID;
+      const readRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetIdPost}/values/TOPUP_STATUS?valueRenderOption=UNFORMATTED_VALUE`,
+        { headers: { Authorization: 'Bearer ' + accessTokenPost } });
+      const readJson = await readRes.json();
+      if (readJson.error) {
+        console.error('Gagal baca TOPUP_STATUS:', JSON.stringify(readJson.error));
+        res.status(500).json({ error: 'Gagal baca tab TOPUP_STATUS (pastikan tabnya sudah dibuat).' });
+        return;
+      }
+      const tValues = readJson.values || [];
+      const tHeader = tValues[0] || ['NO KONTRAK', 'STATUS', 'UPDATED_AT', 'UPDATED_BY'];
+      const idxKontrak = tHeader.findIndex(h => (h || '').toString().trim() === 'NO KONTRAK');
+      const idxStatus = tHeader.findIndex(h => (h || '').toString().trim() === 'STATUS');
+      const idxUpdatedAt = tHeader.findIndex(h => (h || '').toString().trim() === 'UPDATED_AT');
+      const idxUpdatedBy = tHeader.findIndex(h => (h || '').toString().trim() === 'UPDATED_BY');
+      const nowIso = new Date().toISOString();
+      let rowIndex = -1;
+      for (let i = 1; i < tValues.length; i++) {
+        if ((tValues[i][idxKontrak] || '').toString().trim() === noKontrak) { rowIndex = i; break; }
+      }
+      function colLetterLocal(index) {
+        let s = ''; index += 1;
+        while (index > 0) { const rem = (index - 1) % 26; s = String.fromCharCode(65 + rem) + s; index = Math.floor((index - 1) / 26); }
+        return s;
+      }
+      if (rowIndex > -1) {
+        const sheetRow = rowIndex + 1;
+        const writes = [
+          { range: `TOPUP_STATUS!${colLetterLocal(idxStatus)}${sheetRow}`, values: [[status]] },
+          { range: `TOPUP_STATUS!${colLetterLocal(idxUpdatedAt)}${sheetRow}`, values: [[nowIso]] },
+          { range: `TOPUP_STATUS!${colLetterLocal(idxUpdatedBy)}${sheetRow}`, values: [[email]] }
+        ];
+        await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetIdPost}/values:batchUpdate`, {
+          method: 'POST',
+          headers: { Authorization: 'Bearer ' + accessTokenPost, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ valueInputOption: 'RAW', data: writes })
+        });
+      } else {
+        await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetIdPost}/values/TOPUP_STATUS!A:D:append?valueInputOption=RAW`, {
+          method: 'POST',
+          headers: { Authorization: 'Bearer ' + accessTokenPost, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ values: [[noKontrak, status, nowIso, email]] })
+        });
+      }
+      res.status(200).json({ ok: true, status, updatedAt: nowIso });
+      return;
+    }
+
     // ?check=1 -> hanya cek kapan Sheet terakhir diubah (dulu endpoint check-update, digabung supaya slot function lega)
     if (req.query && req.query.check) {
       const driveToken = await getAccessToken(SCOPE_DRIVE_META);

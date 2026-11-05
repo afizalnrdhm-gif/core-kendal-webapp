@@ -4148,7 +4148,7 @@ function getTopupFiltered(){
 async function topupSetStatus_(noKontrak, status, selectEl){
   selectEl.disabled = true;
   try{
-    const res = await fetch('/api/topup-status', {
+    const res = await fetch('/api/data?topupStatus=1', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + ID_TOKEN },
       body: JSON.stringify({ noKontrak, status })
