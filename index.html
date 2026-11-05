@@ -4053,7 +4053,7 @@ function topupCoList_(){
   const extra = Array.from(new Set(DATA.map(r => r['CO ALL']).filter(Boolean))).filter(n => known.indexOf(n) === -1);
   return known.concat(extra);
 }
-const TOPUP_WA_MSG = (nama) => `Halo Bapak/Ibu ${nama}, perkenalkan dari WOM Finance Kendal. Konsumen kami yang pembayarannya lancar berkesempatan untuk mengajukan tambahan pinjaman (top up). Apakah Bapak/Ibu berkenan untuk kami bantu informasikan lebih lanjut?`;
+const TOPUP_WA_MSG = (nama) => `Halo Bapak/Ibu ${nama}, saya Ijal dari WOM Finance Kendal yang biasa handle angsuran Bapak/Ibu. Karena pembayaran Bapak/Ibu selama ini lancar, Bapak/Ibu berkesempatan ajukan tambahan pinjaman (top up) dengan proses cepat. Kalau berkenan, saya bantu infoin syarat & simulasinya ya 🙏`;
 
 function buildTopupLayout(){
   const base = getTopupBase();
