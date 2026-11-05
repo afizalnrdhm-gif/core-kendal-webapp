@@ -3847,24 +3847,27 @@ function renderDekscallTable(){
 }
 
 // ============================================================
-// FRESHFLOW — kontrak yang bucket awalnya masih lancar/ringan di satu titik dan baru PERTAMA KALI
-// flow ke bucket berikutnya bulan ini (BUCKET AWAL === asal & BUCKET UPDATE === target persis satu
-// tingkat di atasnya). Definisi & populasi SENGAJA sama persis dengan flowStat() di api/_kpi.js
-// (dasar angka Flow NOOD/Flow 1-30/Flow 31-60 di kartu KPI) supaya total kontrak+SIPOK di sini selalu
-// konsisten dengan persentase yang sudah tervalidasi — ini cuma "bongkar" persentase itu jadi daftar
-// kontrak. Khusus admin/BCH/head (menu head), fleet ikut dihitung (cakupan BCH, bukan per-CO).
+// FRESHFLOW — kontrak yang posisi BUCKET AWAL bulan ini baru PERTAMA KALI "lahir" di bucket itu
+// (bulan lalu masih di bucket yang lebih ringan, lalu sampai closing tidak bayar sehingga BUCKET
+// AWAL bulan ini naik satu tingkat). Sumber kebenarannya kolom "KOMPOSISI ACT" di MASTER (diisi/
+// dihitung Ijal sendiri di spreadsheet) — BUKAN dihitung ulang dari BUCKET AWAL vs BUCKET UPDATE di
+// sini, karena itu cuma gambaran pergerakan DALAM bulan berjalan, bukan status "baru pertama kali"
+// lintas bulan. Nilai KOMPOSISI ACT lain yang sudah dipakai di sheet: STAY (sudah di bucket itu dari
+// bulan sebelumnya), NEW AR (kontrak baru tercatat), BTC (kembali ke NOOD/current), ROLLBACK (bucket
+// turun). Tab di bawah mengelompokkan kontrak FRESHFLOW itu per BUCKET AWAL (1-30, 31-60, 61-90).
+// Khusus admin/BCH/head (menu head), fleet ikut dihitung (cakupan BCH, bukan per-CO).
 // ============================================================
 const FRESHFLOW_DEFS = [
-  { key:'nood',  label:'NOOD → 1-30',   short:'NOOD→1-30',  asal:'NOOD',      target:'P001_030' },
-  { key:'p130',  label:'1-30 → 31-60',  short:'1-30→31-60', asal:'P001_030',  target:'P031_060' },
-  { key:'p3160', label:'31-60 → 61-90', short:'31-60→61-90', asal:'P031_060', target:'P061_090' }
+  { key:'p130',  label:'Freshflow 1-30',  short:'1-30',  bucket:'P001_030' },
+  { key:'p3160', label:'Freshflow 31-60', short:'31-60', bucket:'P031_060' },
+  { key:'p6190', label:'Freshflow 61-90', short:'61-90', bucket:'P061_090' }
 ];
-let freshflowState = { transisi:'nood', co:'ALL', search:'', sortKey:'SIPOK', sortDir:-1 };
+let freshflowState = { transisi:'p130', co:'ALL', search:'', sortKey:'SIPOK', sortDir:-1 };
 
 function freshflowDef_(){ return FRESHFLOW_DEFS.find(d => d.key === freshflowState.transisi) || FRESHFLOW_DEFS[0]; }
 function getFreshflowBase(transisiKey){
   const def = FRESHFLOW_DEFS.find(d => d.key === transisiKey) || FRESHFLOW_DEFS[0];
-  return DATA.filter(r => r['BUCKET AWAL'] === def.asal && r['BUCKET UPDATE'] === def.target);
+  return DATA.filter(r => (r['KOMPOSISI ACT']||'').toString().trim().toUpperCase() === 'FRESHFLOW' && r['BUCKET AWAL'] === def.bucket);
 }
 function freshflowCoList_(){
   // Urutan tetap: PIC FE/MR dulu (sesuai CO_META), baru PIC lain yang muncul di data (mis. REM).
@@ -3880,7 +3883,7 @@ function buildFreshflowLayout(){
   const coCount = {}; base.forEach(r => { const k = r['CO ALL'] || '(Tanpa CO)'; coCount[k] = (coCount[k]||0) + 1; });
 
   document.getElementById('wrap').innerHTML = `
-    <div class="panel-title">Freshflow — Kontrak Baru Pertama Kali Flow</div>
+    <div class="panel-title">Freshflow — Kontrak Baru Pertama Kali di Bucket Ini</div>
     <div class="pill-toggle" id="ffTabTransisi" style="margin-bottom:14px;">${FRESHFLOW_DEFS.map(d => `<button class="${d.key===freshflowState.transisi?'active':''}" data-transisi="${d.key}">${esc(d.label)}</button>`).join('')}</div>
     <div class="grand-row" style="margin-bottom:16px;">
       <div class="grand-card"><div class="lbl">Jumlah Kontrak</div><div class="val" id="ffValKontrak">0</div></div>
@@ -3983,7 +3986,7 @@ function renderFreshflowTable(){
       <td data-label="CO" class="mono">${esc(meta.short)}</td>
       <td data-label="No Kontrak" class="mono">${esc(r['NO KONTRAK']||'-')}</td>
       <td data-label="Nama">${esc(r['NAMA KONSUMEN']||'-')}${rowWa(r)}</td>
-      <td data-label="Bucket"><div class="bucket-flow"><span class="bpill" style="--c:${BUCKET_COLOR[r['BUCKET AWAL']]||'#999'}">${fmtBucket(r['BUCKET AWAL'])}</span> → <span class="bpill" style="--c:${BUCKET_COLOR[r['BUCKET UPDATE']]||'#999'}">${fmtBucket(r['BUCKET UPDATE'])}</span></div></td>
+      <td data-label="Bucket Awal → Update"><div class="bucket-flow"><span class="bpill" style="--c:${BUCKET_COLOR[r['BUCKET AWAL']]||'#999'}">${fmtBucket(r['BUCKET AWAL'])}</span> → <span class="bpill" style="--c:${BUCKET_COLOR[r['BUCKET UPDATE']]||'#999'}">${fmtBucket(r['BUCKET UPDATE'])}</span></div></td>
       <td data-label="Status"><span class="status-pill ${statusClass(r['STATUS BAYAR'])}">${esc(r['STATUS BAYAR']||'-')}</span></td>
       <td data-label="Sisa Piutang" class="num">${fmtRupiah(r['SIPOK'])}</td>
       <td data-label="DPD" class="num">${esc(r['DPD'] ?? '-')}</td>
@@ -6343,7 +6346,7 @@ document.getElementById('overlay').onclick = document.getElementById('panelClose
   const dateEl = document.getElementById('topDate');
   if(!sidebar || !nav) return;
 
-  const HINT = { usulan:'Alur DKH: CO memilih kontrak, head mengecek lalu mengirim ke Silvi, Silvi membuat DKH', targetdaily:'Target daily balance dan flow per PIC, kontrak potensial, dan rekomendasi kejar', cms:'Produktivitas collection: balance 1-30 dan 31-60, DKH terbentuk, dikerjakan, bertemu, risk code', ringkasan:'Ringkasan performa cabang: sebaran bucket, flow, dan tren mingguan', dashboard:'Beban awal: daftar kontrak per bucket beserta status bayarnya', nbq:'Kontrak NBQ (new booking quality) dan status bayarnya', feever:'Kontrak limpahan 31+ hari', tglbayar:'Kontrak yang bulan lalu dibayar pada tanggal hari ini', insentif:'Proyeksi insentif mingguan', dekscall:'Daftar tugas deskcall', simulasirapor:'Simulasi nilai rapor jika kontrak tertentu flow/stay/lunas', proyeksicabang:'Simulasi Balance & Delq 30+ cabang kalau kontrak bergerak dan/atau plan sales golive', simulasi:'Simulasi penawaran MotorKu', panduan:'Panduan membaca KPI dan insentif', freshflow:'Kontrak yang baru pertama kali flow bulan ini: NOOD→1-30, 1-30→31-60, 31-60→61-90' };
+  const HINT = { usulan:'Alur DKH: CO memilih kontrak, head mengecek lalu mengirim ke Silvi, Silvi membuat DKH', targetdaily:'Target daily balance dan flow per PIC, kontrak potensial, dan rekomendasi kejar', cms:'Produktivitas collection: balance 1-30 dan 31-60, DKH terbentuk, dikerjakan, bertemu, risk code', ringkasan:'Ringkasan performa cabang: sebaran bucket, flow, dan tren mingguan', dashboard:'Beban awal: daftar kontrak per bucket beserta status bayarnya', nbq:'Kontrak NBQ (new booking quality) dan status bayarnya', feever:'Kontrak limpahan 31+ hari', tglbayar:'Kontrak yang bulan lalu dibayar pada tanggal hari ini', insentif:'Proyeksi insentif mingguan', dekscall:'Daftar tugas deskcall', simulasirapor:'Simulasi nilai rapor jika kontrak tertentu flow/stay/lunas', proyeksicabang:'Simulasi Balance & Delq 30+ cabang kalau kontrak bergerak dan/atau plan sales golive', simulasi:'Simulasi penawaran MotorKu', panduan:'Panduan membaca KPI dan insentif', freshflow:'Kontrak yang bucket awalnya bulan ini baru pertama kali ada di posisi itu (bukan STAY dari bulan lalu) — berdasarkan kolom KOMPOSISI ACT di spreadsheet' };
   sidebar.querySelectorAll('.nav-item[data-view]').forEach(b => { if(HINT[b.dataset.view]) b.title = HINT[b.dataset.view]; });
   function orderFor(){
     if(IS_DESKCALL) return ['dashboard','usulan','dekscall','tglbayar','simulasi','panduan'];
