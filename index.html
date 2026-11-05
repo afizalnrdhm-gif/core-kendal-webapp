@@ -1589,6 +1589,10 @@
           <span class="nav-icon-chip"><svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></span>
           <span>Proyeksi Cabang</span>
         </button>
+        <button class="nav-item nav-hidden" data-view="freshflow" id="navFreshflow">
+          <span class="nav-icon-chip"><svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 16c2-4 4-6 6-6s3 3 6 3 4-3 6-6"/><path d="M3 20c2-4 4-6 6-6s3 3 6 3 4-3 6-6"/></svg></span>
+          <span>Freshflow</span>
+        </button>
         <button class="nav-item" data-view="simulasi" id="navSimulasi">
           <span class="nav-icon-chip"><svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="7" x2="16" y2="7"/><line x1="8" y1="11" x2="10" y2="11"/><line x1="13" y1="11" x2="15" y2="11"/><line x1="8" y1="15" x2="10" y2="15"/><line x1="13" y1="15" x2="15" y2="15"/></svg></span>
           <span>Simulasi Penawaran</span>
@@ -1908,6 +1912,7 @@ document.getElementById('navTglBayar').addEventListener('click', () => switchVie
 document.getElementById('navInsentif').addEventListener('click', () => switchView('insentif'));
 document.getElementById('navSimulasiRapor').addEventListener('click', () => switchView('simulasirapor'));
 document.getElementById('navProyeksiCabang').addEventListener('click', () => switchView('proyeksicabang'));
+document.getElementById('navFreshflow').addEventListener('click', () => switchView('freshflow'));
 document.getElementById('navDekscall').addEventListener('click', () => switchView('dekscall'));
 document.getElementById('navSimulasi').addEventListener('click', () => switchView('simulasi'));
 document.getElementById('navPanduan').addEventListener('click', () => switchView('panduan'));
@@ -1987,6 +1992,7 @@ function onDataLoaded(res){
   navRingkasan.classList.toggle('nav-hidden', !IS_ADMIN);
   document.getElementById('navCMS').classList.toggle('nav-hidden', !IS_ADMIN);
   document.getElementById('navProyeksiCabang').classList.toggle('nav-hidden', !IS_ADMIN);
+  document.getElementById('navFreshflow').classList.toggle('nav-hidden', !IS_ADMIN);
   document.getElementById('navUsulan').classList.toggle('nav-hidden', !(IS_ADMIN || IS_DESKCALL || (ROLE_INFO && (ROLE_INFO.role === 'FE' || ROLE_INFO.role === 'MR'))));
   const navNBQ = document.getElementById('navNBQ');
   const navFEEver = document.getElementById('navFEEver');
@@ -2035,6 +2041,7 @@ function onDataLoaded(res){
     else if(VIEW_MODE === 'nbq'){ buildNBQLayout(); renderNBQ(); }
     else if(VIEW_MODE === 'feever'){ buildFEEverLayout(); renderFEEver(); }
     else if(VIEW_MODE === 'tglbayar'){ buildTglBayarLayout(); renderTglBayarTable(); }
+    else if(VIEW_MODE === 'freshflow'){ buildFreshflowLayout(); renderFreshflowTable(); }
   }
 }
 
@@ -2396,7 +2403,7 @@ let VIEW_MODE = 'dashboard';
 let INSENTIF_DATA = null;
 let INS_PANDUAN_ROLE = null, INS_PANDUAN_OPEN = false; // state panel Panduan KPI yang dilipat di halaman Insentif admin (Rencana 3)
 
-const VIEW_TITLES = { ringkasan: 'Dashboard', cms: 'CMS Produktivitas', usulan: 'Usulan DKH', dashboard: 'Beban Awal', targetdaily: 'Target Daily', nbq: 'NBQ', feever: 'FE Ever', tglbayar: 'Tgl Bayar Bulan Lalu', insentif: 'Insentif', dekscall: 'Deskcall', simulasi: 'Simulasi Penawaran', simulasirapor: 'Simulasi Rapor', proyeksicabang: 'Proyeksi Cabang', panduan: 'Panduan KPI' };
+const VIEW_TITLES = { ringkasan: 'Dashboard', cms: 'CMS Produktivitas', usulan: 'Usulan DKH', dashboard: 'Beban Awal', targetdaily: 'Target Daily', nbq: 'NBQ', feever: 'FE Ever', tglbayar: 'Tgl Bayar Bulan Lalu', insentif: 'Insentif', dekscall: 'Deskcall', simulasi: 'Simulasi Penawaran', simulasirapor: 'Simulasi Rapor', proyeksicabang: 'Proyeksi Cabang', panduan: 'Panduan KPI', freshflow: 'Freshflow' };
 
 function triggerFadeIn(){
   const el = document.getElementById('wrap');
@@ -2423,6 +2430,7 @@ function switchView(view){
   document.getElementById('navDekscall').classList.toggle('active', view === 'dekscall');
   document.getElementById('navSimulasi').classList.toggle('active', view === 'simulasi');
   document.getElementById('navPanduan').classList.toggle('active', view === 'panduan');
+  document.getElementById('navFreshflow').classList.toggle('active', view === 'freshflow');
   document.getElementById('mobilePageTitle').textContent = VIEW_TITLES[view] || '';
   closeSidebarDrawer();
 
@@ -2465,6 +2473,10 @@ function switchView(view){
     if(CMS_DATA){ renderCms(); triggerFadeIn(); } else { loadCms(); }
   } else if(view === 'panduan'){
     renderPanduan();
+    triggerFadeIn();
+  } else if(view === 'freshflow'){
+    buildFreshflowLayout();
+    renderFreshflowTable();
     triggerFadeIn();
   }
 }
@@ -3825,6 +3837,153 @@ function renderDekscallTable(){
       <td data-label="CO" class="mono">${esc(meta.short)}</td>
       <td data-label="No Kontrak" class="mono">${esc(r['NO KONTRAK']||'-')}</td>
       <td data-label="Nama">${esc(r['NAMA KONSUMEN']||'-')}${rowWa(r)}</td>
+      <td data-label="Status"><span class="status-pill ${statusClass(r['STATUS BAYAR'])}">${esc(r['STATUS BAYAR']||'-')}</span></td>
+      <td data-label="Sisa Piutang" class="num">${fmtRupiah(r['SIPOK'])}</td>
+      <td data-label="DPD" class="num">${esc(r['DPD'] ?? '-')}</td>
+      <td data-label="Jatuh Tempo" class="mono">${fmtDate(r['JATUH TEMPO'])}</td>
+    </tr>`;
+  }).join('');
+  tbody.querySelectorAll('tr[data-kontrak]').forEach(tr => tr.onclick = (ev) => { if(ev && ev.target.closest && ev.target.closest('a.row-wa')) return; openPanel(tr.getAttribute('data-kontrak')); });
+}
+
+// ============================================================
+// FRESHFLOW — kontrak yang bucket awalnya masih lancar/ringan di satu titik dan baru PERTAMA KALI
+// flow ke bucket berikutnya bulan ini (BUCKET AWAL === asal & BUCKET UPDATE === target persis satu
+// tingkat di atasnya). Definisi & populasi SENGAJA sama persis dengan flowStat() di api/_kpi.js
+// (dasar angka Flow NOOD/Flow 1-30/Flow 31-60 di kartu KPI) supaya total kontrak+SIPOK di sini selalu
+// konsisten dengan persentase yang sudah tervalidasi — ini cuma "bongkar" persentase itu jadi daftar
+// kontrak. Khusus admin/BCH/head (menu head), fleet ikut dihitung (cakupan BCH, bukan per-CO).
+// ============================================================
+const FRESHFLOW_DEFS = [
+  { key:'nood',  label:'NOOD → 1-30',   short:'NOOD→1-30',  asal:'NOOD',      target:'P001_030' },
+  { key:'p130',  label:'1-30 → 31-60',  short:'1-30→31-60', asal:'P001_030',  target:'P031_060' },
+  { key:'p3160', label:'31-60 → 61-90', short:'31-60→61-90', asal:'P031_060', target:'P061_090' }
+];
+let freshflowState = { transisi:'nood', co:'ALL', search:'', sortKey:'SIPOK', sortDir:-1 };
+
+function freshflowDef_(){ return FRESHFLOW_DEFS.find(d => d.key === freshflowState.transisi) || FRESHFLOW_DEFS[0]; }
+function getFreshflowBase(transisiKey){
+  const def = FRESHFLOW_DEFS.find(d => d.key === transisiKey) || FRESHFLOW_DEFS[0];
+  return DATA.filter(r => r['BUCKET AWAL'] === def.asal && r['BUCKET UPDATE'] === def.target);
+}
+function freshflowCoList_(){
+  // Urutan tetap: PIC FE/MR dulu (sesuai CO_META), baru PIC lain yang muncul di data (mis. REM).
+  const known = Object.keys(CO_META);
+  const extra = Array.from(new Set(DATA.map(r => r['CO ALL']).filter(Boolean))).filter(n => known.indexOf(n) === -1);
+  return known.concat(extra);
+}
+
+function buildFreshflowLayout(){
+  const base = getFreshflowBase(freshflowState.transisi);
+  const stat = { count: base.length, sipok: base.reduce((s,r)=> s + (typeof r['SIPOK']==='number' ? r['SIPOK'] : 0), 0) };
+  const coList = freshflowCoList_();
+  const coCount = {}; base.forEach(r => { const k = r['CO ALL'] || '(Tanpa CO)'; coCount[k] = (coCount[k]||0) + 1; });
+
+  document.getElementById('wrap').innerHTML = `
+    <div class="panel-title">Freshflow — Kontrak Baru Pertama Kali Flow</div>
+    <div class="pill-toggle" id="ffTabTransisi" style="margin-bottom:14px;">${FRESHFLOW_DEFS.map(d => `<button class="${d.key===freshflowState.transisi?'active':''}" data-transisi="${d.key}">${esc(d.label)}</button>`).join('')}</div>
+    <div class="grand-row" style="margin-bottom:16px;">
+      <div class="grand-card"><div class="lbl">Jumlah Kontrak</div><div class="val" id="ffValKontrak">0</div></div>
+      <div class="grand-card"><div class="lbl">Total Sisa Piutang</div><div class="val" id="ffValSipok">Rp0</div></div>
+    </div>
+    <div class="pill-toggle" id="ffTabCo" style="margin-bottom:14px;flex-wrap:wrap;">
+      <button class="${freshflowState.co==='ALL'?'active':''}" data-co="ALL">Semua (${base.length})</button>
+      ${coList.map(n => `<button class="${freshflowState.co===n?'active':''}" data-co="${esc(n)}">${esc((CO_META[n]||{}).short || n)} (${coCount[n]||0})</button>`).join('')}
+    </div>
+    <div class="controls">
+      <div class="search-box">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4C6272" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="ffSearchInput" type="text" placeholder="Cari nama konsumen, no kontrak, atau nopol…">
+      </div>
+      <button class="btn" id="ffResetBtn">Reset filter</button>
+      <button class="btn primary" id="ffRefreshBtn">${ic('refresh')} Muat ulang</button>
+    </div>
+    <div class="count-note" id="ffCountNote"></div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th data-key="CO ALL">CO</th>
+            <th data-key="NO KONTRAK">No Kontrak</th>
+            <th data-key="NAMA KONSUMEN">Nama Konsumen</th>
+            <th>Bucket</th>
+            <th data-key="STATUS BAYAR">Status</th>
+            <th data-key="SIPOK" class="num">Sisa Piutang</th>
+            <th data-key="DPD" class="num">DPD</th>
+            <th data-key="JATUH TEMPO">Jatuh Tempo</th>
+          </tr>
+        </thead>
+        <tbody id="ffTbody"></tbody>
+      </table>
+    </div>
+  `;
+
+  animateCount(document.getElementById('ffValKontrak'), stat.count, false);
+  animateCount(document.getElementById('ffValSipok'), stat.sipok, true);
+
+  document.querySelectorAll('#ffTabTransisi button[data-transisi]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if(btn.dataset.transisi === freshflowState.transisi) return;
+      freshflowState.transisi = btn.dataset.transisi;
+      freshflowState.co = 'ALL';
+      buildFreshflowLayout();
+      renderFreshflowTable();
+    });
+  });
+  document.querySelectorAll('#ffTabCo button[data-co]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      freshflowState.co = btn.dataset.co;
+      document.querySelectorAll('#ffTabCo button[data-co]').forEach(b => b.classList.toggle('active', b === btn));
+      renderFreshflowTable();
+    });
+  });
+  document.querySelectorAll('#wrap thead th[data-key]').forEach(th => {
+    th.addEventListener('click', () => {
+      const key = th.getAttribute('data-key');
+      if(freshflowState.sortKey === key) freshflowState.sortDir *= -1; else { freshflowState.sortKey = key; freshflowState.sortDir = 1; }
+      renderFreshflowTable();
+    });
+  });
+  document.getElementById('ffSearchInput').addEventListener('input', e => { freshflowState.search = e.target.value; renderFreshflowTable(); });
+  document.getElementById('ffResetBtn').addEventListener('click', () => {
+    freshflowState = { transisi: freshflowState.transisi, co:'ALL', search:'', sortKey:'SIPOK', sortDir:-1 };
+    buildFreshflowLayout();
+    renderFreshflowTable();
+  });
+  document.getElementById('ffRefreshBtn').addEventListener('click', loadData);
+}
+
+function getFreshflowFiltered(){
+  let rows = getFreshflowBase(freshflowState.transisi);
+  if(freshflowState.co !== 'ALL') rows = rows.filter(r => (r['CO ALL'] || '(Tanpa CO)') === freshflowState.co);
+  if(freshflowState.search.trim()){
+    const q = freshflowState.search.trim().toLowerCase();
+    rows = rows.filter(r => (r['NAMA KONSUMEN']||'').toLowerCase().includes(q) || (r['NO KONTRAK']||'').toLowerCase().includes(q) || (r['NOPOL']||'').toLowerCase().includes(q));
+  }
+  if(freshflowState.sortKey){
+    rows = rows.slice().sort((a,b) => {
+      let va=a[freshflowState.sortKey], vb=b[freshflowState.sortKey];
+      if(typeof va==='number' && typeof vb==='number') return (va-vb)*freshflowState.sortDir;
+      va=(va||'').toString().toLowerCase(); vb=(vb||'').toString().toLowerCase();
+      return va.localeCompare(vb)*freshflowState.sortDir;
+    });
+  }
+  return rows;
+}
+
+function renderFreshflowTable(){
+  const rows = getFreshflowFiltered();
+  const base = getFreshflowBase(freshflowState.transisi);
+  document.getElementById('ffCountNote').innerHTML = `Menampilkan <b>${rows.length}</b> dari <b>${base.length}</b> kontrak freshflow ${esc(freshflowDef_().label)}`;
+  const tbody = document.getElementById('ffTbody');
+  if(rows.length===0){ tbody.innerHTML = emptyRowHtml(8, tbody); return; }
+  tbody.innerHTML = pageRows('freshflow', rows, tbody, renderFreshflowTable).map(r => {
+    const meta = CO_META[r['CO ALL']] || {short:r['CO ALL']||'-'};
+    return `<tr data-kontrak="${esc(r['NO KONTRAK'])}">
+      <td data-label="CO" class="mono">${esc(meta.short)}</td>
+      <td data-label="No Kontrak" class="mono">${esc(r['NO KONTRAK']||'-')}</td>
+      <td data-label="Nama">${esc(r['NAMA KONSUMEN']||'-')}${rowWa(r)}</td>
+      <td data-label="Bucket"><div class="bucket-flow"><span class="bpill" style="--c:${BUCKET_COLOR[r['BUCKET AWAL']]||'#999'}">${fmtBucket(r['BUCKET AWAL'])}</span> → <span class="bpill" style="--c:${BUCKET_COLOR[r['BUCKET UPDATE']]||'#999'}">${fmtBucket(r['BUCKET UPDATE'])}</span></div></td>
       <td data-label="Status"><span class="status-pill ${statusClass(r['STATUS BAYAR'])}">${esc(r['STATUS BAYAR']||'-')}</span></td>
       <td data-label="Sisa Piutang" class="num">${fmtRupiah(r['SIPOK'])}</td>
       <td data-label="DPD" class="num">${esc(r['DPD'] ?? '-')}</td>
@@ -6184,14 +6343,14 @@ document.getElementById('overlay').onclick = document.getElementById('panelClose
   const dateEl = document.getElementById('topDate');
   if(!sidebar || !nav) return;
 
-  const HINT = { usulan:'Alur DKH: CO memilih kontrak, head mengecek lalu mengirim ke Silvi, Silvi membuat DKH', targetdaily:'Target daily balance dan flow per PIC, kontrak potensial, dan rekomendasi kejar', cms:'Produktivitas collection: balance 1-30 dan 31-60, DKH terbentuk, dikerjakan, bertemu, risk code', ringkasan:'Ringkasan performa cabang: sebaran bucket, flow, dan tren mingguan', dashboard:'Beban awal: daftar kontrak per bucket beserta status bayarnya', nbq:'Kontrak NBQ (new booking quality) dan status bayarnya', feever:'Kontrak limpahan 31+ hari', tglbayar:'Kontrak yang bulan lalu dibayar pada tanggal hari ini', insentif:'Proyeksi insentif mingguan', dekscall:'Daftar tugas deskcall', simulasirapor:'Simulasi nilai rapor jika kontrak tertentu flow/stay/lunas', proyeksicabang:'Simulasi Balance & Delq 30+ cabang kalau kontrak bergerak dan/atau plan sales golive', simulasi:'Simulasi penawaran MotorKu', panduan:'Panduan membaca KPI dan insentif' };
+  const HINT = { usulan:'Alur DKH: CO memilih kontrak, head mengecek lalu mengirim ke Silvi, Silvi membuat DKH', targetdaily:'Target daily balance dan flow per PIC, kontrak potensial, dan rekomendasi kejar', cms:'Produktivitas collection: balance 1-30 dan 31-60, DKH terbentuk, dikerjakan, bertemu, risk code', ringkasan:'Ringkasan performa cabang: sebaran bucket, flow, dan tren mingguan', dashboard:'Beban awal: daftar kontrak per bucket beserta status bayarnya', nbq:'Kontrak NBQ (new booking quality) dan status bayarnya', feever:'Kontrak limpahan 31+ hari', tglbayar:'Kontrak yang bulan lalu dibayar pada tanggal hari ini', insentif:'Proyeksi insentif mingguan', dekscall:'Daftar tugas deskcall', simulasirapor:'Simulasi nilai rapor jika kontrak tertentu flow/stay/lunas', proyeksicabang:'Simulasi Balance & Delq 30+ cabang kalau kontrak bergerak dan/atau plan sales golive', simulasi:'Simulasi penawaran MotorKu', panduan:'Panduan membaca KPI dan insentif', freshflow:'Kontrak yang baru pertama kali flow bulan ini: NOOD→1-30, 1-30→31-60, 31-60→61-90' };
   sidebar.querySelectorAll('.nav-item[data-view]').forEach(b => { if(HINT[b.dataset.view]) b.title = HINT[b.dataset.view]; });
   function orderFor(){
     if(IS_DESKCALL) return ['dashboard','usulan','dekscall','tglbayar','simulasi','panduan'];
-    if(IS_ADMIN) return ['ringkasan','dashboard','insentif','nbq','usulan','simulasirapor','cms','tglbayar','proyeksicabang'];
+    if(IS_ADMIN) return ['ringkasan','dashboard','insentif','nbq','freshflow','usulan','simulasirapor','cms','tglbayar','proyeksicabang'];
     return ['dashboard','targetdaily','usulan','nbq','insentif','feever','tglbayar','simulasirapor','simulasi','panduan'];
   }
-  const SHORT = { usulan:'Usulan', cms:'CMS', ringkasan:'Ringkasan', dashboard:'Beban', targetdaily:'Target', nbq:'NBQ', feever:'FE Ever', tglbayar:'Tgl Bayar', insentif:'Insentif', dekscall:'Deskcall', simulasirapor:'Rapor', proyeksicabang:'Proyeksi', simulasi:'Simulasi', panduan:'Panduan' };
+  const SHORT = { usulan:'Usulan', cms:'CMS', ringkasan:'Ringkasan', dashboard:'Beban', targetdaily:'Target', nbq:'NBQ', feever:'FE Ever', tglbayar:'Tgl Bayar', insentif:'Insentif', dekscall:'Deskcall', simulasirapor:'Rapor', proyeksicabang:'Proyeksi', simulasi:'Simulasi', panduan:'Panduan', freshflow:'Freshflow' };
   const MORE_ICON = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/></svg>';
 
   function items(){
@@ -6301,7 +6460,7 @@ document.getElementById('overlay').onclick = document.getElementById('panelClose
 /* V4 — gerak halus: transisi antar menu, reveal saat gulir, top bar adaptif, pil bottom nav */
 (function(){
   const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const ORDER = ['ringkasan','dashboard','usulan','cms','nbq','feever','dekscall','tglbayar','insentif','simulasirapor','proyeksicabang','simulasi','panduan'];
+  const ORDER = ['ringkasan','dashboard','usulan','cms','nbq','freshflow','feever','dekscall','tglbayar','insentif','simulasirapor','proyeksicabang','simulasi','panduan'];
   let prevView = null, io = null, holdTimer = null;
 
   function revealAll(){ document.querySelectorAll('#wrap > .m-hold').forEach(el => { el.classList.add('m-show'); }); }
