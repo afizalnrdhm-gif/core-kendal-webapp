@@ -120,7 +120,9 @@ function parseCommand(text) {
 
 function nbqNum(rec) {
   const v = (rec['NBQ'] || '').toString().trim();
-  const m = v.match(/^(\d+)\s*MOB$/i);
+  // Terima dua format: "11 MOB" (angka dulu) ATAU "MOB 11" (MOB dulu) -- data riil di
+  // spreadsheet ternyata "MOB 11", bukan "11 MOB" seperti asumsi awal.
+  const m = v.match(/^(\d+)\s*MOB$/i) || v.match(/^MOB\s*(\d+)$/i);
   return m ? parseInt(m[1], 10) : null;
 }
 
