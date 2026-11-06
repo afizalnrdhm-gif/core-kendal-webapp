@@ -246,9 +246,10 @@ module.exports = async (req, res) => {
     const isAdmin = adminEmails.indexOf(email) > -1;
 
     // Menu "Jualan Top Up" (booking mandiri) privat — cuma email di TOPUP_OWNER_EMAILS yang dapat
-    // field status top up-nya. Admin lain (atasan/pengawas) tetap isAdmin:true tapi canTopup:false.
+    // field status top up-nya, baik admin (lihat semua kontrak) maupun CO biasa (otomatis cuma
+    // lihat kontrak miliknya sendiri, karena non-admin selalu di-filter ke myRecords di bawah).
     const topupOwnerEmails = (process.env.TOPUP_OWNER_EMAILS || '').split(',').map(x => x.trim().toLowerCase()).filter(Boolean);
-    const canTopup = isAdmin && topupOwnerEmails.indexOf(email) > -1;
+    const canTopup = topupOwnerEmails.indexOf(email) > -1;
     if (canTopup) {
       try {
         const topupRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/TOPUP_STATUS?valueRenderOption=UNFORMATTED_VALUE`, {
@@ -303,7 +304,7 @@ module.exports = async (req, res) => {
     const escalations = (roleCfg && roleCfg.role === 'MR') ? computeEscalations() : [];
 
     res.status(200).json({
-      email, isAdmin: false, records: stripFields(myRecords, HIDE_NON_ADMIN), roleInfo: roleCfg, escalations: stripFields(escalations, HIDE_DESKCALL).map(e => Object.assign(e, { _BISA_EDIT: true })), // MR boleh isi Proyeksi/Janji Bayar/Kronologis di FE Ever
+      email, isAdmin: false, canTopup, records: stripFields(myRecords, HIDE_NON_ADMIN), roleInfo: roleCfg, escalations: stripFields(escalations, HIDE_DESKCALL).map(e => Object.assign(e, { _BISA_EDIT: true })), // MR boleh isi Proyeksi/Janji Bayar/Kronologis di FE Ever
       generatedAt: new Date().toISOString()
     });
   } catch (err) {
