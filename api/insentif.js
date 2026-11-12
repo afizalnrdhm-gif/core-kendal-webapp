@@ -7,6 +7,7 @@ const { cleanCell, bayarLPC } = require('./_sheet');
 // ============================================================
 
 const { bacaSheet: fetchSheetRange } = require('./_cachesheet');
+const { ambilSetExclude, saringExclude } = require('./_exclude');
 
 function parseSheetGeneric(values, headerRowIndex) {
   headerRowIndex = headerRowIndex || 0;
@@ -432,7 +433,7 @@ module.exports = async (req, res) => {
     const lewatiCache = !!(req.query && req.query.bekukan);
 
     // Mode target: baseline hari ini & hasil harian dibaca BERSAMAAN dengan MASTER/KA/CONFIG (dulu berurutan setelahnya), dan LOG_MINGGUAN tidak dibaca.
-    const [masterRaw, kaRaw, roleRaw, baseAwal, hasilAwal, logRaw, lpcRaw] = await Promise.all([
+    const [masterRaw, kaRaw, roleRaw, baseAwal, hasilAwal, logRaw, lpcRaw, excludeSet] = await Promise.all([
       fetchSheetRange(sheetId, 'MASTER', accessToken, lewatiCache),
       fetchSheetRange(sheetId, 'KA HARIAN', accessToken, lewatiCache),
       fetchSheetRange(sheetId, 'CONFIG_ROLE', accessToken, lewatiCache),
@@ -441,12 +442,15 @@ module.exports = async (req, res) => {
       // LOG_MINGGUAN opsional — kalau belum ada/gagal dibaca, lanjut tanpa data historis W1-W4
       modeTarget ? null : fetchSheetRange(sheetId, 'LOG_MINGGUAN', accessToken).catch(() => null),
       // LPC = laporan bayar yang di-update admin; sumber realisasi Target Daily (kolom REALISASI KA HARIAN tidak terisi di Sheet)
-      modeTarget ? fetchSheetRange(sheetId, 'LPC', accessToken).catch(() => null) : null
+      modeTarget ? fetchSheetRange(sheetId, 'LPC', accessToken).catch(() => null) : null,
+      ambilSetExclude(sheetId, accessToken).catch(() => new Set())
     ]);
     let logRows = [];
     try { logRows = logRaw ? parseSheetGeneric(logRaw, 0) : []; } catch (e) { logRows = []; }
 
-    const masterList = parseSheetGeneric(masterRaw, 0).filter(m => m['NO KONTRAK']);
+    // Kontrak yang sudah disetujui lewat pengajuan IM takeout dikeluarkan dari hitungan performance
+    // (Rapor/Insentif/Target/Penyelesaian BCH & CO) -- lihat api/_exclude.js dan tab KONTRAK_EXCLUDE.
+    const masterList = saringExclude(parseSheetGeneric(masterRaw, 0).filter(m => m['NO KONTRAK']), excludeSet);
     const kaRows = parseSheetGeneric(kaRaw, 15); // header KA HARIAN ada di baris ke-16
     const petaKA = {};
     kaRows.forEach(r => { if (r['NO KONTRAK']) petaKA[r['NO KONTRAK']] = r; });
@@ -528,10 +532,11 @@ Object.assign(module.exports, { getMingguSekarang, TD_PARAMETER, TABEL_BATAS, hi
 
 // Dipanggil cron harian (api/log-snapshot.js): bekukan target hari ini dari data pagi, sebelum admin mulai update bayar.
 module.exports.bekukanTargetHariIni = async (accessToken, sheetId) => {
-  const [masterRaw, kaRaw, roleRaw] = await Promise.all([
-    fetchSheetRange(sheetId, 'MASTER', accessToken, true), fetchSheetRange(sheetId, 'KA HARIAN', accessToken, true), fetchSheetRange(sheetId, 'CONFIG_ROLE', accessToken, true)
+  const [masterRaw, kaRaw, roleRaw, excludeSet] = await Promise.all([
+    fetchSheetRange(sheetId, 'MASTER', accessToken, true), fetchSheetRange(sheetId, 'KA HARIAN', accessToken, true), fetchSheetRange(sheetId, 'CONFIG_ROLE', accessToken, true),
+    ambilSetExclude(sheetId, accessToken).catch(() => new Set())
   ]);
-  const masterList = parseSheetGeneric(masterRaw, 0).filter(m => m['NO KONTRAK']);
+  const masterList = saringExclude(parseSheetGeneric(masterRaw, 0).filter(m => m['NO KONTRAK']), excludeSet);
   const petaKA = {}; parseSheetGeneric(kaRaw, 15).forEach(r => { if (r['NO KONTRAK']) petaKA[r['NO KONTRAK']] = r; });
   const td = hitungTargetDaily(masterList, petaKA, parseSheetGeneric(roleRaw, 0));
   // Catat hasil final kemarin DULU (pakai salinan), baru bekukan baseline hari ini.

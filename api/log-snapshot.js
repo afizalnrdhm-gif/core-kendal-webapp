@@ -12,6 +12,7 @@
 const { getAccessToken } = require('./_auth');
 const { cleanCell } = require('./_sheet');
 const { barisLogHarian, tulisLogHarian } = require('./_logharian');
+const { ambilSetExclude, saringExclude } = require('./_exclude');
 
 // Scope full (bukan readonly) karena endpoint ini perlu MENULIS ke sheet.
 
@@ -128,6 +129,7 @@ module.exports = async (req, res) => {
     const masterJson = await masterRes.json();
     const roleJson = await roleRes.json();
     const logJson = await logRes.json();
+    const excludeSet = await ambilSetExclude(sheetId, accessToken).catch(() => new Set());
 
     if (!masterJson.values || !roleJson.values) {
       console.log('Gagal baca MASTER/CONFIG_ROLE:', JSON.stringify({ masterJson, roleJson }));
@@ -142,7 +144,8 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const masterList = parseSheetValues(masterJson.values).filter(m => m['NO KONTRAK']);
+    // Kontrak yang sudah disetujui lewat pengajuan IM takeout dikeluarkan dari hitungan performance.
+    const masterList = saringExclude(parseSheetValues(masterJson.values).filter(m => m['NO KONTRAK']), excludeSet);
     // Cuma role yang punya target rapor (FE/MR/BCH) yang disnapshot — role lain (misal DESKCALL) tidak ada target insentif.
     const configRows = parseSheetValues(roleJson.values).filter(r => ['FE', 'MR', 'BCH'].includes(r['ROLE']));
     const logRows = parseSheetValues(logJson.values);

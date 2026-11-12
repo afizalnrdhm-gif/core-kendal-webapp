@@ -4,6 +4,7 @@ const satori = require('satori').default;
 const sharp = require('sharp');
 const { SCOPE_SHEETS_RO, getAccessToken } = require('./_auth');
 const { cleanCell } = require('./_sheet');
+const { ambilSetExclude, saringExclude } = require('./_exclude');
 
 // ============================================================
 // AUTH KE GOOGLE SHEETS (sama pola dengan endpoint lain)
@@ -851,7 +852,8 @@ module.exports = async (req, res) => {
         return;
       }
 
-      const masterRows = parseSheetValues(masterJson.values).filter(r => r['NO KONTRAK']);
+      const excludeSetDash = await ambilSetExclude(sheetId, accessToken).catch(() => new Set());
+      const masterRows = saringExclude(parseSheetValues(masterJson.values).filter(r => r['NO KONTRAK']), excludeSetDash);
       const kaRowsDash = parseSheetValues(kaJson.values, 15).filter(r => r['NO KONTRAK']);
 
       const metrics = computeDashboardMetrics(masterRows, kaRowsDash, parsed.includeFleet);
@@ -897,7 +899,8 @@ module.exports = async (req, res) => {
         return;
       }
 
-      const masterList = parseSheetValues(masterJson.values).filter(r => r['NO KONTRAK']);
+      const excludeSetPerform = await ambilSetExclude(sheetId, accessToken).catch(() => new Set());
+      const masterList = saringExclude(parseSheetValues(masterJson.values).filter(r => r['NO KONTRAK']), excludeSetPerform);
       const kaRowsRapor = parseSheetValues(kaJson.values, 15);
       const petaKA = {};
       kaRowsRapor.forEach(r => { if (r['NO KONTRAK']) petaKA[r['NO KONTRAK']] = r; });
