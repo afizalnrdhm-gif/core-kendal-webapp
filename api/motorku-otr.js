@@ -1,18 +1,6 @@
 const { getAccessToken, sendError, verifyIdToken } = require('./_auth');
 const { cleanCell } = require('./_sheet');
-
-// ============================================================
-// AUTH HELPERS (sama seperti di api/data.js)
-// ============================================================
-
-async function fetchSheetRange(sheetId, range, accessToken) {
-  const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(range)}?valueRenderOption=UNFORMATTED_VALUE`, {
-    headers: { Authorization: 'Bearer ' + accessToken }
-  });
-  const json = await res.json();
-  if (!json.values) throw new Error('Gagal baca range ' + range + ': ' + JSON.stringify(json));
-  return json.values;
-}
+const { bacaSheet: fetchSheetRange } = require('./_cachesheet');
 
 function parseSheetGeneric(values, headerRowIndex) {
   headerRowIndex = headerRowIndex || 0;

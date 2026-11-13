@@ -1,4 +1,5 @@
 const { getAccessToken, sendError, verifyIdToken } = require('./_auth');
+const { bacaSheet } = require('./_cachesheet');
 
 // ============================================================
 // CMS — Collection Monitoring System (Balance 1-30 & 31-60).
@@ -133,9 +134,8 @@ function compute(masterValues, prodValues, cfgRows) {
 }
 
 async function fetchRange(sheetId, name, accessToken) {
-  const r = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(name)}?valueRenderOption=UNFORMATTED_VALUE`, { headers: { Authorization: 'Bearer ' + accessToken } });
-  let j = {}; try { j = await r.json(); } catch (e) {}
-  return { ok: r.ok, values: j.values || [] };
+  const values = await bacaSheet(sheetId, name, accessToken).catch(() => null);
+  return { ok: !!values, values: values || [] };
 }
 
 module.exports = async (req, res) => {

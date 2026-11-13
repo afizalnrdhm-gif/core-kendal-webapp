@@ -20,6 +20,7 @@ function parseSheetValues(values, headerRowIndex) {
 
 const { BUCKET_ORDER, BUCKET_LABEL, sipokOf, hitungKpi } = require('./_kpi');
 const { ambilSetExclude, saringExclude } = require('./_exclude');
+const { bacaSheet } = require('./_cachesheet');
 function isSudahBayar(m){
   const st = (m['STATUS BAYAR'] || '').toString().trim().toUpperCase();
   return st.includes('SUDAH') || st.includes('LUNAS');
@@ -43,17 +44,15 @@ module.exports = async (req, res) => {
 
     const sheetId = process.env.GOOGLE_SHEET_ID;
 
-    const [masterRes, kaRes, excludeSet] = await Promise.all([
-      fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/MASTER?valueRenderOption=UNFORMATTED_VALUE`, { headers: { Authorization: 'Bearer ' + accessToken } }),
-      fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent('KA HARIAN')}?valueRenderOption=UNFORMATTED_VALUE`, { headers: { Authorization: 'Bearer ' + accessToken } }),
+    const [masterValues, kaValues, excludeSet] = await Promise.all([
+      bacaSheet(sheetId, 'MASTER', accessToken).catch(() => null),
+      bacaSheet(sheetId, 'KA HARIAN', accessToken).catch(() => null),
       ambilSetExclude(sheetId, accessToken).catch(() => new Set())
     ]);
-    const masterJson = await masterRes.json();
-    const kaJson = await kaRes.json();
 
     // Kontrak yang sudah disetujui lewat pengajuan IM takeout dikeluarkan dari hitungan KPI cabang.
-    const masterRows = saringExclude(parseSheetValues(masterJson.values || []).filter(r => r['NO KONTRAK']), excludeSet);
-    const kaRows = parseSheetValues(kaJson.values || [], 15).filter(r => r['NO KONTRAK']); // header KA HARIAN di baris 16
+    const masterRows = saringExclude(parseSheetValues(masterValues || []).filter(r => r['NO KONTRAK']), excludeSet);
+    const kaRows = parseSheetValues(kaValues || [], 15).filter(r => r['NO KONTRAK']); // header KA HARIAN di baris 16
 
     function computeVariant(includeFleet) {
       const passFleet = (row) => includeFleet || row['FLEET/NON FLEET'] !== 'FLEET';

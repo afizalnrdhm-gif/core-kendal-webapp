@@ -247,11 +247,8 @@ module.exports = async (req, res) => {
     const canTopup = topupOwnerEmails.indexOf(email) > -1;
     if (canTopup) {
       try {
-        const topupRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/TOPUP_STATUS?valueRenderOption=UNFORMATTED_VALUE`, {
-          headers: { Authorization: 'Bearer ' + accessToken }
-        });
-        const topupJson = await topupRes.json();
-        const topupRows = parseSheetValues(topupJson.values || []);
+        const topupValues = await bacaSheet(sheetId, 'TOPUP_STATUS', accessToken);
+        const topupRows = parseSheetValues(topupValues || []);
         const topupMap = {};
         topupRows.forEach(r => { if (r['NO KONTRAK']) topupMap[r['NO KONTRAK']] = r['STATUS'] || ''; });
         allRecords.forEach(r => { r['TOPUP STATUS'] = topupMap[r['NO KONTRAK']] || 'BELUM DIHUBUNGI'; });

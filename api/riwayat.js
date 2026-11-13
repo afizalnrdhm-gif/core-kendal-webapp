@@ -1,6 +1,7 @@
 const { readLog } = require('./_tl');
 const { infoKontrak } = require('./_dkh');
 const { getAccessToken, sendError, verifyIdToken } = require('./_auth');
+const { bacaSheet } = require('./_cachesheet');
 
 module.exports = async (req, res) => {
   try {
@@ -19,9 +20,7 @@ module.exports = async (req, res) => {
 
     if (!isAdmin) {
       // Non-admin hanya boleh melihat riwayat kontrak miliknya sendiri
-      const mr = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/MASTER?valueRenderOption=UNFORMATTED_VALUE`, { headers: { Authorization: 'Bearer ' + accessToken } });
-      const mj = await mr.json();
-      const values = mj.values || [];
+      const values = await bacaSheet(sheetId, 'MASTER', accessToken).catch(() => []);
       const header = (values[0] || []).map(h => (h || '').toString().trim());
       const iK = header.indexOf('NO KONTRAK'), iE = header.indexOf('EMAIL CO');
       const row = values.find((v, i) => i > 0 && (v[iK] || '').toString().trim() === noKontrak);

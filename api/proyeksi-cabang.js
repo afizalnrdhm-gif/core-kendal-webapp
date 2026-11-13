@@ -11,6 +11,7 @@
 const { getAccessToken, sendError, verifyIdToken } = require('./_auth');
 const { cleanCell } = require('./_sheet');
 const { BUCKET_ORDER, isFleet, sipokOf, hitungKpi } = require('./_kpi');
+const { bacaSheet } = require('./_cachesheet');
 
 function parseSheetValues(values, headerRowIndex) {
   headerRowIndex = headerRowIndex || 0;
@@ -140,14 +141,12 @@ module.exports = async (req, res) => {
     if (adminEmails.indexOf(email) === -1) { res.status(403).json({ error: 'Menu ini khusus admin/head.' }); return; }
 
     const sheetId = process.env.GOOGLE_SHEET_ID;
-    const [masterRes, kaRes] = await Promise.all([
-      fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/MASTER?valueRenderOption=UNFORMATTED_VALUE`, { headers: { Authorization: 'Bearer ' + accessToken } }),
-      fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent('KA HARIAN')}?valueRenderOption=UNFORMATTED_VALUE`, { headers: { Authorization: 'Bearer ' + accessToken } })
+    const [masterValues, kaValues] = await Promise.all([
+      bacaSheet(sheetId, 'MASTER', accessToken).catch(() => null),
+      bacaSheet(sheetId, 'KA HARIAN', accessToken).catch(() => null)
     ]);
-    const masterJson = await masterRes.json();
-    const kaJson = await kaRes.json();
-    const masterRows = parseSheetValues(masterJson.values || []).filter(r => r['NO KONTRAK']);
-    const kaRows = parseSheetValues(kaJson.values || [], 15).filter(r => r['NO KONTRAK']); // header KA HARIAN di baris 16
+    const masterRows = parseSheetValues(masterValues || []).filter(r => r['NO KONTRAK']);
+    const kaRows = parseSheetValues(kaValues || [], 15).filter(r => r['NO KONTRAK']); // header KA HARIAN di baris 16
 
     if (req.method === 'POST') {
       const body = req.body || {};

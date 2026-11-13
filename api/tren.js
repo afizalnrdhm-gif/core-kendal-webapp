@@ -1,4 +1,5 @@
 const { getAccessToken, sendError, verifyIdToken } = require('./_auth');
+const { bacaSheet } = require('./_cachesheet');
 
 // Target tier-1 / tier-2 insentif penyelesaian per minggu (sama dengan api/insentif.js & log-snapshot.js)
 const TARGETS = {
@@ -24,9 +25,7 @@ module.exports = async (req, res) => {
     if (adminEmails.indexOf(email) === -1) { res.status(403).json({ error: 'Menu ini khusus admin/head.' }); return; }
 
     const sheetId = process.env.GOOGLE_SHEET_ID;
-    const r = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent('LOG_MINGGUAN')}?valueRenderOption=UNFORMATTED_VALUE`, { headers: { Authorization: 'Bearer ' + accessToken } });
-    const j = await r.json();
-    const values = j.values || [];
+    const values = await bacaSheet(sheetId, 'LOG_MINGGUAN', accessToken).catch(() => []);
     const header = (values[0] || []).map(h => (h || '').toString().trim());
     const ix = k => header.indexOf(k);
     const cur = bulanEfektif();
