@@ -1,6 +1,7 @@
 const { getAccessToken, verifyIdToken, SCOPE_DRIVE_META } = require('./_auth');
 const { cleanCell } = require('./_sheet');
 const { segmenGabung, petaKA: petaKASegmen } = require('./_segmen');
+const { bacaSheet } = require('./_cachesheet');
 
 const BUCKET_ORDER = ['NOOD','P001_030','P031_060','P061_090','P091_120','P121_150','P151_180','P181_210','P211_240'];
 function bucketIdx(b) { return BUCKET_ORDER.indexOf(b); }
@@ -159,29 +160,23 @@ module.exports = async (req, res) => {
     const accessToken = await getAccessToken();
     const sheetId = process.env.GOOGLE_SHEET_ID;
 
-    const [masterRes, roleRes, kaRes] = await Promise.all([
-      fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/MASTER?valueRenderOption=UNFORMATTED_VALUE`, {
-        headers: { Authorization: 'Bearer ' + accessToken }
-      }),
-      fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/CONFIG_ROLE?valueRenderOption=UNFORMATTED_VALUE`, {
-        headers: { Authorization: 'Bearer ' + accessToken }
-      }),
-      fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent('KA HARIAN')}?valueRenderOption=UNFORMATTED_VALUE`, {
-        headers: { Authorization: 'Bearer ' + accessToken }
-      })
+    // Dibaca lewat cache bersama (_cachesheet, 45 detik) -- endpoint ini dipanggil di hampir
+    // semua menu, jadi paling berisiko nyedot kuota Google Sheets API kalau tanpa cache
+    // (dugaan penyebab tampilan kosong/berantakan/menu hilang pas rame, 13 Nov 2026).
+    const [masterValues, roleValues, kaValues] = await Promise.all([
+      bacaSheet(sheetId, 'MASTER', accessToken).catch(() => null),
+      bacaSheet(sheetId, 'CONFIG_ROLE', accessToken).catch(() => null),
+      bacaSheet(sheetId, 'KA HARIAN', accessToken).catch(() => null)
     ]);
-    const masterJson = await masterRes.json();
-    const roleJson = await roleRes.json();
-    const kaJson = await kaRes.json();
 
-    if (!masterJson.values) {
-      console.error('Gagal baca sheet MASTER:', JSON.stringify(masterJson));
+    if (!masterValues) {
+      console.error('Gagal baca sheet MASTER');
       throw new Error('Gagal membaca data dari spreadsheet. Coba lagi sebentar, atau hubungi admin.');
     }
 
-    const allRecords = parseSheetValues(masterJson.values).filter(r => r['NO KONTRAK']);
+    const allRecords = parseSheetValues(masterValues).filter(r => r['NO KONTRAK']);
     // Segmen pekerjaan: pakai isian kolom SEGMEN PEKERJAAN di MASTER; kalau kosong, tebak dari PEKERJAAN KONSUMEN.
-    const roleRows = parseSheetValues(roleJson.values || []);
+    const roleRows = parseSheetValues(roleValues || []);
     const roleMap = {};
     const roleByEmail = {};
     roleRows.forEach(r => {
@@ -200,11 +195,11 @@ module.exports = async (req, res) => {
     });
 
     // KA HARIAN: header ada di baris ke-16 (index 15)
-    const kaRows = kaJson.values ? parseSheetValues(kaJson.values, 15) : [];
+    const kaRows = kaValues ? parseSheetValues(kaValues, 15) : [];
     const petaKA = {};
     kaRows.forEach(r => { if (r['NO KONTRAK']) petaKA[r['NO KONTRAK']] = r; });
     // Segmen pekerjaan: isian manual di MASTER menang; kalau kosong dihitung dari KA HARIAN (kategori/nama pekerjaan) lalu MASTER.
-    const kaSegmen = petaKASegmen(kaJson.values || []);
+    const kaSegmen = petaKASegmen(kaValues || []);
     allRecords.forEach(r => { const m = String(r['SEGMEN PEKERJAAN'] || '').trim().toUpperCase(); r['SEGMEN PEKERJAAN'] = m || segmenGabung(kaSegmen[String(r['NO KONTRAK']).trim()], r['PEKERJAAN KONSUMEN']); });
 
     // Tempelkan STATUS EVER ke tiap kontrak yang berada di bucket "penyelesaian" milik role-nya sendiri
