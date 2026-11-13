@@ -5,14 +5,15 @@
 //
 // Sumber kebenaran: tab KONTRAK_EXCLUDE di spreadsheet (kolom pertama = NO KONTRAK).
 // File berawalan "_" tidak dihitung Vercel sebagai function.
+//
+// Dibaca lewat cache bersama (_cachesheet, 45 detik) -- SAMA seperti MASTER/KA HARIAN --
+// supaya tidak nambah kuota Google Sheets API tiap kali menu dibuka/refresh/bot dipanggil.
+// (Pernah bikin tampilan kosong/berantakan pas rame karena fetch langsung tanpa cache -- 12 Nov 2026.)
+const { bacaSheet } = require('./_cachesheet');
 
 async function ambilSetExclude(sheetId, accessToken) {
   try {
-    const r = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/KONTRAK_EXCLUDE!A:A?valueRenderOption=UNFORMATTED_VALUE`, {
-      headers: { Authorization: 'Bearer ' + accessToken }
-    });
-    const j = await r.json();
-    const values = j.values || [];
+    const values = await bacaSheet(sheetId, 'KONTRAK_EXCLUDE!A:A', accessToken);
     const set = new Set();
     // Baris pertama header ("NO KONTRAK"), mulai dari baris kedua.
     for (let i = 1; i < values.length; i++) {
