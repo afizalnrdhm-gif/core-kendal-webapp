@@ -2800,15 +2800,24 @@ function udKali(x){
 }
 function renderUsulanSilvi(){
   const d = UD_ADM, w = document.getElementById('wrap');
+  if(UD_CO_IDX >= d.co.length) UD_CO_IDX = 0;
   const total = d.co.reduce((t, c) => t + c.kontrak.length, 0), selesai = d.co.reduce((t, c) => t + c.kontrak.filter(x => x.dibuat).length, 0);
   let h = '<div class="rk-header"><h1>Usulan DKH</h1></div>';
   h += '<div class="ud-top"><label class="ud-tgl">DKH untuk <select onchange="UD_ADM_TGL=this.value;loadUsulan()">' + d.tanggalTersedia.map(t => '<option value="' + esc(t) + '"' + (t === d.untuk ? ' selected' : '') + '>' + udTgl(t) + '</option>').join('') + '</select></label>' +
     '<span class="ud-chip ' + (total && selesai === total ? 'ok' : '') + '">' + selesai + ' dari ' + total + ' kontrak sudah dibuat</span></div>';
   h += '<div class="pg-card ud-alur"><p>Daftar ini sudah disetujui head. Buat DKH-nya, lalu tandai kontrak yang sudah selesai dibuat. Tag menunjukkan sudah berapa kali kontrak terbentuk DKH.'+(d.produktivitasAda?'':' <br><span class="ud-sub">Tab PRODUCTIVITY belum terbaca, jadi hitungan DKH belum tampil.</span>')+'</p></div>';
   if(!d.co.length) h += '<div class="state-box">Belum ada kontrak yang dikirim head untuk tanggal ini.</div>';
+  if(d.co.length > 1){
+    h += '<div class="ud-co-tabs" role="tablist">' + d.co.map((c, i) => {
+      const n = c.kontrak.filter(x => x.dibuat).length;
+      return '<button type="button" class="ud-co-tab' + (i === UD_CO_IDX ? ' active' : '') + '" role="tab" aria-selected="' + (i === UD_CO_IDX ? 'true' : 'false') + '" onclick="udPilihCO(' + i + ')">' +
+        '<span class="t-dot ' + (n === c.kontrak.length && c.kontrak.length ? 'ok' : 'bad') + '"></span>' + esc(c.nama.split(' ')[0]) +
+        '<span class="t-n">' + n + '/' + c.kontrak.length + '</span></button>';
+    }).join('') + '</div>';
+  }
   d.co.forEach((c, ci) => {
     const n = c.kontrak.filter(x => x.dibuat).length;
-    h += '<section class="pg-card ud-co"><div class="ud-co-head"><div><b>' + esc(c.nama) + '</b> <span class="ud-chip">' + esc(c.role) + '</span></div><span class="ud-sub">' + n + ' dari ' + c.kontrak.length + ' sudah dibuat</span></div>' +
+    h += '<section class="pg-card ud-co"' + (d.co.length > 1 && ci !== UD_CO_IDX ? ' style="display:none"' : '') + '><div class="ud-co-head"><div><b>' + esc(c.nama) + '</b> <span class="ud-chip">' + esc(c.role) + '</span></div><span class="ud-sub">' + n + ' dari ' + c.kontrak.length + ' sudah dibuat</span></div>' +
       '<div class="ud-list">' + c.kontrak.map(x => '<label class="ud-row' + (x.dibuat ? ' done' : '') + '"><input type="checkbox" data-co="' + ci + '" data-no="' + esc(x.noKontrak) + '"' + (x.dibuat ? ' disabled' : ' onchange="this.closest(\'.ud-row\').classList.toggle(\'on\',this.checked)"') + '>' +
         '<div class="ud-main"><b>' + esc(x.nama) + '</b><span class="mono">' + esc(x.noKontrak) + '</span><span class="ud-tags">' + udKali(x) + (x.dibuat ? '<span class="ud-chip ok">Sudah dibuat</span><button type="button" class="ud-link" onclick="event.preventDefault();udSelesai([\'' + esc(x.noKontrak) + '\'],\'kembali\')">batalkan</button>' : '') + '</span></div>' +
         '<div class="ud-side"><span class="mono">' + fmtRupiah(x.sipok) + '</span>' + (x.dibuat ? '' : '<span class="ud-pick"></span>') + '</div></label>').join('') + '</div>' +
@@ -2850,7 +2859,7 @@ function udBatalPilih(ci){
   });
   udHitungPilih(ci);
 }
-function udPilihCO(i){ UD_CO_IDX = i; renderUsulanAdmin(); }
+function udPilihCO(i){ UD_CO_IDX = i; if(IS_DESKCALL) renderUsulanSilvi(); else renderUsulanAdmin(); }
 function udAssign(list, aksi, ci){
   udPesan('Menyimpan…', false, ci);
   udApi('assign', { method: 'POST', body: JSON.stringify({ untuk: UD_ADM.untuk, aksi, kontrak: list }) }).then(({ok, b}) => {
