@@ -5,6 +5,7 @@ const sharp = require('sharp');
 const { SCOPE_SHEETS_RO, getAccessToken } = require('./_auth');
 const { cleanCell } = require('./_sheet');
 const { ambilSetExclude, saringExclude } = require('./_exclude');
+const { bacaSheet } = require('./_cachesheet');
 
 // ============================================================
 // AUTH KE GOOGLE SHEETS (sama pola dengan endpoint lain)
@@ -764,23 +765,17 @@ module.exports = async (req, res) => {
     if (parsed.type === 'realisasi') {
       const accessToken = await getAccessToken(SCOPE_SHEETS_RO);
       const sheetId = process.env.GOOGLE_SHEET_ID;
-      const [masterRes, kaRes] = await Promise.all([
-        fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/MASTER?valueRenderOption=UNFORMATTED_VALUE`, {
-          headers: { Authorization: 'Bearer ' + accessToken }
-        }),
-        fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent('KA HARIAN')}?valueRenderOption=UNFORMATTED_VALUE`, {
-          headers: { Authorization: 'Bearer ' + accessToken }
-        })
+      const [masterValues, kaValues] = await Promise.all([
+        bacaSheet(sheetId, 'MASTER', accessToken).catch(() => null),
+        bacaSheet(sheetId, 'KA HARIAN', accessToken).catch(() => null)
       ]);
-      const masterJson = await masterRes.json();
-      const kaJson = await kaRes.json();
-      if (!masterJson.values || !kaJson.values) {
+      if (!masterValues || !kaValues) {
         await sendTelegramMessage(chatId, 'Gagal ambil data sheet.');
         res.status(200).json({ ok: true });
         return;
       }
 
-      const allRows = parseSheetValues(masterJson.values).filter(r => r['NO KONTRAK']);
+      const allRows = parseSheetValues(masterValues).filter(r => r['NO KONTRAK']);
       const bucketAwalMap = {};
       allRows.forEach(r => {
         bucketAwalMap[r['NO KONTRAK']] = {
@@ -794,7 +789,7 @@ module.exports = async (req, res) => {
       });
 
       // KA HARIAN: header ada di baris ke-16 (index 15)
-      const kaRows = parseSheetValues(kaJson.values, 15);
+      const kaRows = parseSheetValues(kaValues, 15);
 
       const realisasiRows = kaRows
         .filter(r => r['NO KONTRAK'] && Number(r['REALISASI']) > 0)
@@ -836,25 +831,19 @@ module.exports = async (req, res) => {
     if (parsed.type === 'dashboard') {
       const accessToken = await getAccessToken(SCOPE_SHEETS_RO);
       const sheetId = process.env.GOOGLE_SHEET_ID;
-      const [masterRes, kaRes] = await Promise.all([
-        fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/MASTER?valueRenderOption=UNFORMATTED_VALUE`, {
-          headers: { Authorization: 'Bearer ' + accessToken }
-        }),
-        fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent('KA HARIAN')}?valueRenderOption=UNFORMATTED_VALUE`, {
-          headers: { Authorization: 'Bearer ' + accessToken }
-        })
+      const [masterValues, kaValues] = await Promise.all([
+        bacaSheet(sheetId, 'MASTER', accessToken).catch(() => null),
+        bacaSheet(sheetId, 'KA HARIAN', accessToken).catch(() => null)
       ]);
-      const masterJson = await masterRes.json();
-      const kaJson = await kaRes.json();
-      if (!masterJson.values || !kaJson.values) {
+      if (!masterValues || !kaValues) {
         await sendTelegramMessage(chatId, 'Gagal ambil data sheet.');
         res.status(200).json({ ok: true });
         return;
       }
 
       const excludeSetDash = await ambilSetExclude(sheetId, accessToken).catch(() => new Set());
-      const masterRows = saringExclude(parseSheetValues(masterJson.values).filter(r => r['NO KONTRAK']), excludeSetDash);
-      const kaRowsDash = parseSheetValues(kaJson.values, 15).filter(r => r['NO KONTRAK']);
+      const masterRows = saringExclude(parseSheetValues(masterValues).filter(r => r['NO KONTRAK']), excludeSetDash);
+      const kaRowsDash = parseSheetValues(kaValues, 15).filter(r => r['NO KONTRAK']);
 
       const metrics = computeDashboardMetrics(masterRows, kaRowsDash, parsed.includeFleet);
       const rows = metrics.map(m => ({
@@ -875,36 +864,24 @@ module.exports = async (req, res) => {
     if (parsed.type === 'perform') {
       const accessToken = await getAccessToken(SCOPE_SHEETS_RO);
       const sheetId = process.env.GOOGLE_SHEET_ID;
-      const [masterRes, kaRes, roleRes, logRes] = await Promise.all([
-        fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/MASTER?valueRenderOption=UNFORMATTED_VALUE`, {
-          headers: { Authorization: 'Bearer ' + accessToken }
-        }),
-        fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent('KA HARIAN')}?valueRenderOption=UNFORMATTED_VALUE`, {
-          headers: { Authorization: 'Bearer ' + accessToken }
-        }),
-        fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/CONFIG_ROLE?valueRenderOption=UNFORMATTED_VALUE`, {
-          headers: { Authorization: 'Bearer ' + accessToken }
-        }),
-        fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent('LOG_MINGGUAN')}?valueRenderOption=UNFORMATTED_VALUE`, {
-          headers: { Authorization: 'Bearer ' + accessToken }
-        })
+      const [masterValues, kaValues, roleValues, logValues] = await Promise.all([
+        bacaSheet(sheetId, 'MASTER', accessToken).catch(() => null),
+        bacaSheet(sheetId, 'KA HARIAN', accessToken).catch(() => null),
+        bacaSheet(sheetId, 'CONFIG_ROLE', accessToken).catch(() => null),
+        bacaSheet(sheetId, 'LOG_MINGGUAN', accessToken).catch(() => null) // opsional — kalau belum dibuat, tetap lanjut tanpa data W1-W4
       ]);
-      const masterJson = await masterRes.json();
-      const kaJson = await kaRes.json();
-      const roleJson = await roleRes.json();
-      const logJson = await logRes.json(); // LOG_MINGGUAN opsional — kalau belum dibuat, tetap lanjut tanpa data W1-W4
-      if (!masterJson.values || !kaJson.values || !roleJson.values) {
+      if (!masterValues || !kaValues || !roleValues) {
         await sendTelegramMessage(chatId, 'Gagal ambil data sheet.');
         res.status(200).json({ ok: true });
         return;
       }
 
       const excludeSetPerform = await ambilSetExclude(sheetId, accessToken).catch(() => new Set());
-      const masterList = saringExclude(parseSheetValues(masterJson.values).filter(r => r['NO KONTRAK']), excludeSetPerform);
-      const kaRowsRapor = parseSheetValues(kaJson.values, 15);
+      const masterList = saringExclude(parseSheetValues(masterValues).filter(r => r['NO KONTRAK']), excludeSetPerform);
+      const kaRowsRapor = parseSheetValues(kaValues, 15);
       const petaKA = {};
       kaRowsRapor.forEach(r => { if (r['NO KONTRAK']) petaKA[r['NO KONTRAK']] = r; });
-      const configRows = parseSheetValues(roleJson.values);
+      const configRows = parseSheetValues(roleValues);
 
       const hasilFE = hitungFERapor(masterList, petaKA, configRows);
       const hasilMR = hitungMRRapor(masterList, petaKA, configRows);
@@ -929,7 +906,7 @@ module.exports = async (req, res) => {
 
       // Rekap historis W1-W4 dari sheet LOG_MINGGUAN (diisi otomatis tiap hari oleh cron log-snapshot)
       const { tahun: curTahun, bulan: curBulan } = tanggalEfektif();
-      const logRows = logJson.values ? parseSheetValues(logJson.values) : [];
+      const logRows = logValues ? parseSheetValues(logValues) : [];
       const logMap = {};
       logRows.forEach(r => {
         if (Number(r['TAHUN']) !== curTahun || Number(r['BULAN']) !== curBulan) return;
@@ -961,13 +938,10 @@ module.exports = async (req, res) => {
     if (parsed.type === 'bucket_stay') {
       const accessToken = await getAccessToken(SCOPE_SHEETS_RO);
       const sheetId = process.env.GOOGLE_SHEET_ID;
-      const masterRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/MASTER?valueRenderOption=UNFORMATTED_VALUE`, {
-        headers: { Authorization: 'Bearer ' + accessToken }
-      });
-      const masterJson = await masterRes.json();
-      if (!masterJson.values) { await sendTelegramMessage(chatId, 'Gagal ambil data sheet.'); res.status(200).json({ ok: true }); return; }
+      const masterValues = await bacaSheet(sheetId, 'MASTER', accessToken).catch(() => null);
+      if (!masterValues) { await sendTelegramMessage(chatId, 'Gagal ambil data sheet.'); res.status(200).json({ ok: true }); return; }
 
-      const allRows = parseSheetValues(masterJson.values).filter(r => r['NO KONTRAK']);
+      const allRows = parseSheetValues(masterValues).filter(r => r['NO KONTRAK']);
       let rows = allRows.filter(m =>
         m['FLEET/NON FLEET'] !== 'FLEET' &&
         m['BUCKET AWAL'] === parsed.bucketAwal &&
@@ -995,13 +969,10 @@ module.exports = async (req, res) => {
 
     const accessToken = await getAccessToken(SCOPE_SHEETS_RO);
     const sheetId = process.env.GOOGLE_SHEET_ID;
-    const masterRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/MASTER?valueRenderOption=UNFORMATTED_VALUE`, {
-      headers: { Authorization: 'Bearer ' + accessToken }
-    });
-    const masterJson = await masterRes.json();
-    if (!masterJson.values) { await sendTelegramMessage(chatId, 'Gagal ambil data sheet.'); res.status(200).json({ ok: true }); return; }
+    const masterValues = await bacaSheet(sheetId, 'MASTER', accessToken).catch(() => null);
+    if (!masterValues) { await sendTelegramMessage(chatId, 'Gagal ambil data sheet.'); res.status(200).json({ ok: true }); return; }
 
-    const allRows = parseSheetValues(masterJson.values).filter(r => r['NO KONTRAK']);
+    const allRows = parseSheetValues(masterValues).filter(r => r['NO KONTRAK']);
     allRows.forEach(r => { r['JATUH TEMPO'] = serialToDateStr(r['JATUH TEMPO']); });
 
     const { start, end } = getJatuhTempoRange();
