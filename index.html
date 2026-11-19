@@ -4034,7 +4034,7 @@ function renderFreshflowTable(){
 // ============================================================
 const TOPUP_SCOPE_BUCKETS = ['NOOD', 'P001_030'];
 const TOPUP_STATUS_OPTIONS = ['BELUM DIHUBUNGI', 'SUDAH DITAWARI', 'TERTARIK', 'TIDAK TERTARIK'];
-let topupState = { co:'ALL', status:'ALL', search:'', sortKey:'_TOPUP_SKOR', sortDir:-1 };
+let topupState = { co:'ALL', status:'ALL', unit:'ALL', search:'', sortKey:'_TOPUP_SKOR', sortDir:-1 };
 
 function topupSisaAngsuran_(r){
   const tenor = typeof r['TENOR'] === 'number' ? r['TENOR'] : parseFloat(r['TENOR']);
@@ -4070,6 +4070,7 @@ function buildTopupLayout(){
   const coList = topupCoList_();
   const coCount = {}; base.forEach(r => { const k = r['CO ALL'] || '(Tanpa CO)'; coCount[k] = (coCount[k]||0) + 1; });
   const statusCount = {}; base.forEach(r => { const k = r['TOPUP STATUS'] || 'BELUM DIHUBUNGI'; statusCount[k] = (statusCount[k]||0) + 1; });
+  const unitCount = {}; base.forEach(r => { const k = String(r['TYPE BARANG']||'').trim().toUpperCase(); unitCount[k] = (unitCount[k]||0) + 1; });
 
   document.getElementById('wrap').innerHTML = `
     <div class="panel-title">Jualan Top Up — Rekomendasi Konsumen Layak Ditawari</div>
@@ -4084,6 +4085,11 @@ function buildTopupLayout(){
     <div class="pill-toggle" id="tuTabStatus" style="margin-bottom:14px;flex-wrap:wrap;">
       <button class="${topupState.status==='ALL'?'active':''}" data-status="ALL">Semua Status</button>
       ${TOPUP_STATUS_OPTIONS.map(s => `<button class="${topupState.status===s?'active':''}" data-status="${esc(s)}">${esc(s)} (${statusCount[s]||0})</button>`).join('')}
+    </div>
+    <div class="pill-toggle" id="tuTabUnit" style="margin-bottom:14px;flex-wrap:wrap;">
+      <button class="${topupState.unit==='ALL'?'active':''}" data-unit="ALL">Semua Kendaraan</button>
+      <button class="${topupState.unit==='MOTOR'?'active':''}" data-unit="MOTOR">Motor (${unitCount['MOTOR']||0})</button>
+      <button class="${topupState.unit==='MOBIL'?'active':''}" data-unit="MOBIL">Mobil (${unitCount['MOBIL']||0})</button>
     </div>
     <div class="controls">
       <div class="search-box">
@@ -4127,6 +4133,12 @@ function buildTopupLayout(){
     buildTopupLayout();
     renderTopupTable();
   });
+  document.getElementById('tuTabUnit').querySelectorAll('button').forEach(btn => btn.onclick = () => {
+    if(btn.dataset.unit === topupState.unit) return;
+    topupState.unit = btn.dataset.unit;
+    buildTopupLayout();
+    renderTopupTable();
+  });
   document.querySelectorAll('#wrap thead th[data-key]').forEach(th => th.onclick = () => {
     const key = th.getAttribute('data-key');
     if(topupState.sortKey === key) topupState.sortDir *= -1; else { topupState.sortKey = key; topupState.sortDir = key === '_TOPUP_SKOR' ? -1 : 1; }
@@ -4134,7 +4146,7 @@ function buildTopupLayout(){
   });
   document.getElementById('tuSearchInput').addEventListener('input', e => { topupState.search = e.target.value; renderTopupTable(); });
   document.getElementById('tuResetBtn').addEventListener('click', () => {
-    topupState = { co:'ALL', status:'ALL', search:'', sortKey:'_TOPUP_SKOR', sortDir:-1 };
+    topupState = { co:'ALL', status:'ALL', unit:'ALL', search:'', sortKey:'_TOPUP_SKOR', sortDir:-1 };
     buildTopupLayout();
     renderTopupTable();
   });
@@ -4145,6 +4157,7 @@ function getTopupFiltered(){
   let rows = getTopupBase();
   if(topupState.co !== 'ALL') rows = rows.filter(r => (r['CO ALL'] || '(Tanpa CO)') === topupState.co);
   if(topupState.status !== 'ALL') rows = rows.filter(r => (r['TOPUP STATUS'] || 'BELUM DIHUBUNGI') === topupState.status);
+  if(topupState.unit !== 'ALL') rows = rows.filter(r => String(r['TYPE BARANG']||'').trim().toUpperCase() === topupState.unit);
   if(topupState.search.trim()){
     const q = topupState.search.trim().toLowerCase();
     rows = rows.filter(r => [r['NAMA KONSUMEN'], r['NO KONTRAK'], r['NOPOL']].some(v => (v||'').toString().toLowerCase().includes(q)));
