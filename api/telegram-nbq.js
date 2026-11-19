@@ -173,7 +173,8 @@ const BUCKET_STAY_COLS = [
   { key: 'GROUP PRODUCT', label: 'Group Product', width: 130 },
   { key: 'CMO', label: 'CMO', width: 160 },
   { key: 'CO ALL', label: 'Nama CO', width: 200 },
-  { key: 'ANGSURAN_FMT', label: 'Angsuran', width: 130 }
+  { key: 'ANGSURAN_FMT', label: 'Angsuran', width: 130 },
+  { key: 'SIPOK_FMT', label: 'SIPOK', width: 140, bold: true }
 ];
 
 const DASHBOARD_COLS = [
@@ -207,8 +208,23 @@ const COLS = [
   { key: 'STATUS NBQ', label: 'Status NBQ', width: 120 },
   { key: 'DPD', label: 'DPD', width: 55, danger: true },
   { key: 'GROUP PRODUCT', label: 'Group Product', width: 105 },
-  { key: 'CMO', label: 'CMO', width: 150 }
+  { key: 'CMO', label: 'CMO', width: 150 },
+  { key: 'SIPOK_FMT', label: 'SIPOK', width: 140, bold: true }
 ];
+
+// Dipakai buat footer /nbq & /nbq 1-30 -- total SIPOK keseluruhan + pecahan per jenis kendaraan
+// (pakai kolom TYPE BARANG, sama seperti filter Mobil/Motor di menu Jualan Top Up web app).
+function sipokBreakdownFooter(rows, labelKontrak) {
+  let total = 0, motor = 0, mobil = 0;
+  rows.forEach(r => {
+    const sipok = typeof r['SIPOK'] === 'number' ? r['SIPOK'] : 0;
+    total += sipok;
+    const tipe = (r['TYPE BARANG'] || '').toString().trim().toUpperCase();
+    if (tipe === 'MOBIL') mobil += sipok;
+    else if (tipe === 'MOTOR') motor += sipok;
+  });
+  return `Total: ${rows.length} ${labelKontrak || 'kontrak'} · Total SIPOK ${fmtRupiah(total)} (Motor: ${fmtRupiah(motor)} · Mobil: ${fmtRupiah(mobil)})`;
+}
 
 function cellDiv(text, width, opts) {
   opts = opts || {};
@@ -957,11 +973,14 @@ module.exports = async (req, res) => {
       }
       // Angsuran-nya di MASTER angka mentah -- diformat ke Rupiah dulu di field terpisah
       // (ANGSURAN_FMT) biar kolom aslinya gak ketiban, walau di sini gak dipakai lagi.
-      rows = rows.map(r => Object.assign({}, r, { ANGSURAN_FMT: fmtRupiah(r['ANGSURAN']) }));
+      rows = rows.map(r => Object.assign({}, r, {
+        ANGSURAN_FMT: fmtRupiah(r['ANGSURAN']),
+        SIPOK_FMT: fmtRupiah(typeof r['SIPOK'] === 'number' ? r['SIPOK'] : 0)
+      }));
 
       const { year, month, day } = getWibDateParts();
       const subtitle = `Update per: ${fmtTanggalIndo(toIsoDate(year, month, day))}`;
-      const png = await renderTableImage(parsed.title, subtitle, rows, BUCKET_STAY_COLS);
+      const png = await renderTableImage(parsed.title, subtitle, rows, BUCKET_STAY_COLS, sipokBreakdownFooter(rows));
       await sendTelegramPhoto(chatId, png);
       res.status(200).json({ ok: true });
       return;
@@ -997,8 +1016,10 @@ module.exports = async (req, res) => {
       return;
     }
 
+    rows = rows.map(r => Object.assign({}, r, { SIPOK_FMT: fmtRupiah(typeof r['SIPOK'] === 'number' ? r['SIPOK'] : 0) }));
+
     const subtitle = `Jatuh Tempo: ${fmtTanggalIndo(start)} – ${fmtTanggalIndo(end)}`;
-    const png = await renderTableImage(parsed.title, subtitle, rows);
+    const png = await renderTableImage(parsed.title, subtitle, rows, COLS, sipokBreakdownFooter(rows));
     await sendTelegramPhoto(chatId, png);
     res.status(200).json({ ok: true });
   } catch (err) {
